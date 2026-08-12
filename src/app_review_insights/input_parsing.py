@@ -84,6 +84,20 @@ def _parse_datetime(value: Any, index: int) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def _parse_rating(value: Any, index: int) -> int:
+    if isinstance(value, bool):
+        raise InputDataError(f"第 {index} 条评论的 rating 必须是 1–5 的整数")
+
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError) as exc:
+        raise InputDataError(f"第 {index} 条评论的 rating 必须是 1–5 的整数") from exc
+
+    if not numeric.is_integer():
+        raise InputDataError(f"第 {index} 条评论的 rating 必须是 1–5 的整数")
+    return int(numeric)
+
+
 def import_reviews(data: bytes, filename: str, app_id: str) -> list[Review]:
     reviews: list[Review] = []
     suffix = Path(filename).suffix.lower()
@@ -102,7 +116,7 @@ def import_reviews(data: bytes, filename: str, app_id: str) -> list[Review]:
                     storefront=str(_first(record, "storefront", default="us")),
                     title=str(_first(record, "title", default="")),
                     content_original=str(content),
-                    rating=int(rating),
+                    rating=_parse_rating(rating, index),
                     app_version=_first(record, "app_version", "version"),
                     author=_first(record, "author", "userName", "username"),
                     published_at=_parse_datetime(published, index),

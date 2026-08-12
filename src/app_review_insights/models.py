@@ -109,7 +109,7 @@ class TestCase(BaseModel):
     steps: list[str]
     expected_result: str
     case_type: Literal["normal", "exception", "boundary", "regression"]
-    source_review_ids: list[str]
+    source_review_ids: list[str] = Field(min_length=1)
 
 
 class ValidationIssue(BaseModel):

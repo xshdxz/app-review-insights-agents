@@ -63,3 +63,17 @@ def test_completed_run_requires_complete_stage():
             created_at=now,
             updated_at=now,
         )
+
+
+def test_test_case_rejects_empty_source_review_ids():
+    with pytest.raises(ValidationError):
+        DomainTestCase(
+            test_case_id="TC-002",
+            requirement_id="REQ-001",
+            title="Show renewal date",
+            preconditions=["User has an active trial"],
+            steps=["Open subscription screen"],
+            expected_result="Renewal date is visible before confirmation.",
+            case_type="normal",
+            source_review_ids=[],
+        )

@@ -66,3 +66,18 @@ def test_import_reports_missing_content_with_row_number():
 
     with pytest.raises(InputDataError, match="第 1 条评论缺少 content"):
         import_reviews(payload, "reviews.json", app_id="imported-app")
+
+
+def test_import_rejects_fractional_rating_instead_of_truncating_it():
+    payload = json.dumps(
+        [
+            {
+                "content": "Rating should remain trustworthy.",
+                "rating": 1.5,
+                "date": "2026-08-01T10:00:00Z",
+            }
+        ]
+    ).encode()
+
+    with pytest.raises(InputDataError, match="rating"):
+        import_reviews(payload, "reviews.json", app_id="imported-app")
