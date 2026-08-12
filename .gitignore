@@ -1,0 +1,32 @@
+# Local research and planning artifacts
+.planning/
+.superpowers/
+tmp/
+
+# Private local materials
+内部资料.pdf
+notes.txt
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Runtime data and generated outputs
+data/runs/
+output/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
