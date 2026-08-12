@@ -3,6 +3,7 @@
 .superpowers/
 tmp/
 
+
 # Private local materials
 内部资料.pdf
 notes.txt
@@ -15,6 +16,7 @@ notes.txt
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
