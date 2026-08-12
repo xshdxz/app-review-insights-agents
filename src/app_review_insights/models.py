@@ -71,7 +71,7 @@ class Finding(BaseModel):
     title: str
     problem_statement: str
     topic_label: str
-    supporting_review_ids: list[str]
+    supporting_review_ids: list[str] = Field(min_length=1)
     conflicting_review_ids: list[str] = Field(default_factory=list)
     support_count: int = 0
     conflict_count: int = 0
@@ -83,7 +83,7 @@ class Finding(BaseModel):
 
 class Requirement(BaseModel):
     requirement_id: str
-    finding_ids: list[str]
+    finding_ids: list[str] = Field(min_length=1)
     title: str
     user_problem: str
     objective: str
@@ -97,7 +97,7 @@ class Requirement(BaseModel):
     complexity: Literal["low", "medium", "high"]
     priority_score: float = 0
     target_version: Literal["V1.0", "V1.1", "Future"]
-    source_review_ids: list[str]
+    source_review_ids: list[str] = Field(min_length=1)
     assumptions: list[str] = Field(default_factory=list)
 
 

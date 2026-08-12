@@ -6,6 +6,8 @@ from pydantic import ValidationError
 from app_review_insights.models import (
     AnalysisRequest,
     EvidenceStatus,
+    Finding,
+    Requirement,
     Review,
     RunRecord,
     RunStatus,
@@ -75,5 +77,40 @@ def test_test_case_rejects_empty_source_review_ids():
             steps=["Open subscription screen"],
             expected_result="Renewal date is visible before confirmation.",
             case_type="normal",
+            source_review_ids=[],
+        )
+
+
+def test_finding_requires_supporting_reviews():
+    with pytest.raises(ValidationError):
+        Finding(
+            finding_id="F-001",
+            title="Trial pricing is unclear",
+            problem_statement="Users cannot understand the renewal price.",
+            topic_label="subscription",
+            supporting_review_ids=[],
+            confidence=0.5,
+            evidence_status=EvidenceStatus.ASSUMPTION,
+            model_reasoning_summary="Insufficient supporting evidence.",
+        )
+
+
+def test_requirement_requires_finding_and_review_traceability():
+    with pytest.raises(ValidationError):
+        Requirement(
+            requirement_id="REQ-001",
+            finding_ids=[],
+            title="Show renewal details",
+            user_problem="The renewal terms are unclear.",
+            objective="Make subscription terms understandable.",
+            scope=["Subscription confirmation"],
+            non_goals=["Payment processing changes"],
+            functional_rules=["Show renewal date and price"],
+            edge_cases=["Regional price unavailable"],
+            acceptance_criteria=["Terms appear before confirmation"],
+            success_metrics=["Fewer pricing complaints"],
+            impact=4,
+            complexity="medium",
+            target_version="V1.0",
             source_review_ids=[],
         )
