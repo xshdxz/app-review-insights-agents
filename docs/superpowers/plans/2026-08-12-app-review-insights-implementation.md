@@ -88,7 +88,7 @@ tests/
 - 创建： `src/app_review_insights/config.py`
 - 测试： `tests/test_config.py`
 
-- [ ] **步骤 1：编写失败的配置测试**
+- [x] **步骤 1：编写失败的配置测试**
 
 ```python
 # tests/test_config.py
@@ -106,13 +106,13 @@ def test_settings_default_to_deepseek(tmp_path, monkeypatch):
     assert settings.batch_review_limit == 100
 ```
 
-- [ ] **步骤 2：运行测试并确认包尚不存在**
+- [x] **步骤 2：运行测试并确认包尚不存在**
 
 运行：`python -m pytest tests/test_config.py -v`
 
 预期：失败，并显示 `ModuleNotFoundError: No module named 'app_review_insights'`.
 
-- [ ] **步骤 3：添加项目元数据与依赖**
+- [x] **步骤 3：添加项目元数据与依赖**
 
 ```toml
 # pyproject.toml
@@ -174,7 +174,7 @@ BATCH_REVIEW_LIMIT=100
 BATCH_MAX_CHARACTERS=60000
 ```
 
-- [ ] **步骤 4：实现类型化配置与 Streamlit 入口**
+- [x] **步骤 4：实现类型化配置与 Streamlit 入口**
 
 ```python
 # src/app_review_insights/config.py
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **步骤 5：安装项目并确认测试通过**
+- [x] **步骤 5：安装项目并确认测试通过**
 
 运行：
 
@@ -236,7 +236,7 @@ python -m venv .venv
 
 预期：`1 passed`.
 
-- [ ] **步骤 6：提交项目初始化**
+- [x] **步骤 6：提交项目初始化**
 
 ```powershell
 git add pyproject.toml .env.example app.py src/app_review_insights tests/test_config.py
@@ -250,7 +250,7 @@ git commit -m "chore: bootstrap app review insights project"
 - 创建： `src/app_review_insights/errors.py`
 - 测试： `tests/test_models.py`
 
-- [ ] **步骤 1：编写模型校验测试**
+- [x] **步骤 1：编写模型校验测试**
 
 ```python
 # tests/test_models.py
@@ -292,13 +292,13 @@ def test_test_case_requires_traceability_fields():
     assert Stage.COMPLETE.value == "complete"
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_models.py -v`
 
 预期：失败，因为 `models.py` 尚不存在.
 
-- [ ] **步骤 3：实现枚举与 Pydantic 模型**
+- [x] **步骤 3：实现枚举与 Pydantic 模型**
 
 ```python
 # src/app_review_insights/models.py
@@ -475,13 +475,13 @@ class RecoverableModelError(AppReviewInsightsError):
     """Model stage can be resumed from the saved checkpoint."""
 ```
 
-- [ ] **步骤 4：运行模型测试**
+- [x] **步骤 4：运行模型测试**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_models.py -v`
 
 预期：`2 passed`.
 
-- [ ] **步骤 5：提交领域层**
+- [x] **步骤 5：提交领域层**
 
 ```powershell
 git add src/app_review_insights/models.py src/app_review_insights/errors.py tests/test_models.py
@@ -495,7 +495,7 @@ git commit -m "feat: define analysis domain models"
 - 测试： `tests/test_input_parsing.py`
 - 创建： `docs/data-format.md`
 
-- [ ] **步骤 1：编写 URL 与导入测试**
+- [x] **步骤 1：编写 URL 与导入测试**
 
 ```python
 # tests/test_input_parsing.py
@@ -542,13 +542,13 @@ def test_import_csv_accepts_documented_columns():
     assert reviews[0].title == "Timer bug"
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_input_parsing.py -v`
 
 预期：失败，因为 解析函数尚不存在.
 
-- [ ] **步骤 3：实现解析与字段别名规范化**
+- [x] **步骤 3：实现解析与字段别名规范化**
 
 ```python
 # src/app_review_insights/input_parsing.py
@@ -635,7 +635,7 @@ def import_reviews(data: bytes, filename: str, app_id: str) -> list[Review]:
     return reviews
 ```
 
-- [ ] **步骤 4：记录明确的导入格式约定**
+- [x] **步骤 4：记录明确的导入格式约定**
 
 ```markdown
 <!-- docs/data-format.md -->
@@ -659,7 +659,7 @@ Recommended fields:
 JSON may be a top-level array or `{ "reviews": [...] }`. CSV uses the same field names as columns.
 ```
 
-- [ ] **步骤 5：运行导入测试并提交**
+- [x] **步骤 5：运行导入测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_input_parsing.py -v`
 
