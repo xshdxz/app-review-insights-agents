@@ -1,18 +1,18 @@
-# App Review Insights Implementation Plan
+# App Review Insights 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **供执行者使用：** 必须使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans`，逐任务执行本计划。所有步骤使用复选框（`- [ ]`）跟踪进度。
 
-**Goal:** Build a locally runnable Streamlit application that turns U.S. App Store reviews into evidence-grounded findings, version plans, PRD requirements, and traceable test cases with checkpoint recovery.
+**目标：** 构建一个可在本地运行的 Streamlit 应用，将美国区 App Store 评论转化为有证据支撑的产品发现、版本计划、PRD 需求和可追溯测试用例，并支持检查点恢复。
 
-**Architecture:** Streamlit is a thin UI over focused Python modules. A synchronous state-machine orchestrator calls collection/import, deterministic cleaning, DeepSeek structured semantic analysis, deterministic evidence validation, planning, test generation, traceability validation, and SQLite checkpoint storage. Every stage persists its output so a failed model batch can resume without restarting completed work.
+**架构：** Streamlit 仅作为轻量 UI，核心能力拆分到职责单一的 Python 模块中。同步状态机编排器依次调用采集/导入、确定性清洗、DeepSeek 结构化语义分析、确定性证据校验、规划、测试生成、追溯校验和 SQLite 检查点存储。每个阶段都会持久化输出，使模型批次失败后能够续跑，而无需重复已完成工作。
 
-**Tech Stack:** Python 3.11+, Streamlit, Pydantic v2, pydantic-settings, OpenAI-compatible DeepSeek client, app-store-scraper, pandas, rapidfuzz, langdetect, SQLite, pytest, Ruff.
+**技术栈：** Python 3.11+、Streamlit、Pydantic v2、pydantic-settings、兼容 OpenAI 协议的 DeepSeek 客户端、app-store-scraper、pandas、rapidfuzz、langdetect、SQLite、pytest、Ruff。
 
 ---
 
-## 0. Locked File Structure
+## 0. 固定文件结构
 
-Create the following focused structure. Do not move business logic into `app.py` or a single oversized Streamlit file.
+创建以下职责清晰的目录结构。不要把业务逻辑放入 `app.py`，也不要集中到单个过大的 Streamlit 文件中。
 
 ```text
 app.py
@@ -78,17 +78,17 @@ tests/
   test_app_smoke.py
 ```
 
-## Task 1: Bootstrap the Python Project and Configuration
+## 任务 1：初始化 Python 项目与配置
 
-**Files:**
-- Create: `pyproject.toml`
-- Create: `.env.example`
-- Create: `app.py`
-- Create: `src/app_review_insights/__init__.py`
-- Create: `src/app_review_insights/config.py`
-- Test: `tests/test_config.py`
+**文件：**
+- 创建： `pyproject.toml`
+- 创建： `.env.example`
+- 创建： `app.py`
+- 创建： `src/app_review_insights/__init__.py`
+- 创建： `src/app_review_insights/config.py`
+- 测试： `tests/test_config.py`
 
-- [ ] **Step 1: Write the failing configuration test**
+- [ ] **步骤 1：编写失败的配置测试**
 
 ```python
 # tests/test_config.py
@@ -106,13 +106,13 @@ def test_settings_default_to_deepseek(tmp_path, monkeypatch):
     assert settings.batch_review_limit == 100
 ```
 
-- [ ] **Step 2: Run the test and verify the package does not exist yet**
+- [ ] **步骤 2：运行测试并确认包尚不存在**
 
-Run: `python -m pytest tests/test_config.py -v`
+运行：`python -m pytest tests/test_config.py -v`
 
-Expected: FAIL with `ModuleNotFoundError: No module named 'app_review_insights'`.
+预期：失败，并显示 `ModuleNotFoundError: No module named 'app_review_insights'`.
 
-- [ ] **Step 3: Add project metadata and dependencies**
+- [ ] **步骤 3：添加项目元数据与依赖**
 
 ```toml
 # pyproject.toml
@@ -174,7 +174,7 @@ BATCH_REVIEW_LIMIT=100
 BATCH_MAX_CHARACTERS=60000
 ```
 
-- [ ] **Step 4: Implement typed settings and the Streamlit entry point**
+- [ ] **步骤 4：实现类型化配置与 Streamlit 入口**
 
 ```python
 # src/app_review_insights/config.py
@@ -223,9 +223,9 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 5: Install the package and verify the test passes**
+- [ ] **步骤 5：安装项目并确认测试通过**
 
-Run:
+运行：
 
 ```powershell
 python -m venv .venv
@@ -234,23 +234,23 @@ python -m venv .venv
 .\.venv\Scripts\python -m pytest tests/test_config.py -v
 ```
 
-Expected: `1 passed`.
+预期：`1 passed`.
 
-- [ ] **Step 6: Commit the bootstrap**
+- [ ] **步骤 6：提交项目初始化**
 
 ```powershell
 git add pyproject.toml .env.example app.py src/app_review_insights tests/test_config.py
 git commit -m "chore: bootstrap app review insights project"
 ```
 
-## Task 2: Define Domain Models and Pipeline States
+## 任务 2：定义领域模型与流水线状态
 
-**Files:**
-- Create: `src/app_review_insights/models.py`
-- Create: `src/app_review_insights/errors.py`
-- Test: `tests/test_models.py`
+**文件：**
+- 创建： `src/app_review_insights/models.py`
+- 创建： `src/app_review_insights/errors.py`
+- 测试： `tests/test_models.py`
 
-- [ ] **Step 1: Write model validation tests**
+- [ ] **步骤 1：编写模型校验测试**
 
 ```python
 # tests/test_models.py
@@ -292,13 +292,13 @@ def test_test_case_requires_traceability_fields():
     assert Stage.COMPLETE.value == "complete"
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_models.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_models.py -v`
 
-Expected: FAIL because `models.py` does not exist.
+预期：失败，因为 `models.py` 尚不存在.
 
-- [ ] **Step 3: Implement enums and Pydantic models**
+- [ ] **步骤 3：实现枚举与 Pydantic 模型**
 
 ```python
 # src/app_review_insights/models.py
@@ -475,27 +475,27 @@ class RecoverableModelError(AppReviewInsightsError):
     """Model stage can be resumed from the saved checkpoint."""
 ```
 
-- [ ] **Step 4: Run model tests**
+- [ ] **步骤 4：运行模型测试**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_models.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_models.py -v`
 
-Expected: `2 passed`.
+预期：`2 passed`.
 
-- [ ] **Step 5: Commit the domain layer**
+- [ ] **步骤 5：提交领域层**
 
 ```powershell
 git add src/app_review_insights/models.py src/app_review_insights/errors.py tests/test_models.py
 git commit -m "feat: define analysis domain models"
 ```
 
-## Task 3: Parse App URLs and Import JSON/CSV Reviews
+## 任务 3：解析 App 链接并导入 JSON/CSV 评论
 
-**Files:**
-- Create: `src/app_review_insights/input_parsing.py`
-- Test: `tests/test_input_parsing.py`
-- Create: `docs/data-format.md`
+**文件：**
+- 创建： `src/app_review_insights/input_parsing.py`
+- 测试： `tests/test_input_parsing.py`
+- 创建： `docs/data-format.md`
 
-- [ ] **Step 1: Write URL and import tests**
+- [ ] **步骤 1：编写 URL 与导入测试**
 
 ```python
 # tests/test_input_parsing.py
@@ -542,13 +542,13 @@ def test_import_csv_accepts_documented_columns():
     assert reviews[0].title == "Timer bug"
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_input_parsing.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_input_parsing.py -v`
 
-Expected: FAIL because the parsing functions do not exist.
+预期：失败，因为 解析函数尚不存在.
 
-- [ ] **Step 3: Implement parsing and alias normalization**
+- [ ] **步骤 3：实现解析与字段别名规范化**
 
 ```python
 # src/app_review_insights/input_parsing.py
@@ -635,7 +635,7 @@ def import_reviews(data: bytes, filename: str, app_id: str) -> list[Review]:
     return reviews
 ```
 
-- [ ] **Step 4: Document the exact import contract**
+- [ ] **步骤 4：记录明确的导入格式约定**
 
 ```markdown
 <!-- docs/data-format.md -->
@@ -659,24 +659,24 @@ Recommended fields:
 JSON may be a top-level array or `{ "reviews": [...] }`. CSV uses the same field names as columns.
 ```
 
-- [ ] **Step 5: Run import tests and commit**
+- [ ] **步骤 5：运行导入测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_input_parsing.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_input_parsing.py -v`
 
-Expected: `3 passed`.
+预期：`3 passed`.
 
 ```powershell
 git add src/app_review_insights/input_parsing.py tests/test_input_parsing.py docs/data-format.md
 git commit -m "feat: add app url parsing and review imports"
 ```
 
-## Task 4: Clean, Deduplicate, and Structure Reviews
+## 任务 4：清洗、去重并结构化评论
 
-**Files:**
-- Create: `src/app_review_insights/cleaning.py`
-- Test: `tests/test_cleaning.py`
+**文件：**
+- 创建： `src/app_review_insights/cleaning.py`
+- 测试： `tests/test_cleaning.py`
 
-- [ ] **Step 1: Write deterministic cleaning tests**
+- [ ] **步骤 1：编写确定性清洗测试**
 
 ```python
 # tests/test_cleaning.py
@@ -715,13 +715,13 @@ def test_clean_reviews_removes_exact_and_near_duplicates():
     assert all(item.content_hash for item in result.reviews)
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_cleaning.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_cleaning.py -v`
 
-Expected: FAIL because `clean_reviews` does not exist.
+预期：失败，因为 `clean_reviews` 尚不存在.
 
-- [ ] **Step 3: Implement normalization, language detection, and deduplication**
+- [ ] **步骤 3：实现文本规范化、语言检测和去重**
 
 ```python
 # src/app_review_insights/cleaning.py
@@ -810,25 +810,25 @@ def clean_reviews(
     )
 ```
 
-- [ ] **Step 4: Run cleaning tests and commit**
+- [ ] **步骤 4：运行清洗测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_cleaning.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_cleaning.py -v`
 
-Expected: `1 passed`.
+预期：`1 passed`.
 
 ```powershell
 git add src/app_review_insights/cleaning.py tests/test_cleaning.py
 git commit -m "feat: clean and deduplicate review data"
 ```
 
-## Task 5: Collect U.S. App Store Reviews Behind an Adapter
+## 任务 5：通过适配器采集美国区 App Store 评论
 
-**Files:**
-- Create: `src/app_review_insights/collectors/__init__.py`
-- Create: `src/app_review_insights/collectors/app_store.py`
-- Test: `tests/test_collector.py`
+**文件：**
+- 创建： `src/app_review_insights/collectors/__init__.py`
+- 创建： `src/app_review_insights/collectors/app_store.py`
+- 测试： `tests/test_collector.py`
 
-- [ ] **Step 1: Write an adapter test using a fake scraper**
+- [ ] **步骤 1：使用假采集器编写适配器测试**
 
 ```python
 # tests/test_collector.py
@@ -868,13 +868,13 @@ def test_collector_maps_scraper_data_to_reviews():
     assert reviews[0].source == "app-store-scraper:us"
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_collector.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_collector.py -v`
 
-Expected: FAIL because the collector does not exist.
+预期：失败，因为 采集器尚不存在.
 
-- [ ] **Step 3: Implement the collection adapter and explicit limitations**
+- [ ] **步骤 3：实现采集适配器并明确数据限制**
 
 ```python
 # src/app_review_insights/collectors/app_store.py
@@ -935,37 +935,37 @@ from .app_store import AppStoreCollector
 __all__ = ["AppStoreCollector"]
 ```
 
-- [ ] **Step 4: Run the unit test**
+- [ ] **步骤 4：运行单元测试**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_collector.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_collector.py -v`
 
-Expected: `1 passed`.
+预期：`1 passed`.
 
-- [ ] **Step 5: Run one manual 20-review collection probe and save only the result count**
+- [ ] **步骤 5：执行一次 20 条评论的手工采集探测，仅保留结果数量**
 
-Run:
+运行：
 
 ```powershell
 .\.venv\Scripts\python -c "from app_review_insights.collectors import AppStoreCollector; print(len(AppStoreCollector().collect('https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684', 20)))"
 ```
 
-Expected: prints a number from `1` to `20`. If the upstream package is incompatible, keep the adapter interface and replace only its internal backend; do not change consumers.
+预期：打印 `1` 到 `20` 之间的数字. 如果上游包不兼容，保留适配器接口，只替换其内部后端，不要修改调用方。
 
-- [ ] **Step 6: Commit the collector**
+- [ ] **步骤 6：提交采集器**
 
 ```powershell
 git add src/app_review_insights/collectors tests/test_collector.py
 git commit -m "feat: collect us app store reviews"
 ```
 
-## Task 6: Persist Runs, Events, and Stage Checkpoints in SQLite
+## 任务 6：使用 SQLite 持久化运行、事件和阶段检查点
 
-**Files:**
-- Create: `src/app_review_insights/storage/__init__.py`
-- Create: `src/app_review_insights/storage/repository.py`
-- Test: `tests/test_repository.py`
+**文件：**
+- 创建： `src/app_review_insights/storage/__init__.py`
+- 创建： `src/app_review_insights/storage/repository.py`
+- 测试： `tests/test_repository.py`
 
-- [ ] **Step 1: Write repository round-trip and checkpoint tests**
+- [ ] **步骤 1：编写仓库存取往返与检查点测试**
 
 ```python
 # tests/test_repository.py
@@ -1014,13 +1014,13 @@ def test_repository_round_trips_run_and_batch_checkpoint(tmp_path):
     assert repo.list_events("run-1")[0].message == "完成第 2 批"
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_repository.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_repository.py -v`
 
-Expected: FAIL because `RunRepository` does not exist.
+预期：失败，因为 `RunRepository` 尚不存在.
 
-- [ ] **Step 3: Implement the JSON-over-SQLite repository**
+- [ ] **步骤 3：实现基于 SQLite 的 JSON 仓库**
 
 ```python
 # src/app_review_insights/storage/repository.py
@@ -1128,27 +1128,27 @@ from .repository import RunRepository
 __all__ = ["RunRepository"]
 ```
 
-- [ ] **Step 4: Run the repository test and commit**
+- [ ] **步骤 4：运行仓库测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_repository.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_repository.py -v`
 
-Expected: `1 passed`.
+预期：`1 passed`.
 
 ```powershell
 git add src/app_review_insights/storage tests/test_repository.py
 git commit -m "feat: persist pipeline checkpoints"
 ```
 
-## Task 7: Add Structured DeepSeek Calls and Character-Aware Batching
+## 任务 7：添加结构化 DeepSeek 调用与字符数感知分批
 
-**Files:**
-- Create: `src/app_review_insights/batching.py`
-- Create: `src/app_review_insights/llm/__init__.py`
-- Create: `src/app_review_insights/llm/provider.py`
-- Create: `src/app_review_insights/llm/schemas.py`
-- Test: `tests/test_provider.py`
+**文件：**
+- 创建： `src/app_review_insights/batching.py`
+- 创建： `src/app_review_insights/llm/__init__.py`
+- 创建： `src/app_review_insights/llm/provider.py`
+- 创建： `src/app_review_insights/llm/schemas.py`
+- 测试： `tests/test_provider.py`
 
-- [ ] **Step 1: Write batching and structured provider tests**
+- [ ] **步骤 1：编写分批与结构化模型供应商测试**
 
 ```python
 # tests/test_provider.py
@@ -1193,13 +1193,13 @@ def test_provider_validates_json_against_schema():
     assert result.findings == []
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_provider.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_provider.py -v`
 
-Expected: FAIL because batching and provider modules do not exist.
+预期：失败，因为 分批与模型供应商模块尚不存在.
 
-- [ ] **Step 3: Define model-only draft schemas**
+- [ ] **步骤 3：定义模型专用草稿 Schema**
 
 ```python
 # src/app_review_insights/llm/schemas.py
@@ -1261,7 +1261,7 @@ class TestCasePlanResult(BaseModel):
     test_cases: list[TestCaseDraft]
 ```
 
-- [ ] **Step 4: Implement character-aware batching**
+- [ ] **步骤 4：实现字符数感知分批**
 
 ```python
 # src/app_review_insights/batching.py
@@ -1291,7 +1291,7 @@ def make_review_batches(
     return batches
 ```
 
-- [ ] **Step 5: Implement the provider with bounded retries**
+- [ ] **步骤 5：实现带有限重试的模型供应商**
 
 ```python
 # src/app_review_insights/llm/provider.py
@@ -1358,26 +1358,26 @@ from .provider import DeepSeekProvider
 __all__ = ["DeepSeekProvider"]
 ```
 
-- [ ] **Step 6: Run provider tests and commit**
+- [ ] **步骤 6：运行模型供应商测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_provider.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_provider.py -v`
 
-Expected: `2 passed`.
+预期：`2 passed`.
 
 ```powershell
 git add src/app_review_insights/batching.py src/app_review_insights/llm tests/test_provider.py
 git commit -m "feat: add structured deepseek provider"
 ```
 
-## Task 8: Analyze Review Batches and Consolidate Dynamic Findings
+## 任务 8：分析评论批次并归并动态发现
 
-**Files:**
-- Create: `src/app_review_insights/llm/prompts.py`
-- Create: `src/app_review_insights/pipeline/__init__.py`
-- Create: `src/app_review_insights/pipeline/analyze.py`
-- Test: `tests/test_analysis.py`
+**文件：**
+- 创建： `src/app_review_insights/llm/prompts.py`
+- 创建： `src/app_review_insights/pipeline/__init__.py`
+- 创建： `src/app_review_insights/pipeline/analyze.py`
+- 测试： `tests/test_analysis.py`
 
-- [ ] **Step 1: Write analysis service tests with a fake provider**
+- [ ] **步骤 1：使用假模型供应商编写分析服务测试**
 
 ```python
 # tests/test_analysis.py
@@ -1433,13 +1433,13 @@ def test_consolidation_returns_cross_batch_topics():
     assert result.findings == []
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_analysis.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_analysis.py -v`
 
-Expected: FAIL because analysis functions do not exist.
+预期：失败，因为 分析函数尚不存在.
 
-- [ ] **Step 3: Add prompts that prohibit unsupported statistics**
+- [ ] **步骤 3：添加禁止无依据统计的 Prompt**
 
 ```python
 # src/app_review_insights/llm/prompts.py
@@ -1464,7 +1464,7 @@ def render_reviews(reviews) -> str:
     return "\n".join(lines)
 ```
 
-- [ ] **Step 4: Implement batch analysis and consolidation**
+- [ ] **步骤 4：实现批次分析与归并**
 
 ```python
 # src/app_review_insights/pipeline/analyze.py
@@ -1502,24 +1502,24 @@ def consolidate_findings(provider, batch_results, analysis_goal: str) -> Consoli
 """Evidence-grounded analysis pipeline."""
 ```
 
-- [ ] **Step 5: Run analysis tests and commit**
+- [ ] **步骤 5：运行分析测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_analysis.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_analysis.py -v`
 
-Expected: `2 passed`.
+预期：`2 passed`.
 
 ```powershell
 git add src/app_review_insights/llm/prompts.py src/app_review_insights/pipeline tests/test_analysis.py
 git commit -m "feat: analyze and consolidate review findings"
 ```
 
-## Task 9: Validate Evidence and Recompute Confidence Deterministically
+## 任务 9：校验证据并确定性重算置信度
 
-**Files:**
-- Create: `src/app_review_insights/pipeline/validate.py`
-- Test: `tests/test_validation.py`
+**文件：**
+- 创建： `src/app_review_insights/pipeline/validate.py`
+- 测试： `tests/test_validation.py`
 
-- [ ] **Step 1: Write tests for invented IDs and adaptive evidence status**
+- [ ] **步骤 1：编写虚构 ID 与自适应证据状态测试**
 
 ```python
 # tests/test_validation.py
@@ -1568,13 +1568,13 @@ def test_validation_removes_invented_ids_and_recomputes_counts():
     assert report.valid is False
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_validation.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_validation.py -v`
 
-Expected: FAIL because validation does not exist.
+预期：失败，因为 校验模块尚不存在.
 
-- [ ] **Step 3: Implement deterministic reference and confidence validation**
+- [ ] **步骤 3：实现确定性引用与置信度校验**
 
 ```python
 # src/app_review_insights/pipeline/validate.py
@@ -1647,26 +1647,26 @@ def validate_finding_drafts(
     return findings, ValidationReport(valid=not any(i.severity == "error" for i in issues), issues=issues)
 ```
 
-- [ ] **Step 4: Run validation tests and commit**
+- [ ] **步骤 4：运行校验测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_validation.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_validation.py -v`
 
-Expected: `1 passed`.
+预期：`1 passed`.
 
 ```powershell
 git add src/app_review_insights/pipeline/validate.py tests/test_validation.py
 git commit -m "feat: validate review evidence"
 ```
 
-## Task 10: Generate Versioned PRD Requirements and Traceable Test Cases
+## 任务 10：生成分版本 PRD 需求和可追溯测试用例
 
-**Files:**
-- Create: `src/app_review_insights/pipeline/planning.py`
-- Create: `src/app_review_insights/pipeline/test_generation.py`
-- Test: `tests/test_planning.py`
-- Test: `tests/test_test_generation.py`
+**文件：**
+- 创建： `src/app_review_insights/pipeline/planning.py`
+- 创建： `src/app_review_insights/pipeline/test_generation.py`
+- 测试： `tests/test_planning.py`
+- 测试： `tests/test_test_generation.py`
 
-- [ ] **Step 1: Write planning and test-generation tests**
+- [ ] **步骤 1：编写规划与测试生成测试**
 
 ```python
 # tests/test_planning.py
@@ -1762,13 +1762,13 @@ def test_test_cases_inherit_requirement_review_ids():
     assert cases[0].source_review_ids == ["r-1"]
 ```
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_planning.py tests/test_test_generation.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_planning.py tests/test_test_generation.py -v`
 
-Expected: FAIL because planning modules do not exist.
+预期：失败，因为 规划模块尚不存在.
 
-- [ ] **Step 3: Implement requirement generation and deterministic priority scoring**
+- [ ] **步骤 3：实现需求生成与确定性优先级评分**
 
 ```python
 # src/app_review_insights/pipeline/planning.py
@@ -1829,7 +1829,7 @@ def build_requirements(provider, findings: list[Finding], analysis_goal: str, to
     return sorted(requirements, key=lambda item: item.priority_score, reverse=True)
 ```
 
-- [ ] **Step 4: Implement test-case generation and inherited traceability**
+- [ ] **步骤 4：实现测试用例生成与继承式追溯**
 
 ```python
 # src/app_review_insights/pipeline/test_generation.py
@@ -1866,26 +1866,26 @@ def generate_test_cases(provider, requirements: list[Requirement]) -> list[TestC
     return cases
 ```
 
-- [ ] **Step 5: Run tests and commit**
+- [ ] **步骤 5：运行测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_planning.py tests/test_test_generation.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_planning.py tests/test_test_generation.py -v`
 
-Expected: `2 passed`.
+预期：`2 passed`.
 
 ```powershell
 git add src/app_review_insights/pipeline/planning.py src/app_review_insights/pipeline/test_generation.py tests/test_planning.py tests/test_test_generation.py
 git commit -m "feat: generate versioned prd and test cases"
 ```
 
-## Task 11: Enforce the Full Traceability Chain and Export Artifacts
+## 任务 11：强制校验完整追溯链并导出产物
 
-**Files:**
-- Create: `src/app_review_insights/pipeline/traceability.py`
-- Create: `src/app_review_insights/export.py`
-- Test: `tests/test_traceability.py`
-- Test: `tests/test_export.py`
+**文件：**
+- 创建： `src/app_review_insights/pipeline/traceability.py`
+- 创建： `src/app_review_insights/export.py`
+- 测试： `tests/test_traceability.py`
+- 测试： `tests/test_export.py`
 
-- [ ] **Step 1: Write traceability and export tests**
+- [ ] **步骤 1：编写追溯与导出测试**
 
 ```python
 # tests/test_traceability.py
@@ -1957,13 +1957,13 @@ def test_traceability_export_contains_all_entity_ids():
     ]
 ```
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_traceability.py tests/test_export.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_traceability.py tests/test_export.py -v`
 
-Expected: FAIL because traceability and export modules do not exist.
+预期：失败，因为 追溯与导出模块尚不存在.
 
-- [ ] **Step 3: Implement full-chain validation**
+- [ ] **步骤 3：实现完整链路校验**
 
 ```python
 # src/app_review_insights/pipeline/traceability.py
@@ -2012,7 +2012,7 @@ def validate_traceability(review_ids, findings, requirements, test_cases) -> Val
     return ValidationReport(valid=not issues, issues=issues)
 ```
 
-- [ ] **Step 4: Implement export row builders**
+- [ ] **步骤 4：实现导出行构造器**
 
 ```python
 # src/app_review_insights/export.py
@@ -2047,24 +2047,24 @@ def rows_to_csv_bytes(rows: list[dict]) -> bytes:
     return buffer.getvalue().encode("utf-8-sig")
 ```
 
-- [ ] **Step 5: Run tests and commit**
+- [ ] **步骤 5：运行测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_traceability.py tests/test_export.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_traceability.py tests/test_export.py -v`
 
-Expected: `2 passed`.
+预期：`2 passed`.
 
 ```powershell
 git add src/app_review_insights/pipeline/traceability.py src/app_review_insights/export.py tests/test_traceability.py tests/test_export.py
 git commit -m "feat: validate and export traceability chain"
 ```
 
-## Task 12: Build the Checkpointed Orchestrator and Resume Flow
+## 任务 12：构建带检查点的编排器与续跑流程
 
-**Files:**
-- Create: `src/app_review_insights/pipeline/orchestrator.py`
-- Test: `tests/test_orchestrator.py`
+**文件：**
+- 创建： `src/app_review_insights/pipeline/orchestrator.py`
+- 测试： `tests/test_orchestrator.py`
 
-- [ ] **Step 1: Write checkpoint, same-run resume, and completion tests**
+- [ ] **步骤 1：编写检查点、同一运行续跑和完成测试**
 
 ```python
 # tests/test_orchestrator.py
@@ -2165,13 +2165,13 @@ def test_orchestrator_persists_raw_and_cleaned_reviews(tmp_path):
     assert len(repo.get_output(completed.run_id, Stage.CLEAN)["reviews"]) == 2
 ```
 
-- [ ] **Step 2: Run the tests and verify they fail**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_orchestrator.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_orchestrator.py -v`
 
-Expected: FAIL because the orchestrator does not exist.
+预期：失败，因为 编排器尚不存在.
 
-- [ ] **Step 3: Implement the complete resumable orchestrator**
+- [ ] **步骤 3：实现完整的可续跑编排器**
 
 ```python
 # src/app_review_insights/pipeline/orchestrator.py
@@ -2419,26 +2419,26 @@ class AnalysisOrchestrator:
         return self._save(run, "分析完成")
 ```
 
-- [ ] **Step 4: Run orchestrator tests and commit**
+- [ ] **步骤 4：运行编排器测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_orchestrator.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_orchestrator.py -v`
 
-Expected: the checkpoint, same-run resume, successful completion, and collection-failure tests pass; the resumed run keeps the original `run_id` and does not call batch 1 again.
+预期：检查点、同一运行续跑、成功完成和采集失败测试均通过；续跑保持原始 `run_id`，且不会再次调用第 1 批。
 
 ```powershell
 git add src/app_review_insights/pipeline/orchestrator.py tests/test_orchestrator.py
 git commit -m "feat: orchestrate resumable analysis runs"
 ```
 
-## Task 13: Build the Streamlit Single-Page Workbench
+## 任务 13：构建 Streamlit 单页工作台
 
-**Files:**
-- Create: `src/app_review_insights/ui/__init__.py`
-- Create: `src/app_review_insights/ui/components.py`
-- Create: `src/app_review_insights/ui/main.py`
-- Test: `tests/test_app_smoke.py`
+**文件：**
+- 创建： `src/app_review_insights/ui/__init__.py`
+- 创建： `src/app_review_insights/ui/components.py`
+- 创建： `src/app_review_insights/ui/main.py`
+- 测试： `tests/test_app_smoke.py`
 
-- [ ] **Step 1: Write a smoke test for importable UI construction**
+- [ ] **步骤 1：编写 UI 可导入构建的冒烟测试**
 
 ```python
 # tests/test_app_smoke.py
@@ -2461,13 +2461,13 @@ def test_build_services_without_key_keeps_demo_mode_available(tmp_path, monkeypa
     assert services.repository.path.exists()
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_app_smoke.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_app_smoke.py -v`
 
-Expected: FAIL because UI modules do not exist.
+预期：失败，因为 UI 模块尚不存在.
 
-- [ ] **Step 3: Implement reusable display components**
+- [ ] **步骤 3：实现可复用展示组件**
 
 ```python
 # src/app_review_insights/ui/components.py
@@ -2575,7 +2575,7 @@ def render_result_tabs(repository, run_id: str):
         render_records(trace["issues"], "没有追溯问题。")
 ```
 
-- [ ] **Step 4: Implement service wiring and the single-page layout**
+- [ ] **步骤 4：实现服务装配与单页布局**
 
 ```python
 # src/app_review_insights/ui/main.py
@@ -2694,34 +2694,34 @@ def main():
 """Streamlit user interface."""
 ```
 
-- [ ] **Step 5: Run the smoke test and launch the app manually**
+- [ ] **步骤 5：运行冒烟测试并手工启动应用**
 
-Run:
+运行：
 
 ```powershell
 .\.venv\Scripts\python -m pytest tests/test_app_smoke.py -v
 .\.venv\Scripts\streamlit run app.py
 ```
 
-Expected: test passes; Streamlit opens without import exceptions; the input panel, result tabs, and right-side status panel are visible at desktop and narrow widths.
+预期：测试通过；Streamlit 启动时没有导入异常；桌面与窄屏宽度下均能看到输入面板、结果标签页和右侧状态面板.
 
-- [ ] **Step 6: Commit the UI**
+- [ ] **步骤 6：提交 UI**
 
 ```powershell
 git add src/app_review_insights/ui app.py tests/test_app_smoke.py
 git commit -m "feat: add streamlit analysis workbench"
 ```
 
-## Task 14: Add Offline Cache, Sample Data, and Downloadable Results
+## 任务 14：添加离线缓存、样例数据和结果下载
 
-**Files:**
-- Create: `src/app_review_insights/storage/cache.py`
-- Create: `data/samples/reviews-sample.json`
-- Create: `data/cache/demo-run.json`
-- Modify: `src/app_review_insights/ui/main.py`
-- Test: `tests/test_export.py`
+**文件：**
+- 创建： `src/app_review_insights/storage/cache.py`
+- 创建： `data/samples/reviews-sample.json`
+- 创建： `data/cache/demo-run.json`
+- 修改： `src/app_review_insights/ui/main.py`
+- 测试： `tests/test_export.py`
 
-- [ ] **Step 1: Add a failing cache-label test**
+- [ ] **步骤 1：添加失败的缓存标记测试**
 
 ```python
 # append to tests/test_export.py
@@ -2735,13 +2735,13 @@ def test_demo_cache_is_explicitly_labeled():
     assert demo["collected_at"]
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_export.py::test_demo_cache_is_explicitly_labeled -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_export.py::test_demo_cache_is_explicitly_labeled -v`
 
-Expected: FAIL because cache loading and sample files do not exist.
+预期：失败，因为 缓存加载模块和样例文件尚不存在.
 
-- [ ] **Step 3: Implement strict demo-cache loading**
+- [ ] **步骤 3：实现严格的演示缓存加载**
 
 ```python
 # src/app_review_insights/storage/cache.py
@@ -2784,7 +2784,7 @@ def build_downloads(repository, run_id: str) -> dict[str, bytes]:
     }
 ```
 
-- [ ] **Step 4: Create a small hand-authored import sample, then generate the full demo cache through the real pipeline**
+- [ ] **步骤 4：创建小型人工导入样例，并通过真实流水线生成完整演示缓存**
 
 ```json
 {
@@ -2813,7 +2813,7 @@ def build_downloads(repository, run_id: str) -> dict[str, bytes]:
 }
 ```
 
-Add `export_demo_run` to `src/app_review_insights/storage/cache.py`:
+向 `src/app_review_insights/storage/cache.py` 添加 `export_demo_run`：
 
 ```python
 from datetime import UTC, datetime
@@ -2845,15 +2845,15 @@ def export_demo_run(repository, run_id: str, destination: str | Path, source_app
     )
 ```
 
-Add `from app_review_insights.models import Stage` to the cache module imports. After the real pipeline completes, export the run with:
+在缓存模块中导入 `from app_review_insights.models import Stage`。真实流水线完成后，使用以下命令导出运行：
 
 ```powershell
 .\.venv\Scripts\python -c "from app_review_insights.config import load_settings; from app_review_insights.storage import RunRepository; from app_review_insights.storage.cache import export_demo_run; s=load_settings(); r=RunRepository(s.database_path); run_id=r.list_runs()[0].run_id; export_demo_run(r, run_id, 'data/cache/demo-run.json', 'https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684')"
 ```
 
-Do not type conclusions manually into the demo cache. Generate them through the same pipeline and retain the original review IDs.
+不要手工向演示缓存填写结论。必须通过同一条流水线生成，并保留原始评论 ID。
 
-- [ ] **Step 5: Add explicit demo mode and downloads to Streamlit**
+- [ ] **步骤 5：为 Streamlit 添加明确的演示模式和下载功能**
 
 ```python
 from app_review_insights.storage.cache import build_downloads, load_demo_run
@@ -2878,26 +2878,26 @@ if st.session_state.get("run_id"):
     )
 ```
 
-- [ ] **Step 6: Run tests and commit**
+- [ ] **步骤 6：运行测试并提交**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_export.py -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_export.py -v`
 
-Expected: all export/cache tests pass.
+预期：所有导出与缓存测试均通过.
 
 ```powershell
 git add src/app_review_insights/storage/cache.py src/app_review_insights/ui/main.py data/samples data/cache tests/test_export.py
 git commit -m "feat: add offline demo and result exports"
 ```
 
-## Task 15: Add a Small Prompt Evaluation Harness
+## 任务 15：添加小型 Prompt 评测工具
 
-**Files:**
-- Create: `evals/gold-reviews.json`
-- Create: `scripts/run_eval.py`
-- Create: `docs/model-and-prompts.md`
-- Test: `tests/test_analysis.py`
+**文件：**
+- 创建： `evals/gold-reviews.json`
+- 创建： `scripts/run_eval.py`
+- 创建： `docs/model-and-prompts.md`
+- 测试： `tests/test_analysis.py`
 
-- [ ] **Step 1: Add a deterministic scoring test**
+- [ ] **步骤 1：添加确定性评分测试**
 
 ```python
 # append to tests/test_analysis.py
@@ -2915,13 +2915,13 @@ def test_eval_scores_reference_precision_and_topic_recall():
     assert score["reference_precision"] == 0.5
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [ ] **步骤 2：运行测试并确认失败**
 
-Run: `.\.venv\Scripts\python -m pytest tests/test_analysis.py::test_eval_scores_reference_precision_and_topic_recall -v`
+运行：`.\.venv\Scripts\python -m pytest tests/test_analysis.py::test_eval_scores_reference_precision_and_topic_recall -v`
 
-Expected: FAIL because the eval script does not exist.
+预期：失败，因为 评测脚本尚不存在.
 
-- [ ] **Step 3: Implement deterministic eval scoring and CLI output**
+- [ ] **步骤 3：实现确定性评测评分与 CLI 输出**
 
 ```python
 # scripts/run_eval.py
@@ -2954,7 +2954,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 4: Create the manually labeled gold set**
+- [ ] **步骤 4：创建人工标注黄金数据集**
 
 ```json
 {
@@ -3000,7 +3000,7 @@ if __name__ == "__main__":
 }
 ```
 
-Create `docs/model-and-prompts.md` with this table and append one row for each meaningful experiment:
+使用下表创建 `docs/model-and-prompts.md`，每次有意义的实验追加一行：
 
 ```markdown
 # Model and Prompt Notes
@@ -3014,31 +3014,31 @@ The model performs dynamic topic discovery, consolidation, requirement drafting,
 | 2026-08-15 | batch-v1 / FindingDraft-v1 | gold-reviews | record after first run | record after first run | record after first run | record one observed error | describe the next concrete prompt change |
 ```
 
-- [ ] **Step 5: Run tests and commit**
+- [ ] **步骤 5：运行测试并提交**
 
-Run:
+运行：
 
 ```powershell
 .\.venv\Scripts\python -m pytest tests/test_analysis.py -v
 .\.venv\Scripts\python scripts/run_eval.py
 ```
 
-Expected: tests pass and the script prints the number of labeled cases.
+预期：测试通过，脚本打印标注用例数量.
 
 ```powershell
 git add evals scripts/run_eval.py docs/model-and-prompts.md tests/test_analysis.py
 git commit -m "test: add prompt evaluation harness"
 ```
 
-## Task 16: Complete Integration Tests and Generalization Checks
+## 任务 16：完成集成测试和泛化检查
 
-**Files:**
-- Create: `tests/conftest.py`
-- Modify: `tests/test_orchestrator.py`
-- Modify: `tests/test_app_smoke.py`
-- Create: `tests/fixtures/mixed-reviews.json`
+**文件：**
+- 创建： `tests/conftest.py`
+- 修改： `tests/test_orchestrator.py`
+- 修改： `tests/test_app_smoke.py`
+- 创建： `tests/fixtures/mixed-reviews.json`
 
-- [ ] **Step 1: Add reusable fake provider and mixed-data fixture**
+- [ ] **步骤 1：添加可复用假模型供应商与混合数据夹具**
 
 ```python
 # tests/conftest.py
@@ -3076,9 +3076,9 @@ def fake_provider_factory():
 }
 ```
 
-This fixture intentionally includes English and Chinese text, an exact duplicate, a near duplicate, conflicting subscription feedback, missing versions, and one isolated crash report that should remain an assumption.
+该夹具有意包含中英文评论、精确重复、近似重复、相互冲突的订阅反馈、缺失版本，以及一条应保留为假设的孤立崩溃评论。
 
-- [ ] **Step 2: Add a full successful imported-data pipeline test**
+- [ ] **步骤 2：添加完整成功的导入数据流水线测试**
 
 ```python
 # append to tests/test_orchestrator.py
@@ -3169,65 +3169,65 @@ def test_full_imported_pipeline_completes_with_traceability(tmp_path):
     assert repo.get_output(run.run_id, Stage.VALIDATE_TRACEABILITY)["valid"] is True
 ```
 
-- [ ] **Step 3: Retain the exact failure-recovery assertions from Task 12**
+- [ ] **步骤 3：保留任务 12 的精确故障恢复断言**
 
-Run the specific regression test:
+运行指定的回归测试：
 
 ```powershell
 .\.venv\Scripts\python -m pytest tests/test_orchestrator.py::test_orchestrator_resumes_same_run_without_repeating_completed_batch -v
 ```
 
-Expected: PASS with the original `run_id` completed and analyzer call count equal to `3`.
+预期：通过；原始 `run_id` 最终完成，分析器调用次数等于 `3`。
 
-- [ ] **Step 4: Run the full automated suite and coverage**
+- [ ] **步骤 4：运行完整自动化测试套件与覆盖率**
 
-Run:
+运行：
 
 ```powershell
 .\.venv\Scripts\python -m pytest --cov=app_review_insights --cov-report=term-missing
 .\.venv\Scripts\ruff check .
 ```
 
-Expected:
+预期：
 
-- All tests pass.
-- Core modules `cleaning`, `validate`, `traceability`, and `repository` each have at least 90% line coverage.
-- No Ruff errors.
+- 所有测试通过。
+- 核心模块 `cleaning`、`validate`、`traceability` 和 `repository` 的行覆盖率均至少为 90%。
+- 没有 Ruff 错误。
 
-- [ ] **Step 5: Run two real-input generalization checks**
+- [ ] **步骤 5：执行两次真实输入泛化检查**
 
-Run the Streamlit application with:
+使用以下输入运行 Streamlit 应用：
 
-1. The required Workout for Women app and a subscription-conversion goal.
-2. A different U.S. App Store app or the mixed review fixture with a different analysis goal.
+1. 指定的 Workout for Women App，加上订阅转化分析目标。
+2. 另一个美国区 App Store 应用，或混合评论夹具，并使用不同的分析目标。
 
-For each run verify:
+每次运行都要验证：
 
-- No app-specific categories appear unless supported by input reviews.
-- Every major Finding has source IDs, counts, confidence, conflict, and limitation fields.
-- Requirements remain between 5 and 10 unless the UI explicitly explains insufficient evidence.
-- Every test case traces to a requirement and source review.
-- Model-generated and deterministic outputs are visually distinguishable.
+- 除非输入评论提供证据，否则不得出现应用专属分类。
+- 每个主要 Finding 都具有来源 ID、数量、置信度、冲突证据和局限字段。
+- 需求数量保持在 5–10 个；若证据不足，UI 必须明确解释。
+- 每条测试用例都能追溯到需求和来源评论。
+- 模型生成结果和确定性结果在视觉上可区分。
 
-- [ ] **Step 6: Commit integration coverage**
+- [ ] **步骤 6：提交集成测试覆盖**
 
 ```powershell
 git add tests
 git commit -m "test: verify full analysis workflow"
 ```
 
-## Task 17: Write Delivery Documentation and Verify a Clean Install
+## 任务 17：编写交付文档并验证全新安装
 
-**Files:**
-- Create: `README.md`
-- Create: `README.zh-CN.md`
-- Modify: `docs/data-format.md`
-- Modify: `docs/model-and-prompts.md`
-- Create: `docs/architecture.md`
+**文件：**
+- 创建： `README.md`
+- 创建： `README.zh-CN.md`
+- 修改： `docs/data-format.md`
+- 修改： `docs/model-and-prompts.md`
+- 创建： `docs/architecture.md`
 
-- [ ] **Step 1: Write the English README with exact startup instructions**
+- [ ] **步骤 1：编写包含精确启动说明的英文 README**
 
-Replace `xshdxz` with your GitHub account name and include the resulting commands:
+将 `xshdxz` 替换为用户的 GitHub 账号名，并写入替换后的命令：
 
 ```powershell
 git clone https://github.com/xshdxz/app-review-insights-agents.git
@@ -3239,66 +3239,66 @@ Copy-Item .env.example .env
 .\.venv\Scripts\streamlit run app.py
 ```
 
-It must also explain:
+还必须说明：
 
-- The project objective and evidence chain.
-- U.S. storefront data source and limitations.
-- Online, import, and cache modes.
-- DeepSeek configuration and secret handling.
-- Rule-versus-model decisions.
-- Checkpoint recovery behavior.
-- Test and eval commands.
-- Why the project uses a lightweight orchestrator rather than multiple agents.
+- 项目目标与证据链。
+- 美国区商店的数据来源与限制。
+- 在线、导入与缓存模式。
+- DeepSeek 配置与密钥处理。
+- 规则与模型的职责选择。
+- 检查点恢复行为。
+- 测试与评测命令。
+- 项目为何采用轻量编排器，而不是多个智能体。
 
-- [ ] **Step 2: Write the Chinese README**
+- [ ] **步骤 2：编写中文 README**
 
-`README.zh-CN.md` must contain the same operational facts, with a prominent link back to `README.md`. Do not maintain different feature claims between languages.
+`README.zh-CN.md` 必须包含相同的运行事实，并显著链接回 `README.md`。中英文版本不得宣称不同的功能范围。
 
-- [ ] **Step 3: Add an architecture document**
+- [ ] **步骤 3：添加架构文档**
 
 ```markdown
-# Architecture
+# 架构
 
 ```text
-Streamlit UI
-  → Orchestrator / RunRepository
-  → Collector or Importer
-  → Cleaning / Batching
-  → DeepSeek structured analysis
-  → Deterministic evidence validation
-  → PRD / Test generation
-  → Traceability validation / Export
+Streamlit 用户界面
+  → 编排器 / RunRepository
+  → 采集器或导入器
+  → 清洗 / 分批
+  → DeepSeek 结构化分析
+  → 确定性证据校验
+  → PRD / 测试生成
+  → 追溯校验 / 导出
 ```
 
-Each stage persists output before the next stage starts. UI reruns only read persisted outputs and never repeat model calls implicitly.
+每个阶段都会在下一阶段开始前持久化输出。UI 重新运行时只读取已持久化的输出，绝不隐式重复调用模型。
 ```
 
-- [ ] **Step 4: Verify secret and repository hygiene**
+- [ ] **步骤 4：验证密钥与仓库卫生**
 
-Run:
+运行：
 
 ```powershell
 git status --short --ignored
 git grep -n -I -E "(sk-[A-Za-z0-9_-]{12,}|DEEPSEEK_API_KEY=.+)" -- . ':!.env.example'
 ```
 
-Expected:
+预期：
 
-- `.env`, `data/runs/`, PDF, JD, `.planning/`, `.superpowers/`, and `tmp/` are ignored.
-- Secret scan prints no matches.
+- `.env`、`data/runs/`、PDF、JD、`.planning/`、`.superpowers/` 和 `tmp/` 均被忽略。
+- 密钥扫描不输出任何匹配。
 
-- [ ] **Step 5: Verify from a fresh clone directory**
+- [ ] **步骤 5：在全新克隆目录中验证**
 
-Create a new sibling directory by cloning the local repository, then execute only the README commands. Confirm:
+将本地仓库克隆到一个新的同级目录，然后只执行 README 中的命令。确认：
 
-- The app launches.
-- Demo mode works without a model key.
-- Import mode accepts `data/samples/reviews-sample.json`.
-- Online/model mode clearly explains missing configuration instead of crashing.
+- 应用能够启动。
+- 没有模型密钥时，演示模式仍可使用。
+- 导入模式能够接受 `data/samples/reviews-sample.json`。
+- 在线/模型模式会清楚说明缺失配置，而不是崩溃。
 
-- [ ] **Step 6: Run final checks and commit documentation**
+- [ ] **步骤 6：运行最终检查并提交文档**
 
-Run:
+运行：
 
 ```powershell
 .\.venv\Scripts\python -m pytest
@@ -3306,55 +3306,55 @@ Run:
 git diff --check
 ```
 
-Expected: all commands exit with code 0.
+预期：所有命令均以退出码 0 结束.
 
 ```powershell
 git add README.md README.zh-CN.md docs
 git commit -m "docs: add setup architecture and model notes"
 ```
 
-## Task 18: Finalize the Release Candidate
+## 任务 18：候选版本收尾
 
-**Files:**
-- Modify only files required by verified defects.
-- Do not add new features after the freeze begins.
+**文件：**
+- 只修改已验证缺陷所必需的文件。
+- 进入收尾阶段后不要增加新功能。
 
-- [ ] **Step 1: Execute the final acceptance matrix on 2026-08-19**
+- [ ] **步骤 1：执行最终验收矩阵**
 
-Verify and record results for:
+验证并记录以下结果：
 
 ```text
-[ ] Required app + subscription goal completes
-[ ] Unseen dataset + different goal completes
-[ ] JSON import completes
-[ ] CSV import completes
-[ ] Mixed languages remain traceable
-[ ] Duplicates are removed and counted
-[ ] Conflicting reviews are visible
-[ ] Insufficient evidence becomes Assumption
-[ ] DeepSeek failure preserves progress
-[ ] Resume uses original run_id and skips completed batches
-[ ] Cache is visibly historical/non-live
-[ ] Downloads contain IDs and UTF-8 text
-[ ] Fresh-clone startup follows README
-[ ] No secret or private local files are tracked
+[ ] 指定应用 + 订阅目标能够完成分析
+[ ] 未见过的数据集 + 不同目标能够完成分析
+[ ] JSON 导入能够完成
+[ ] CSV 导入能够完成
+[ ] 混合语言评论仍可追溯
+[ ] 重复评论已删除并计数
+[ ] 冲突评论清晰可见
+[ ] 证据不足时标记为假设（Assumption）
+[ ] DeepSeek 失败时保留进度
+[ ] 续跑沿用原始 run_id 并跳过已完成批次
+[ ] 缓存被明确标记为历史数据/非实时数据
+[ ] 下载文件包含 ID 和 UTF-8 文本
+[ ] 全新克隆后可按 README 完成启动
+[ ] 仓库未跟踪密钥或私有文件
 ```
 
-- [ ] **Step 2: Capture the final demo evidence**
+- [ ] **步骤 2：截取最终演示证据**
 
-Capture:
+截取：
 
-- Input and run-progress screen.
-- One validated Finding with supporting and conflicting reviews.
-- One PRD requirement with acceptance criteria.
-- One test case and its traceability path.
-- One partial-run model failure and resume state.
+- 输入与运行进度页面。
+- 一个同时包含支持与冲突评论的已验证发现（Finding）。
+- 一个带验收标准的 PRD 需求。
+- 一条测试用例及其追溯路径。
+- 一次部分运行中的模型失败和续跑状态。
 
-Store public screenshots under `docs/images/`. Redact usernames if a review author could be personally identifying.
+公开截图存放在 `docs/images/`。如果评论作者用户名可能识别个人，必须进行脱敏。
 
-- [ ] **Step 3: Run the final verification commands**
+- [ ] **步骤 3：运行最终验证命令**
 
-Run:
+运行：
 
 ```powershell
 .\.venv\Scripts\python -m pytest --cov=app_review_insights
@@ -3363,15 +3363,15 @@ git diff --check
 git status --short
 ```
 
-Expected: tests and lint pass; no unintended untracked files.
+预期：测试与代码检查通过；不存在非预期的未跟踪文件。
 
-- [ ] **Step 4: Commit only verified fixes and screenshots**
+- [ ] **步骤 4：仅提交已验证修复与截图**
 
 ```powershell
 git add src tests docs README.md README.zh-CN.md data/samples data/cache
 git commit -m "chore: prepare release candidate"
 ```
 
-- [ ] **Step 5: Stop feature work**
+- [ ] **步骤 5：停止新增功能**
 
-In the finalization phase, accept only fixes that prevent startup, corrupt evidence, break required input modes, expose secrets, or prevent release. Defer all cosmetic or optional enhancements.
+进入收尾阶段后，只接受解决无法启动、证据损坏、必需输入模式失效或密钥泄露的问题；所有外观和可选增强均延期。
