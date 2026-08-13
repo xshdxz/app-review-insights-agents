@@ -6,7 +6,7 @@
 
 **架构：** Streamlit 仅作为轻量 UI，核心能力拆分到职责单一的 Python 模块中。同步状态机编排器依次调用采集/导入、确定性清洗、DeepSeek 结构化语义分析、确定性证据校验、规划、测试生成、追溯校验和 SQLite 检查点存储。每个阶段都会持久化输出，使模型批次失败后能够续跑，而无需重复已完成工作。
 
-**技术栈：** Python 3.11+、Streamlit、Pydantic v2、pydantic-settings、兼容 OpenAI 协议的 DeepSeek 客户端、app-store-scraper、pandas、rapidfuzz、langdetect、SQLite、pytest、Ruff。
+**技术栈：** Python 3.11+、Streamlit、Pydantic v2、pydantic-settings、兼容 OpenAI 协议的 DeepSeek 客户端、httpx、Apple App Store RSS JSON、pandas、rapidfuzz、langdetect、SQLite、pytest、Ruff。
 
 ---
 
@@ -131,7 +131,7 @@ dependencies = [
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.10,<3",
   "openai>=1.99,<2",
-  "app-store-scraper>=0.3.5,<1",
+  "httpx>=0.28,<1",
   "pandas>=2.3,<3",
   "rapidfuzz>=3.13,<4",
   "langdetect>=1.0.9,<2",
@@ -676,7 +676,7 @@ git commit -m "feat: add app url parsing and review imports"
 - 创建： `src/app_review_insights/cleaning.py`
 - 测试： `tests/test_cleaning.py`
 
-- [ ] **步骤 1：编写确定性清洗测试**
+- [x] **步骤 1：编写确定性清洗测试**
 
 ```python
 # tests/test_cleaning.py
@@ -715,13 +715,13 @@ def test_clean_reviews_removes_exact_and_near_duplicates():
     assert all(item.content_hash for item in result.reviews)
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_cleaning.py -v`
 
 预期：失败，因为 `clean_reviews` 尚不存在.
 
-- [ ] **步骤 3：实现文本规范化、语言检测和去重**
+- [x] **步骤 3：实现文本规范化、语言检测和去重**
 
 ```python
 # src/app_review_insights/cleaning.py
@@ -810,11 +810,11 @@ def clean_reviews(
     )
 ```
 
-- [ ] **步骤 4：运行清洗测试并提交**
+- [x] **步骤 4：运行清洗测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_cleaning.py -v`
 
-预期：`1 passed`.
+实际：`5 passed`，提交为 `b4bf1ed`。
 
 ```powershell
 git add src/app_review_insights/cleaning.py tests/test_cleaning.py
@@ -828,35 +828,39 @@ git commit -m "feat: clean and deduplicate review data"
 - 创建： `src/app_review_insights/collectors/app_store.py`
 - 测试： `tests/test_collector.py`
 
-- [ ] **步骤 1：使用假采集器编写适配器测试**
+- [x] **步骤 1：使用假 HTTP 客户端编写适配器测试**
 
 ```python
 # tests/test_collector.py
-from datetime import UTC, datetime
-
 from app_review_insights.collectors.app_store import AppStoreCollector
 
 
-class FakeScraper:
-    def __init__(self, **kwargs):
-        self.reviews = []
+class FakeResponse:
+    def raise_for_status(self):
+        return None
 
-    def review(self, how_many: int):
-        self.reviews = [
-            {
-                "id": "123",
-                "title": "Pricing",
-                "review": "The free trial renewal date is unclear.",
-                "rating": 2,
-                "date": datetime(2026, 8, 1, tzinfo=UTC),
-                "userName": "reviewer",
-                "version": "8.5.0",
+    def json(self):
+        return {
+            "feed": {
+                "entry": [{
+                    "id": {"label": "123"},
+                    "title": {"label": "Pricing"},
+                    "content": {"label": "The free trial renewal date is unclear."},
+                    "im:rating": {"label": "2"},
+                    "updated": {"label": "2026-08-01T10:00:00-07:00"},
+                    "im:version": {"label": "8.5.0"},
+                }]
             }
-        ][:how_many]
+        }
 
 
-def test_collector_maps_scraper_data_to_reviews():
-    collector = AppStoreCollector(scraper_factory=FakeScraper)
+class FakeHttpClient:
+    def get(self, url):
+        return FakeResponse()
+
+
+def test_collector_maps_rss_data_to_reviews():
+    collector = AppStoreCollector(client=FakeHttpClient())
     reviews = collector.collect(
         "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684",
         limit=100,
@@ -865,66 +869,85 @@ def test_collector_maps_scraper_data_to_reviews():
     assert reviews[0].review_id == "123"
     assert reviews[0].storefront == "us"
     assert reviews[0].app_version == "8.5.0"
-    assert reviews[0].source == "app-store-scraper:us"
+    assert reviews[0].source == "apple-rss:us"
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_collector.py -v`
 
 预期：失败，因为 采集器尚不存在.
 
-- [ ] **步骤 3：实现采集适配器并明确数据限制**
+- [x] **步骤 3：实现采集适配器并明确数据限制**
 
 ```python
 # src/app_review_insights/collectors/app_store.py
-from collections.abc import Callable
-from datetime import UTC, datetime
+from math import ceil
 
-from app_store_scraper import AppStore
+import httpx
 
 from app_review_insights.errors import CollectionError
 from app_review_insights.input_parsing import parse_app_store_url
 from app_review_insights.models import Review
 
 
+_RSS_URL = (
+    "https://itunes.apple.com/us/rss/customerreviews/page={page}/"
+    "id={app_id}/sortby=mostrecent/json"
+)
+_REVIEWS_PER_PAGE = 50
+_MAX_PAGES = 10
+
+
 class AppStoreCollector:
-    def __init__(self, scraper_factory: Callable[..., object] = AppStore):
-        self.scraper_factory = scraper_factory
+    def __init__(self, client=None, timeout_seconds: float = 20):
+        self.client = client or httpx.Client(
+            timeout=timeout_seconds,
+            headers={"User-Agent": "Mozilla/5.0 AppleWebKit/537.36 Chrome/139"},
+            follow_redirects=True,
+        )
 
     def collect(self, app_url: str, limit: int) -> list[Review]:
         parsed = parse_app_store_url(app_url)
         try:
-            scraper = self.scraper_factory(
-                country="us", app_name=parsed.slug, app_id=int(parsed.app_id)
-            )
-            scraper.review(how_many=limit)
-            raw_reviews = list(scraper.reviews)
+            bounded_limit = max(1, min(limit, _REVIEWS_PER_PAGE * _MAX_PAGES))
+            reviews = []
+            for page in range(1, min(ceil(bounded_limit / 50), _MAX_PAGES) + 1):
+                response = self.client.get(
+                    _RSS_URL.format(page=page, app_id=parsed.app_id)
+                )
+                response.raise_for_status()
+                entries = response.json().get("feed", {}).get("entry", []) or []
+                for index, item in enumerate(entry for entry in entries if "im:rating" in entry):
+                    reviews.append(self._map(item, parsed.app_id, page, index))
+                    if len(reviews) >= bounded_limit:
+                        return reviews
         except Exception as exc:
-            raise CollectionError(f"美国区评论采集失败: {exc}") from exc
+            raise CollectionError(
+                f"美国区评论采集失败，请稍后重试或改用 JSON/CSV 导入：{exc}"
+            ) from exc
 
-        reviews = [self._map(item, parsed.app_id, index) for index, item in enumerate(raw_reviews)]
         if not reviews:
             raise CollectionError("评论源返回 0 条数据，请改用 JSON/CSV 导入或稍后重试")
-        return reviews[:limit]
+        return reviews[:bounded_limit]
 
     @staticmethod
-    def _map(item: dict, app_id: str, index: int) -> Review:
-        published = item.get("date") or datetime.now(UTC)
-        if published.tzinfo is None:
-            published = published.replace(tzinfo=UTC)
+    def _map(item: dict, app_id: str, page: int, index: int) -> Review:
+        def label(key, default=None):
+            value = item.get(key, default)
+            return value.get("label", default) if isinstance(value, dict) else value
+
         return Review(
-            review_id=str(item.get("id") or item.get("reviewId") or f"apple-{index}"),
+            review_id=str(label("id", f"apple-{page}-{index}")),
             app_id=app_id,
             storefront="us",
-            title=str(item.get("title") or ""),
-            content_original=str(item.get("review") or item.get("content") or ""),
-            rating=int(item["rating"]),
-            app_version=item.get("version"),
-            author=item.get("userName"),
-            published_at=published.astimezone(UTC),
-            source="app-store-scraper:us",
-            source_page=(index // 20) + 1,
+            title=str(label("title", "")),
+            content_original=str(label("content", "")),
+            rating=int(label("im:rating")),
+            app_version=label("im:version"),
+            published_at=label("updated"),
+            source="apple-rss:us",
+            source_page=page,
         )
 ```
 
@@ -935,13 +958,13 @@ from .app_store import AppStoreCollector
 __all__ = ["AppStoreCollector"]
 ```
 
-- [ ] **步骤 4：运行单元测试**
+- [x] **步骤 4：运行单元测试**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_collector.py -v`
 
-预期：`1 passed`.
+实际：`5 passed`。
 
-- [ ] **步骤 5：执行一次 20 条评论的手工采集探测，仅保留结果数量**
+- [x] **步骤 5：执行一次 20 条评论的手工采集探测，仅保留结果数量、地区和来源**
 
 运行：
 
@@ -949,14 +972,16 @@ __all__ = ["AppStoreCollector"]
 .\.venv\Scripts\python -c "from app_review_insights.collectors import AppStoreCollector; print(len(AppStoreCollector().collect('https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684', 20)))"
 ```
 
-预期：打印 `1` 到 `20` 之间的数字. 如果上游包不兼容，保留适配器接口，只替换其内部后端，不要修改调用方。
+实际：返回 `COUNT=20`、`STOREFRONT=us`、`SOURCE=apple-rss:us`。Apple RSS 每页最多 50 条、最多 10 页，因此在线采集上限为 500 条；失败时保留 JSON/CSV 导入路径。
 
-- [ ] **步骤 6：提交采集器**
+- [x] **步骤 6：提交采集器**
 
 ```powershell
 git add src/app_review_insights/collectors tests/test_collector.py
 git commit -m "feat: collect us app store reviews"
 ```
+
+提交为 `26e04b1`。
 
 ## 任务 6：使用 SQLite 持久化运行、事件和阶段检查点
 
@@ -965,7 +990,7 @@ git commit -m "feat: collect us app store reviews"
 - 创建： `src/app_review_insights/storage/repository.py`
 - 测试： `tests/test_repository.py`
 
-- [ ] **步骤 1：编写仓库存取往返与检查点测试**
+- [x] **步骤 1：编写仓库存取往返与检查点测试**
 
 ```python
 # tests/test_repository.py
@@ -1014,13 +1039,13 @@ def test_repository_round_trips_run_and_batch_checkpoint(tmp_path):
     assert repo.list_events("run-1")[0].message == "完成第 2 批"
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_repository.py -v`
 
 预期：失败，因为 `RunRepository` 尚不存在.
 
-- [ ] **步骤 3：实现基于 SQLite 的 JSON 仓库**
+- [x] **步骤 3：实现基于 SQLite 的 JSON 仓库**
 
 ```python
 # src/app_review_insights/storage/repository.py
@@ -1128,11 +1153,11 @@ from .repository import RunRepository
 __all__ = ["RunRepository"]
 ```
 
-- [ ] **步骤 4：运行仓库测试并提交**
+- [x] **步骤 4：运行仓库测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_repository.py -v`
 
-预期：`1 passed`.
+实际：`4 passed`，提交为 `60be003`。
 
 ```powershell
 git add src/app_review_insights/storage tests/test_repository.py
@@ -1148,7 +1173,7 @@ git commit -m "feat: persist pipeline checkpoints"
 - 创建： `src/app_review_insights/llm/schemas.py`
 - 测试： `tests/test_provider.py`
 
-- [ ] **步骤 1：编写分批与结构化模型供应商测试**
+- [x] **步骤 1：编写分批与结构化模型供应商测试**
 
 ```python
 # tests/test_provider.py
@@ -1193,13 +1218,13 @@ def test_provider_validates_json_against_schema():
     assert result.findings == []
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_provider.py -v`
 
 预期：失败，因为 分批与模型供应商模块尚不存在.
 
-- [ ] **步骤 3：定义模型专用草稿 Schema**
+- [x] **步骤 3：定义模型专用草稿 Schema**
 
 ```python
 # src/app_review_insights/llm/schemas.py
@@ -1261,7 +1286,7 @@ class TestCasePlanResult(BaseModel):
     test_cases: list[TestCaseDraft]
 ```
 
-- [ ] **步骤 4：实现字符数感知分批**
+- [x] **步骤 4：实现字符数感知分批**
 
 ```python
 # src/app_review_insights/batching.py
@@ -1291,7 +1316,7 @@ def make_review_batches(
     return batches
 ```
 
-- [ ] **步骤 5：实现带有限重试的模型供应商**
+- [x] **步骤 5：实现带有限重试的模型供应商**
 
 ```python
 # src/app_review_insights/llm/provider.py
@@ -1358,11 +1383,11 @@ from .provider import DeepSeekProvider
 __all__ = ["DeepSeekProvider"]
 ```
 
-- [ ] **步骤 6：运行模型供应商测试并提交**
+- [x] **步骤 6：运行模型供应商测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_provider.py -v`
 
-预期：`2 passed`.
+实际：`9 passed`，包括超长单条评论、无效分批限制、显式空等待和负数重试次数等边界；提交为 `9b8f924`。
 
 ```powershell
 git add src/app_review_insights/batching.py src/app_review_insights/llm tests/test_provider.py
