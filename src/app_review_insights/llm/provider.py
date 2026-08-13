@@ -21,10 +21,14 @@ class DeepSeekProvider:
         if max_retries < 0:
             raise ValueError("max_retries must be non-negative")
 
+        delays = tuple((1, 2) if retry_delays is None else retry_delays)
+        if any(delay < 0 for delay in delays):
+            raise ValueError("retry_delays must be non-negative")
+
         self.client = client
         self.model = model
         self.max_retries = max_retries
-        self.retry_delays = tuple((1, 2) if retry_delays is None else retry_delays)
+        self.retry_delays = delays
 
     @classmethod
     def from_settings(cls, settings):
@@ -55,9 +59,9 @@ class DeepSeekProvider:
                 return schema.model_validate_json(content)
             except Exception as exc:
                 last_error = exc
-                if attempt < self.max_retries:
+                if attempt < self.max_retries and self.retry_delays:
                     delay_index = min(attempt, len(self.retry_delays) - 1)
-                    if self.retry_delays:
+                    if self.retry_delays[delay_index] > 0:
                         time.sleep(self.retry_delays[delay_index])
 
         raise RecoverableModelError(

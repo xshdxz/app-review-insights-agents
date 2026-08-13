@@ -5,7 +5,7 @@ import pytest
 from app_review_insights.batching import make_review_batches
 from app_review_insights.errors import RecoverableModelError
 from app_review_insights.llm.provider import DeepSeekProvider
-from app_review_insights.llm.schemas import BatchAnalysisResult
+from app_review_insights.llm.schemas import BatchAnalysisResult, RequirementPlanResult
 from app_review_insights.models import Review
 
 
@@ -116,6 +116,22 @@ def test_provider_rejects_negative_retry_count():
             model="deepseek-chat",
             max_retries=-1,
         )
+
+
+def test_provider_rejects_negative_retry_delays():
+    client, _ = fake_client([])
+
+    with pytest.raises(ValueError, match="non-negative"):
+        DeepSeekProvider(
+            client=client,
+            model="deepseek-chat",
+            retry_delays=(-1,),
+        )
+
+
+def test_requirement_plan_requires_five_to_ten_requirements():
+    with pytest.raises(ValueError):
+        RequirementPlanResult.model_validate({"requirements": []})
 
 
 def test_provider_retries_invalid_json_then_succeeds():

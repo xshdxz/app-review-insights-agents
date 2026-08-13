@@ -40,6 +40,27 @@ def _detect_language(value: str) -> str | None:
         return None
 
 
+def _is_near_duplicate(
+    previous: Review,
+    incoming_rating: int,
+    comparison_text: str,
+    threshold: int,
+) -> bool:
+    if previous.rating != incoming_rating:
+        return False
+
+    previous_text = _comparison_text(previous.content_original)
+    longest_length = max(len(previous_text), len(comparison_text))
+    if longest_length == 0:
+        return False
+
+    length_ratio = min(len(previous_text), len(comparison_text)) / longest_length
+    return (
+        length_ratio >= 0.8
+        and partial_ratio(previous_text, comparison_text) >= threshold
+    )
+
+
 def clean_reviews(
     reviews: list[Review], near_duplicate_threshold: int = 96
 ) -> CleaningResult:
@@ -66,12 +87,12 @@ def clean_reviews(
             continue
 
         if any(
-            previous.rating == incoming.rating
-            and min(len(_comparison_text(previous.content_original)), len(comparison_text))
-            / max(len(_comparison_text(previous.content_original)), len(comparison_text))
-            >= 0.8
-            and partial_ratio(_comparison_text(previous.content_original), comparison_text)
-            >= near_duplicate_threshold
+            _is_near_duplicate(
+                previous,
+                incoming.rating,
+                comparison_text,
+                near_duplicate_threshold,
+            )
             for previous in kept
         ):
             near_duplicates += 1

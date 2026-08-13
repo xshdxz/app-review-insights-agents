@@ -77,3 +77,17 @@ def test_partial_phrase_does_not_remove_a_substantially_longer_review():
     )
 
     assert [item.review_id for item in result.reviews] == ["r-short", "r-long"]
+
+
+def test_punctuation_only_reviews_do_not_crash_near_duplicate_comparison():
+    result = clean_reviews(
+        [
+            review("r-exclamation", "!!!"),
+            review("r-question", "???"),
+        ]
+    )
+
+    assert [item.review_id for item in result.reviews] == [
+        "r-exclamation",
+        "r-question",
+    ]
