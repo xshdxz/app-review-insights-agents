@@ -31,34 +31,47 @@ class AppStoreCollector:
 
     def collect(self, app_url: str, limit: int) -> list[Review]:
         parsed = parse_app_store_url(app_url)
-        bounded_limit = max(1, min(limit, _REVIEWS_PER_PAGE * _MAX_PAGES))
-        page_count = min(ceil(bounded_limit / _REVIEWS_PER_PAGE), _MAX_PAGES)
+        maximum_limit = _REVIEWS_PER_PAGE * _MAX_PAGES
+        if limit > maximum_limit:
+            raise CollectionError(
+                "Apple RSS 在线采集最多 500 条评论，请将数量调至 500 以内，"
+                "或改用 JSON/CSV 导入更多评论"
+            )
+
+        bounded_limit = max(1, limit)
+        page_count = ceil(bounded_limit / _REVIEWS_PER_PAGE)
         reviews: list[Review] = []
         seen_ids: set[str] = set()
 
-        try:
-            for page in range(1, page_count + 1):
+        for page in range(1, page_count + 1):
+            try:
                 response = self.client.get(
                     _RSS_URL.format(page=page, app_id=parsed.app_id)
                 )
                 response.raise_for_status()
                 entries = response.json().get("feed", {}).get("entry", []) or []
-                page_reviews = [entry for entry in entries if "im:rating" in entry]
-                if not page_reviews:
-                    break
+            except Exception as exc:
+                if reviews:
+                    return reviews
+                raise CollectionError(
+                    f"美国区评论采集失败，请稍后重试或改用 JSON/CSV 导入：{exc}"
+                ) from exc
 
-                for index, item in enumerate(page_reviews):
+            page_reviews = [entry for entry in entries if "im:rating" in entry]
+            if not page_reviews:
+                break
+
+            for index, item in enumerate(page_reviews):
+                try:
                     review = self._map(item, parsed.app_id, page, index)
-                    if review.review_id in seen_ids:
-                        continue
-                    seen_ids.add(review.review_id)
-                    reviews.append(review)
-                    if len(reviews) >= bounded_limit:
-                        return reviews
-        except Exception as exc:
-            raise CollectionError(
-                f"美国区评论采集失败，请稍后重试或改用 JSON/CSV 导入：{exc}"
-            ) from exc
+                except Exception:
+                    continue
+                if review.review_id in seen_ids:
+                    continue
+                seen_ids.add(review.review_id)
+                reviews.append(review)
+                if len(reviews) >= bounded_limit:
+                    return reviews
 
         if not reviews:
             raise CollectionError("评论源返回 0 条数据，请改用 JSON/CSV 导入或稍后重试")

@@ -37,6 +37,7 @@ class DeepSeekProvider:
                 api_key=settings.deepseek_api_key,
                 base_url=settings.model_base_url,
                 timeout=settings.model_timeout_seconds,
+                max_retries=0,
             ),
             model=settings.model_name,
             max_retries=settings.model_max_retries,

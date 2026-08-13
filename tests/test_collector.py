@@ -101,6 +101,59 @@ def test_collector_wraps_upstream_errors_with_fallback_guidance():
         raise AssertionError("expected CollectionError")
 
 
+def test_collector_returns_completed_pages_when_a_later_page_fails():
+    page_one = [rss_review(f"r-{index}", f"Review {index}") for index in range(50)]
+    client = FakeHttpClient(
+        [FakeResponse(rss_payload(*page_one)), FakeResponse({}, status_code=503)]
+    )
+
+    reviews = AppStoreCollector(client=client).collect(
+        "https://apps.apple.com/us/app/example/id839285684",
+        limit=100,
+    )
+
+    assert len(reviews) == 50
+    assert len(client.requested_urls) == 2
+
+
+def test_collector_skips_a_malformed_entry_without_losing_valid_reviews():
+    malformed = rss_review("bad", "Bad date")
+    malformed["updated"] = {"label": "not-a-date"}
+    client = FakeHttpClient(
+        [
+            FakeResponse(
+                rss_payload(
+                    rss_review("good-1", "First valid review"),
+                    malformed,
+                    rss_review("good-2", "Second valid review"),
+                )
+            )
+        ]
+    )
+
+    reviews = AppStoreCollector(client=client).collect(
+        "https://apps.apple.com/us/app/example/id839285684",
+        limit=20,
+    )
+
+    assert [review.review_id for review in reviews] == ["good-1", "good-2"]
+
+
+def test_collector_rejects_limits_above_apple_rss_capacity():
+    collector = AppStoreCollector(client=FakeHttpClient([]))
+
+    try:
+        collector.collect(
+            "https://apps.apple.com/us/app/example/id839285684",
+            limit=501,
+        )
+    except CollectionError as exc:
+        assert "最多 500" in str(exc)
+        assert "JSON/CSV" in str(exc)
+    else:
+        raise AssertionError("expected CollectionError")
+
+
 def test_collector_rejects_empty_feed():
     client = FakeHttpClient([FakeResponse(rss_payload())])
 

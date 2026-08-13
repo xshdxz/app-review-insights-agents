@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from app_review_insights.batching import make_review_batches
+from app_review_insights.config import Settings
 from app_review_insights.errors import RecoverableModelError
 from app_review_insights.llm.provider import DeepSeekProvider
 from app_review_insights.llm.schemas import BatchAnalysisResult, RequirementPlanResult
@@ -127,6 +128,23 @@ def test_provider_rejects_negative_retry_delays():
             model="deepseek-chat",
             retry_delays=(-1,),
         )
+
+
+def test_provider_disables_sdk_retries_and_owns_the_retry_budget(monkeypatch):
+    captured = {}
+    fake_openai_client = object()
+
+    def fake_openai(**kwargs):
+        captured.update(kwargs)
+        return fake_openai_client
+
+    monkeypatch.setattr("app_review_insights.llm.provider.OpenAI", fake_openai)
+    settings = Settings(DEEPSEEK_API_KEY="test-key")
+
+    provider = DeepSeekProvider.from_settings(settings)
+
+    assert provider.client is fake_openai_client
+    assert captured["max_retries"] == 0
 
 
 def test_requirement_plan_requires_five_to_ten_requirements():
