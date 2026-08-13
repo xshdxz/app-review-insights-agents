@@ -1,0 +1,115 @@
+from app_review_insights.collectors.app_store import AppStoreCollector
+from app_review_insights.errors import CollectionError
+
+
+def rss_payload(*entries):
+    return {"feed": {"entry": list(entries)}}
+
+
+def rss_review(review_id: str, content: str, rating: str = "2"):
+    return {
+        "id": {"label": review_id},
+        "title": {"label": "Pricing"},
+        "content": {"label": content},
+        "im:rating": {"label": rating},
+        "updated": {"label": "2026-08-01T10:00:00-07:00"},
+        "author": {"name": {"label": "reviewer"}},
+        "im:version": {"label": "8.5.0"},
+    }
+
+
+class FakeResponse:
+    def __init__(self, payload, status_code: int = 200):
+        self.payload = payload
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self.payload
+
+
+class FakeHttpClient:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.requested_urls = []
+
+    def get(self, url):
+        self.requested_urls.append(url)
+        return self.responses.pop(0)
+
+
+def test_collector_maps_rss_data_to_reviews():
+    client = FakeHttpClient(
+        [FakeResponse(rss_payload(rss_review("123", "The renewal date is unclear.")))]
+    )
+    collector = AppStoreCollector(client=client)
+
+    reviews = collector.collect(
+        "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684",
+        limit=20,
+    )
+
+    assert reviews[0].review_id == "123"
+    assert reviews[0].storefront == "us"
+    assert reviews[0].app_version == "8.5.0"
+    assert reviews[0].source == "apple-rss:us"
+    assert reviews[0].source_page == 1
+    assert client.requested_urls == [
+        "https://itunes.apple.com/us/rss/customerreviews/page=1/"
+        "id=839285684/sortby=mostrecent/json"
+    ]
+
+
+def test_default_client_uses_apple_compatible_browser_user_agent():
+    collector = AppStoreCollector()
+
+    assert collector.client.headers["user-agent"].startswith("Mozilla/5.0")
+
+
+def test_collector_paginates_and_removes_duplicate_review_ids():
+    page_one = [rss_review(f"r-{index}", f"Review {index}") for index in range(50)]
+    page_two = [rss_review("r-49", "Duplicate across pages"), rss_review("r-50", "New review")]
+    client = FakeHttpClient(
+        [FakeResponse(rss_payload(*page_one)), FakeResponse(rss_payload(*page_two))]
+    )
+
+    reviews = AppStoreCollector(client=client).collect(
+        "https://apps.apple.com/us/app/example/id839285684",
+        limit=51,
+    )
+
+    assert len(reviews) == 51
+    assert reviews[-1].review_id == "r-50"
+    assert reviews[-1].source_page == 2
+    assert len(client.requested_urls) == 2
+
+
+def test_collector_wraps_upstream_errors_with_fallback_guidance():
+    client = FakeHttpClient([FakeResponse({}, status_code=503)])
+
+    try:
+        AppStoreCollector(client=client).collect(
+            "https://apps.apple.com/us/app/example/id839285684",
+            limit=20,
+        )
+    except CollectionError as exc:
+        assert "JSON/CSV" in str(exc)
+    else:
+        raise AssertionError("expected CollectionError")
+
+
+def test_collector_rejects_empty_feed():
+    client = FakeHttpClient([FakeResponse(rss_payload())])
+
+    try:
+        AppStoreCollector(client=client).collect(
+            "https://apps.apple.com/us/app/example/id839285684",
+            limit=20,
+        )
+    except CollectionError as exc:
+        assert "0 条" in str(exc)
+    else:
+        raise AssertionError("expected CollectionError")
