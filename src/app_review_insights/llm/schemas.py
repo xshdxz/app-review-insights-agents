@@ -40,7 +40,7 @@ class RequirementDraft(BaseModel):
 
 
 class RequirementPlanResult(BaseModel):
-    requirements: list[RequirementDraft] = Field(min_length=5, max_length=10)
+    requirements: list[RequirementDraft] = Field(default_factory=list, max_length=10)
 
 
 class TestCaseDraft(BaseModel):

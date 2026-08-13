@@ -147,9 +147,10 @@ def test_provider_disables_sdk_retries_and_owns_the_retry_budget(monkeypatch):
     assert captured["max_retries"] == 0
 
 
-def test_requirement_plan_requires_five_to_ten_requirements():
-    with pytest.raises(ValueError):
-        RequirementPlanResult.model_validate({"requirements": []})
+def test_requirement_plan_allows_fewer_than_five_when_evidence_is_limited():
+    result = RequirementPlanResult.model_validate({"requirements": []})
+
+    assert result.requirements == []
 
 
 def test_provider_retries_invalid_json_then_succeeds():

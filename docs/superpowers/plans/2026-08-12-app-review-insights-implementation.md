@@ -972,7 +972,7 @@ __all__ = ["AppStoreCollector"]
 .\.venv\Scripts\python -c "from app_review_insights.collectors import AppStoreCollector; print(len(AppStoreCollector().collect('https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684', 20)))"
 ```
 
-实际：返回 `COUNT=20`、`STOREFRONT=us`、`SOURCE=apple-rss:us`。Apple RSS 每页最多 50 条、最多 10 页，因此在线采集上限为 500 条；失败时保留 JSON/CSV 导入路径。
+实际：返回 `COUNT=20`、`STOREFRONT=us`、`SOURCE=apple-rss:us`。Apple RSS 每页最多 50 条、最多 10 页，因此在线采集上限为 500 条；超过上限会明确提示改用 JSON/CSV 导入，后续页失败时会返回已完成页的评论，单条坏数据不会清空整批结果。
 
 - [x] **步骤 6：提交采集器**
 
@@ -1387,7 +1387,7 @@ __all__ = ["DeepSeekProvider"]
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_provider.py -v`
 
-实际：`9 passed`，包括超长单条评论、无效分批限制、显式空等待和负数重试次数等边界；提交为 `9b8f924`。
+实际：结构化调用、字符数分批和重试边界均已覆盖；OpenAI SDK 内层重试关闭，由应用层统一控制有限重试预算。初始实现提交为 `9b8f924`，审查修复提交为 `cb22e41`、`7761c40`。
 
 ```powershell
 git add src/app_review_insights/batching.py src/app_review_insights/llm tests/test_provider.py
