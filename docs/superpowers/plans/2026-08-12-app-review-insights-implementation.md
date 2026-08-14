@@ -1402,7 +1402,7 @@ git commit -m "feat: add structured deepseek provider"
 - 创建： `src/app_review_insights/pipeline/analyze.py`
 - 测试： `tests/test_analysis.py`
 
-- [ ] **步骤 1：使用假模型供应商编写分析服务测试**
+- [x] **步骤 1：使用假模型供应商编写分析服务测试**
 
 ```python
 # tests/test_analysis.py
@@ -1458,13 +1458,13 @@ def test_consolidation_returns_cross_batch_topics():
     assert result.findings == []
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_analysis.py -v`
 
 预期：失败，因为 分析函数尚不存在.
 
-- [ ] **步骤 3：添加禁止无依据统计的 Prompt**
+- [x] **步骤 3：添加禁止无依据统计的 Prompt**
 
 ```python
 # src/app_review_insights/llm/prompts.py
@@ -1489,7 +1489,7 @@ def render_reviews(reviews) -> str:
     return "\n".join(lines)
 ```
 
-- [ ] **步骤 4：实现批次分析与归并**
+- [x] **步骤 4：实现批次分析与归并**
 
 ```python
 # src/app_review_insights/pipeline/analyze.py
@@ -1527,7 +1527,7 @@ def consolidate_findings(provider, batch_results, analysis_goal: str) -> Consoli
 """Evidence-grounded analysis pipeline."""
 ```
 
-- [ ] **步骤 5：运行分析测试并提交**
+- [x] **步骤 5：运行分析测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_analysis.py -v`
 
@@ -1544,7 +1544,7 @@ git commit -m "feat: analyze and consolidate review findings"
 - 创建： `src/app_review_insights/pipeline/validate.py`
 - 测试： `tests/test_validation.py`
 
-- [ ] **步骤 1：编写虚构 ID 与自适应证据状态测试**
+- [x] **步骤 1：编写虚构 ID 与自适应证据状态测试**
 
 ```python
 # tests/test_validation.py
@@ -1593,13 +1593,13 @@ def test_validation_removes_invented_ids_and_recomputes_counts():
     assert report.valid is False
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_validation.py -v`
 
 预期：失败，因为 校验模块尚不存在.
 
-- [ ] **步骤 3：实现确定性引用与置信度校验**
+- [x] **步骤 3：实现确定性引用与置信度校验**
 
 ```python
 # src/app_review_insights/pipeline/validate.py
@@ -1672,7 +1672,7 @@ def validate_finding_drafts(
     return findings, ValidationReport(valid=not any(i.severity == "error" for i in issues), issues=issues)
 ```
 
-- [ ] **步骤 4：运行校验测试并提交**
+- [x] **步骤 4：运行校验测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_validation.py -v`
 
@@ -1691,7 +1691,7 @@ git commit -m "feat: validate review evidence"
 - 测试： `tests/test_planning.py`
 - 测试： `tests/test_test_generation.py`
 
-- [ ] **步骤 1：编写规划与测试生成测试**
+- [x] **步骤 1：编写规划与测试生成测试**
 
 ```python
 # tests/test_planning.py
@@ -1787,13 +1787,13 @@ def test_test_cases_inherit_requirement_review_ids():
     assert cases[0].source_review_ids == ["r-1"]
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_planning.py tests/test_test_generation.py -v`
 
 预期：失败，因为 规划模块尚不存在.
 
-- [ ] **步骤 3：实现需求生成与确定性优先级评分**
+- [x] **步骤 3：实现需求生成与确定性优先级评分**
 
 ```python
 # src/app_review_insights/pipeline/planning.py
@@ -1854,7 +1854,7 @@ def build_requirements(provider, findings: list[Finding], analysis_goal: str, to
     return sorted(requirements, key=lambda item: item.priority_score, reverse=True)
 ```
 
-- [ ] **步骤 4：实现测试用例生成与继承式追溯**
+- [x] **步骤 4：实现测试用例生成与继承式追溯**
 
 ```python
 # src/app_review_insights/pipeline/test_generation.py
@@ -1891,7 +1891,7 @@ def generate_test_cases(provider, requirements: list[Requirement]) -> list[TestC
     return cases
 ```
 
-- [ ] **步骤 5：运行测试并提交**
+- [x] **步骤 5：运行测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_planning.py tests/test_test_generation.py -v`
 
@@ -1910,7 +1910,7 @@ git commit -m "feat: generate versioned prd and test cases"
 - 测试： `tests/test_traceability.py`
 - 测试： `tests/test_export.py`
 
-- [ ] **步骤 1：编写追溯与导出测试**
+- [x] **步骤 1：编写追溯与导出测试**
 
 ```python
 # tests/test_traceability.py
@@ -1982,13 +1982,13 @@ def test_traceability_export_contains_all_entity_ids():
     ]
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_traceability.py tests/test_export.py -v`
 
 预期：失败，因为 追溯与导出模块尚不存在.
 
-- [ ] **步骤 3：实现完整链路校验**
+- [x] **步骤 3：实现完整链路校验**
 
 ```python
 # src/app_review_insights/pipeline/traceability.py
@@ -2037,7 +2037,7 @@ def validate_traceability(review_ids, findings, requirements, test_cases) -> Val
     return ValidationReport(valid=not issues, issues=issues)
 ```
 
-- [ ] **步骤 4：实现导出行构造器**
+- [x] **步骤 4：实现导出行构造器**
 
 ```python
 # src/app_review_insights/export.py
@@ -2072,7 +2072,7 @@ def rows_to_csv_bytes(rows: list[dict]) -> bytes:
     return buffer.getvalue().encode("utf-8-sig")
 ```
 
-- [ ] **步骤 5：运行测试并提交**
+- [x] **步骤 5：运行测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_traceability.py tests/test_export.py -v`
 
@@ -2089,7 +2089,7 @@ git commit -m "feat: validate and export traceability chain"
 - 创建： `src/app_review_insights/pipeline/orchestrator.py`
 - 测试： `tests/test_orchestrator.py`
 
-- [ ] **步骤 1：编写检查点、同一运行续跑和完成测试**
+- [x] **步骤 1：编写检查点、同一运行续跑和完成测试**
 
 ```python
 # tests/test_orchestrator.py
@@ -2190,13 +2190,13 @@ def test_orchestrator_persists_raw_and_cleaned_reviews(tmp_path):
     assert len(repo.get_output(completed.run_id, Stage.CLEAN)["reviews"]) == 2
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_orchestrator.py -v`
 
 预期：失败，因为 编排器尚不存在.
 
-- [ ] **步骤 3：实现完整的可续跑编排器**
+- [x] **步骤 3：实现完整的可续跑编排器**
 
 ```python
 # src/app_review_insights/pipeline/orchestrator.py
@@ -2444,7 +2444,7 @@ class AnalysisOrchestrator:
         return self._save(run, "分析完成")
 ```
 
-- [ ] **步骤 4：运行编排器测试并提交**
+- [x] **步骤 4：运行编排器测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_orchestrator.py -v`
 
