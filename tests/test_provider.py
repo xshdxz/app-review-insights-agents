@@ -170,6 +170,30 @@ def test_provider_retries_invalid_json_then_succeeds():
     assert len(completions.calls) == 2
 
 
+def test_provider_feeds_schema_error_back_on_retry():
+    client, completions = fake_client(
+        [
+            '{"findings": [], "batch_limitations": "wrong type"}',
+            '{"findings": [], "batch_limitations": ["repaired"]}',
+        ]
+    )
+    provider = DeepSeekProvider(
+        client=client,
+        model="deepseek-chat",
+        max_retries=1,
+        retry_delays=(0,),
+    )
+
+    result = provider.generate("system", "user", BatchAnalysisResult)
+
+    assert result.batch_limitations == ["repaired"]
+    retry_messages = completions.calls[1]["messages"]
+    assert retry_messages[-1]["role"] == "user"
+    assert "Schema 校验" in retry_messages[-1]["content"]
+    assert "batch_limitations" in retry_messages[-1]["content"]
+    assert "JSON Schema" in retry_messages[0]["content"]
+
+
 def test_provider_raises_recoverable_error_after_bounded_retries():
     client, completions = fake_client(["not-json", "still-not-json"])
     provider = DeepSeekProvider(
