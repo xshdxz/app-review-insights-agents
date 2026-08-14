@@ -285,7 +285,11 @@ def test_orchestrator_persists_final_evidence_chain(tmp_path):
 
     assert completed.status == RunStatus.COMPLETED
     assert len(repo.get_output(completed.run_id, Stage.VALIDATE_FINDINGS)["findings"]) == 1
-    assert len(repo.get_output(completed.run_id, Stage.PLAN)["requirements"]) == 1
+    plan_output = repo.get_output(completed.run_id, Stage.PLAN)
+    assert len(plan_output["requirements"]) == 1
+    assert plan_output["quantity_notice"] == (
+        "可验证证据不足，因此本次输出少于 5 个核心需求。"
+    )
     assert len(repo.get_output(completed.run_id, Stage.GENERATE_TESTS)["test_cases"]) == 2
     assert repo.get_output(completed.run_id, Stage.VALIDATE_TRACEABILITY)["valid"] is True
     assert any(

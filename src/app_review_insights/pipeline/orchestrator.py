@@ -213,7 +213,14 @@ class AnalysisOrchestrator:
             self.repository.save_output(
                 run.run_id,
                 Stage.PLAN,
-                {"requirements": self._dump_models(requirements)},
+                {
+                    "requirements": self._dump_models(requirements),
+                    "quantity_notice": (
+                        "可验证证据不足，因此本次输出少于 5 个核心需求。"
+                        if len(requirements) < 5
+                        else None
+                    ),
+                },
             )
             self._add_event(
                 run,
