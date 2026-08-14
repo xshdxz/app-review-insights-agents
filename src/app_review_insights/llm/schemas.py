@@ -53,4 +53,4 @@ class TestCaseDraft(BaseModel):
 
 
 class TestCasePlanResult(BaseModel):
-    test_cases: list[TestCaseDraft]
+    test_cases: list[TestCaseDraft] = Field(min_length=2, max_length=4)
