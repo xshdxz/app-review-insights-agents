@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -98,12 +100,29 @@ def _initialize_session_state(repository: RunRepository) -> None:
         st.session_state["run_id"] = runs[0].run_id if runs else None
 
 
-def _model_state(settings: Settings) -> str:
+def _model_config_fingerprint(settings: Settings) -> str:
+    payload = "\x1f".join(
+        (
+            settings.deepseek_api_key,
+            settings.model_provider,
+            settings.model_name,
+            settings.model_base_url,
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _model_state(settings: Settings, session_state=None) -> str:
+    state = st.session_state if session_state is None else session_state
     if not settings.model_enabled:
         return "disabled"
     if not settings.deepseek_api_key:
         return "missing"
-    if st.session_state.get("model_verified", False):
+    verified_fingerprint = state.get("model_verified_fingerprint")
+    if verified_fingerprint and hmac.compare_digest(
+        verified_fingerprint,
+        _model_config_fingerprint(settings),
+    ):
         return "verified"
     return "configured"
 
@@ -116,9 +135,15 @@ def _model_key_source(settings: Settings) -> str | None:
     return "项目 .env"
 
 
-def _record_model_success(repository: RunRepository, run_id: str) -> None:
+def _record_model_success(
+    repository: RunRepository,
+    run_id: str,
+    settings: Settings,
+    session_state=None,
+) -> None:
     if repository.get_output(run_id, Stage.ANALYZE_BATCHES, batch_index=0) is not None:
-        st.session_state["model_verified"] = True
+        state = st.session_state if session_state is None else session_state
+        state["model_verified_fingerprint"] = _model_config_fingerprint(settings)
 
 
 def _source_type(source_label: str, upload_name: str | None) -> SourceType:
@@ -403,7 +428,7 @@ def main() -> None:
                         ),
                     )
                     st.session_state["run_id"] = run.run_id
-                    _record_model_success(services.repository, run.run_id)
+                    _record_model_success(services.repository, run.run_id, settings)
                     _update_live_status(live_status, run)
 
         run_id = st.session_state.get("run_id")
@@ -447,7 +472,7 @@ def main() -> None:
                         ),
                     )
                     st.session_state["run_id"] = resumed.run_id
-                    _record_model_success(services.repository, resumed.run_id)
+                    _record_model_success(services.repository, resumed.run_id, settings)
                     _update_live_status(resume_status, resumed)
                     st.rerun()
         else:

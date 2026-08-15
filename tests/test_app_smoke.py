@@ -136,6 +136,61 @@ def test_explicit_model_disable_overrides_configured_key(tmp_path, monkeypatch):
     assert any("已显式禁用" in item.value for item in app.warning)
 
 
+def test_model_verification_is_bound_to_current_config():
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.config import Settings
+
+    settings = Settings(
+        deepseek_api_key="key-one",
+        model_provider="deepseek",
+        model_name="deepseek-chat",
+        model_base_url="https://api.deepseek.com",
+    )
+    state = {
+        "model_verified_fingerprint": ui_main._model_config_fingerprint(settings),
+    }
+
+    assert ui_main._model_state(settings, state) == "verified"
+    assert (
+        ui_main._model_state(
+            settings.model_copy(update={"deepseek_api_key": "key-two"}),
+            state,
+        )
+        == "configured"
+    )
+    assert (
+        ui_main._model_state(
+            settings.model_copy(update={"model_name": "deepseek-reasoner"}),
+            state,
+        )
+        == "configured"
+    )
+    assert (
+        ui_main._model_state(
+            settings.model_copy(update={"model_base_url": "https://example.invalid"}),
+            state,
+        )
+        == "configured"
+    )
+
+
+def test_record_model_success_stores_only_current_config_fingerprint():
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.config import Settings
+
+    repository = Mock()
+    repository.get_output.return_value = {"findings": []}
+    settings = Settings(deepseek_api_key="key-one")
+    state = {}
+
+    ui_main._record_model_success(repository, "run-1", settings, state)
+
+    assert state == {
+        "model_verified_fingerprint": ui_main._model_config_fingerprint(settings),
+    }
+    assert settings.deepseek_api_key not in repr(state)
+
+
 def test_online_input_error_is_friendly_and_does_not_create_run(tmp_path, monkeypatch):
     from app_review_insights.storage import RunRepository
 

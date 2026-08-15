@@ -620,11 +620,11 @@ git commit -m "fix: include metadata in evidence review prompts"
 - Modify: `src/app_review_insights/ui/main.py`
 - Test: `tests/test_app_smoke.py`
 
-- [ ] **Step 1: 写配置指纹的失败测试**
+- [x] **Step 1: 写配置指纹的失败测试**
 
 在 `tests/test_app_smoke.py` 新增纯函数级测试：配置 A 成功后状态为 `verified`；仅更换密钥、模型名或 Base URL 后状态回到 `configured`；重新记录成功后绑定新配置。断言会话状态不保存明文密钥。
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run:
 
@@ -634,11 +634,11 @@ Run:
 
 Expected: 当前只有 `model_verified: bool`，无法区分配置变化，新测试失败。
 
-- [ ] **Step 3: 实现最小指纹修复**
+- [x] **Step 3: 实现最小指纹修复**
 
 新增 `_model_config_fingerprint(settings)`，对 `deepseek_api_key`、`model_provider`、`model_name` 和 `model_base_url` 以不可歧义分隔符拼接后计算 SHA-256。`_model_state` 仅在会话中的 `model_verified_fingerprint` 与当前指纹一致时返回 `verified`；`_record_model_success` 在首批模型输出确实持久化后记录当前指纹。两个函数允许注入映射用于单元测试，默认使用 `st.session_state`。
 
-- [ ] **Step 4: 验证 GREEN、全量回归并提交**
+- [x] **Step 4: 验证 GREEN、全量回归并提交**
 
 Run:
 
