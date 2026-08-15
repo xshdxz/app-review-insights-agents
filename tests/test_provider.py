@@ -132,6 +132,19 @@ def test_provider_rejects_negative_retry_count():
         )
 
 
+def test_provider_rejects_non_positive_max_tokens():
+    client, _ = fake_client([])
+
+    with pytest.raises(ValueError, match="positive"):
+        DeepSeekProvider(
+            client=client,
+            model="deepseek-chat",
+            max_retries=0,
+            retry_delays=(),
+            max_tokens=0,
+        )
+
+
 def test_provider_rejects_negative_retry_delays():
     client, _ = fake_client([])
 
