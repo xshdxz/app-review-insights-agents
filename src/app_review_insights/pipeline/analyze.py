@@ -15,6 +15,15 @@ from app_review_insights.llm.schemas import (
 )
 from app_review_insights.models import Review
 
+_EVIDENCE_REVIEW_FIELDS = {
+    "review_id",
+    "content_original",
+    "content_summary_zh",
+    "rating",
+    "app_version",
+    "language",
+}
+
 
 def apply_review_summaries(
     reviews: list[Review],
@@ -74,7 +83,7 @@ def consolidate_findings(
     evidence_reviews = [
         review.model_dump(
             mode="json",
-            include={"review_id", "content_original", "content_summary_zh"},
+            include=_EVIDENCE_REVIEW_FIELDS,
         )
         for review in reviews or []
         if review.review_id in cited_ids
@@ -113,7 +122,7 @@ def audit_finding_evidence(
         evidence = [
             review_index[review_id].model_dump(
                 mode="json",
-                include={"review_id", "content_original", "content_summary_zh"},
+                include=_EVIDENCE_REVIEW_FIELDS,
             )
             for review_id in cited_ids
             if review_id in review_index

@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 
 from app_review_insights.llm import schemas
@@ -26,13 +27,22 @@ class QueueProvider:
         return self.results.pop(0)
 
 
-def review(review_id: str, content: str) -> Review:
+def review(
+    review_id: str,
+    content: str,
+    *,
+    rating: int = 2,
+    app_version: str | None = None,
+    language: str | None = None,
+) -> Review:
     return Review(
         review_id=review_id,
         app_id="app-1",
         content_original=content,
-        rating=2,
+        rating=rating,
+        app_version=app_version,
         published_at=datetime.now(UTC),
+        language=language,
         source="fixture",
     )
 
@@ -98,7 +108,13 @@ def test_evidence_audit_prompt_contains_only_cited_review_text():
         )
     ]
     reviews = [
-        review("r-1", "The renewal date is unclear."),
+        review(
+            "r-1",
+            "The renewal date is unclear.",
+            rating=1,
+            app_version="2.4.1",
+            language="en",
+        ),
         review("r-2", "The renewal date is clearly shown."),
         review("r-3", "The timer freezes after pause."),
     ]
@@ -116,6 +132,10 @@ def test_evidence_audit_prompt_contains_only_cited_review_text():
     assert "The renewal date is unclear." in user_prompt
     assert "The renewal date is clearly shown." in user_prompt
     assert "The timer freezes after pause." not in user_prompt
+    evidence = json.loads(user_prompt)["candidate_findings"][0]["evidence"]
+    assert evidence[0]["rating"] == 1
+    assert evidence[0]["app_version"] == "2.4.1"
+    assert evidence[0]["language"] == "en"
     assert schema is EvidenceAuditResult
 
 
@@ -272,7 +292,13 @@ def test_consolidation_prompt_includes_only_candidate_evidence_text():
         )
     ]
     reviews = [
-        review("r-1", "The renewal date is unclear."),
+        review(
+            "r-1",
+            "The renewal date is unclear.",
+            rating=1,
+            app_version="2.4.1",
+            language="en",
+        ),
         review("r-2", "The renewal date is clearly shown."),
         review("r-3", "The timer freezes after pause."),
     ]
@@ -288,6 +314,10 @@ def test_consolidation_prompt_includes_only_candidate_evidence_text():
     assert "The renewal date is unclear." in user_prompt
     assert "The renewal date is clearly shown." in user_prompt
     assert "The timer freezes after pause." not in user_prompt
+    evidence = json.loads(user_prompt)["evidence_reviews"]
+    assert evidence[0]["rating"] == 1
+    assert evidence[0]["app_version"] == "2.4.1"
+    assert evidence[0]["language"] == "en"
 
 
 def test_consolidation_skips_model_when_there_are_no_candidate_findings():

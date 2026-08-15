@@ -568,11 +568,11 @@ git commit -m "fix: keep review evidence ids unique"
 - Modify: `src/app_review_insights/pipeline/analyze.py`
 - Test: `tests/test_analysis.py`
 
-- [ ] **Step 1: 写证据元数据的失败测试**
+- [x] **Step 1: 写证据元数据的失败测试**
 
 在 `tests/test_analysis.py` 分别调用 `consolidate_findings` 和 `audit_finding_evidence`，传入 `rating=1`、`app_version="2.4.1"`、`language="en"` 的引用评论。解析或检查 Provider 收到的用户 Prompt，断言两处证据载荷均包含这三个字段及其值，且未引用的评论不进入载荷。
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run:
 
@@ -582,7 +582,7 @@ Run:
 
 Expected: Prompt 目前只包含 ID、原文和中文摘要，新断言失败。
 
-- [ ] **Step 3: 实现最小证据载荷修复**
+- [x] **Step 3: 实现最小证据载荷修复**
 
 把 `consolidate_findings` 和 `audit_finding_evidence` 两处 `model_dump(include=...)` 的字段集合统一扩展为：
 
@@ -599,7 +599,7 @@ Expected: Prompt 目前只包含 ID、原文和中文摘要，新断言失败。
 
 不添加默认评分、版本或语言，保持缺失值为 `null`。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run:
 
