@@ -516,3 +516,146 @@ git commit -m "fix: harden real-data evidence workflow"
 ```
 
 仅在所有验收证据完成后提交；若前面任务已分别提交且无额外改动，则不创建空提交。
+
+### Task 9: 清洗阶段消除重复评论 ID 歧义
+
+**Files:**
+- Modify: `src/app_review_insights/cleaning.py`
+- Modify: `src/app_review_insights/ui/components.py`
+- Test: `tests/test_cleaning.py`
+- Test: `tests/test_app_smoke.py`
+
+- [ ] **Step 1: 写重复 ID 的失败测试**
+
+在 `tests/test_cleaning.py` 新增测试：输入三条相同 `review_id`，其中两条规范化正文相同、第三条正文不同。断言相同正文只保留一条，不同正文保留且得到以 `原 ID--内容哈希短后缀` 开头的唯一 ID；`review_id_collisions == 1`，清洗后所有 ID 唯一。
+
+在 `tests/test_app_smoke.py` 新增 `_run_limitations` 测试，断言 `review_id_collisions > 0` 时返回中文披露，说明冲突记录已重命名且证据链使用新 ID。
+
+- [ ] **Step 2: 验证 RED**
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_cleaning.py tests/test_app_smoke.py -q
+```
+
+Expected: `CleaningStats` 尚无 `review_id_collisions`，且冲突 ID 尚未重命名，因此新测试失败。
+
+- [ ] **Step 3: 实现最小清洗修复**
+
+在 `CleaningStats` 增加默认值为 `0` 的 `review_id_collisions`。`clean_reviews` 为每个原始 ID 维护已见规范化正文集合：相同 ID + 相同正文计入精确重复并跳过；相同 ID + 不同正文计入冲突，并用当前内容哈希构造稳定短后缀，必要时增加数字后缀避免极小概率碰撞。写入 `kept` 前保证最终 ID 未被使用。
+
+`_run_limitations` 在保留在线采集短缺说明的同时，为任意数据源追加重复 ID 冲突说明。
+
+- [ ] **Step 4: 验证 GREEN 并提交**
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_cleaning.py tests/test_app_smoke.py -q
+```
+
+Expected: 全部通过。
+
+```powershell
+git add src/app_review_insights/cleaning.py src/app_review_insights/ui/components.py tests/test_cleaning.py tests/test_app_smoke.py
+git commit -m "fix: keep review evidence ids unique"
+```
+
+### Task 10: 为归并和证据复核补齐元数据
+
+**Files:**
+- Modify: `src/app_review_insights/pipeline/analyze.py`
+- Test: `tests/test_analysis.py`
+
+- [ ] **Step 1: 写证据元数据的失败测试**
+
+在 `tests/test_analysis.py` 分别调用 `consolidate_findings` 和 `audit_finding_evidence`，传入 `rating=1`、`app_version="2.4.1"`、`language="en"` 的引用评论。解析或检查 Provider 收到的用户 Prompt，断言两处证据载荷均包含这三个字段及其值，且未引用的评论不进入载荷。
+
+- [ ] **Step 2: 验证 RED**
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_analysis.py -q
+```
+
+Expected: Prompt 目前只包含 ID、原文和中文摘要，新断言失败。
+
+- [ ] **Step 3: 实现最小证据载荷修复**
+
+把 `consolidate_findings` 和 `audit_finding_evidence` 两处 `model_dump(include=...)` 的字段集合统一扩展为：
+
+```python
+{
+    "review_id",
+    "content_original",
+    "content_summary_zh",
+    "rating",
+    "app_version",
+    "language",
+}
+```
+
+不添加默认评分、版本或语言，保持缺失值为 `null`。
+
+- [ ] **Step 4: 验证 GREEN 并提交**
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_analysis.py -q
+```
+
+Expected: 全部通过。
+
+```powershell
+git add src/app_review_insights/pipeline/analyze.py tests/test_analysis.py
+git commit -m "fix: include metadata in evidence review prompts"
+```
+
+### Task 11: 将模型验证状态绑定当前配置
+
+**Files:**
+- Modify: `src/app_review_insights/ui/main.py`
+- Test: `tests/test_app_smoke.py`
+
+- [ ] **Step 1: 写配置指纹的失败测试**
+
+在 `tests/test_app_smoke.py` 新增纯函数级测试：配置 A 成功后状态为 `verified`；仅更换密钥、模型名或 Base URL 后状态回到 `configured`；重新记录成功后绑定新配置。断言会话状态不保存明文密钥。
+
+- [ ] **Step 2: 验证 RED**
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_app_smoke.py -q
+```
+
+Expected: 当前只有 `model_verified: bool`，无法区分配置变化，新测试失败。
+
+- [ ] **Step 3: 实现最小指纹修复**
+
+新增 `_model_config_fingerprint(settings)`，对 `deepseek_api_key`、`model_provider`、`model_name` 和 `model_base_url` 以不可歧义分隔符拼接后计算 SHA-256。`_model_state` 仅在会话中的 `model_verified_fingerprint` 与当前指纹一致时返回 `verified`；`_record_model_success` 在首批模型输出确实持久化后记录当前指纹。两个函数允许注入映射用于单元测试，默认使用 `st.session_state`。
+
+- [ ] **Step 4: 验证 GREEN、全量回归并提交**
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_app_smoke.py -q
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check src tests scripts app.py
+.\.venv\Scripts\python.exe -m compileall -q src scripts app.py
+.\.venv\Scripts\python.exe -m pip check
+.\run_eval.ps1
+git diff --check
+```
+
+Expected: 全部退出码为 0；测试总数增加且全部通过。
+
+```powershell
+git add src/app_review_insights/ui/main.py tests/test_app_smoke.py
+git commit -m "fix: bind model verification to current config"
+```
