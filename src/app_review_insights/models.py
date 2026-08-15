@@ -27,6 +27,7 @@ class Stage(StrEnum):
     CLEAN = "clean"
     ANALYZE_BATCHES = "analyze_batches"
     CONSOLIDATE = "consolidate"
+    AUDIT_EVIDENCE = "audit_evidence"
     VALIDATE_FINDINGS = "validate_findings"
     PLAN = "plan"
     GENERATE_TESTS = "generate_tests"
@@ -38,6 +39,12 @@ class EvidenceStatus(StrEnum):
     VALIDATED = "validated"
     ASSUMPTION = "assumption"
     REJECTED = "rejected"
+
+
+class EvidenceAssessment(BaseModel):
+    review_id: str
+    role: Literal["supporting", "conflicting", "irrelevant"]
+    rationale_zh: str = Field(min_length=1)
 
 
 class Review(BaseModel):
@@ -78,6 +85,10 @@ class Finding(BaseModel):
     confidence: float = Field(ge=0, le=1)
     evidence_status: EvidenceStatus
     model_reasoning_summary: str
+    schema_validated: bool = True
+    reference_validated: bool = False
+    semantic_validated: bool = False
+    evidence_assessments: list[EvidenceAssessment] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
 
 

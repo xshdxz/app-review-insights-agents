@@ -45,6 +45,7 @@ def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monk
     provider_factory = Mock(return_value=provider)
     analyze = Mock(return_value="batch-result")
     consolidate = Mock(return_value="consolidated-result")
+    audit = Mock(return_value="audit-result")
     plan = Mock(return_value="requirements")
     generate_tests = Mock(return_value="test-cases")
     monkeypatch.setattr(
@@ -54,6 +55,7 @@ def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monk
     )
     monkeypatch.setattr(ui_main, "analyze_batch", analyze)
     monkeypatch.setattr(ui_main, "consolidate_findings", consolidate)
+    monkeypatch.setattr(ui_main, "audit_finding_evidence", audit)
     monkeypatch.setattr(ui_main, "build_requirements", plan)
     monkeypatch.setattr(ui_main, "generate_test_cases", generate_tests)
 
@@ -63,12 +65,14 @@ def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monk
     assert services.finding_validator is ui_main.validate_finding_drafts
     assert services.traceability_validator is ui_main.validate_traceability
     assert services.batch_analyzer(["review"], "goal") == "batch-result"
-    assert services.consolidator(["batch-result"], "goal") == "consolidated-result"
+    assert services.consolidator(["batch-result"], "goal", ["review"]) == "consolidated-result"
+    assert services.evidence_auditor(["finding"], ["review"], "goal") == "audit-result"
     assert services.requirement_builder(["finding"], "goal", 12) == "requirements"
     assert services.test_case_builder(["requirement"]) == "test-cases"
     provider_factory.assert_called_once()
     analyze.assert_called_once_with(provider, ["review"], "goal")
-    consolidate.assert_called_once_with(provider, ["batch-result"], "goal")
+    consolidate.assert_called_once_with(provider, ["batch-result"], "goal", ["review"])
+    audit.assert_called_once_with(provider, ["finding"], ["review"], "goal")
     plan.assert_called_once_with(provider, ["finding"], "goal", 12)
     generate_tests.assert_called_once_with(provider, ["requirement"])
 

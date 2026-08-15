@@ -4,9 +4,15 @@ from typing import Any
 from app_review_insights.llm.prompts import (
     BATCH_SYSTEM_PROMPT,
     CONSOLIDATE_SYSTEM_PROMPT,
+    EVIDENCE_AUDIT_SYSTEM_PROMPT,
     render_reviews,
 )
-from app_review_insights.llm.schemas import BatchAnalysisResult, ConsolidationResult
+from app_review_insights.llm.schemas import (
+    BatchAnalysisResult,
+    ConsolidationResult,
+    EvidenceAuditResult,
+    FindingDraft,
+)
 from app_review_insights.models import Review
 
 
@@ -52,6 +58,7 @@ def consolidate_findings(
     provider: Any,
     batch_results: list[BatchAnalysisResult],
     analysis_goal: str,
+    reviews: list[Review] | None = None,
 ) -> ConsolidationResult:
     candidates = [
         finding.model_dump(mode="json") for result in batch_results for finding in result.findings
@@ -59,12 +66,75 @@ def consolidate_findings(
     if not candidates:
         return ConsolidationResult(findings=[])
 
+    cited_ids = {
+        review_id
+        for candidate in candidates
+        for review_id in (candidate["supporting_review_ids"] + candidate["conflicting_review_ids"])
+    }
+    evidence_reviews = [
+        review.model_dump(
+            mode="json",
+            include={"review_id", "content_original", "content_summary_zh"},
+        )
+        for review in reviews or []
+        if review.review_id in cited_ids
+    ]
+
     prompt = json.dumps(
-        {"analysis_goal": analysis_goal, "candidate_findings": candidates},
+        {
+            "analysis_goal": analysis_goal,
+            "candidate_findings": candidates,
+            "evidence_reviews": evidence_reviews,
+        },
         ensure_ascii=False,
     )
     return provider.generate(
         CONSOLIDATE_SYSTEM_PROMPT,
         prompt,
         ConsolidationResult,
+    )
+
+
+def audit_finding_evidence(
+    provider: Any,
+    findings: list[FindingDraft],
+    reviews: list[Review],
+    analysis_goal: str,
+) -> EvidenceAuditResult:
+    if not findings:
+        return EvidenceAuditResult()
+
+    review_index = {review.review_id: review for review in reviews}
+    candidates = []
+    for finding_index, finding in enumerate(findings):
+        cited_ids = list(
+            dict.fromkeys(finding.supporting_review_ids + finding.conflicting_review_ids)
+        )
+        evidence = [
+            review_index[review_id].model_dump(
+                mode="json",
+                include={"review_id", "content_original", "content_summary_zh"},
+            )
+            for review_id in cited_ids
+            if review_id in review_index
+        ]
+        candidates.append(
+            {
+                "finding_index": finding_index,
+                "finding": finding.model_dump(mode="json"),
+                "evidence": evidence,
+            }
+        )
+
+    prompt = json.dumps(
+        {
+            "analysis_goal": analysis_goal,
+            "candidate_findings": candidates,
+        },
+        ensure_ascii=False,
+    )
+    return provider.generate(
+        EVIDENCE_AUDIT_SYSTEM_PROMPT,
+        prompt,
+        EvidenceAuditResult,
     )

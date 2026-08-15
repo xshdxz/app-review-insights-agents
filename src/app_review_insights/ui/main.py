@@ -19,7 +19,11 @@ from app_review_insights.models import (
     Stage,
     StageEvent,
 )
-from app_review_insights.pipeline.analyze import analyze_batch, consolidate_findings
+from app_review_insights.pipeline.analyze import (
+    analyze_batch,
+    audit_finding_evidence,
+    consolidate_findings,
+)
 from app_review_insights.pipeline.orchestrator import (
     AnalysisOrchestrator,
     PipelineServices,
@@ -68,7 +72,18 @@ def build_services(use_fake_provider: bool = False) -> PipelineServices:
     provider = DeepSeekProvider.from_settings(settings)
     return PipelineServices(
         batch_analyzer=lambda reviews, goal: analyze_batch(provider, reviews, goal),
-        consolidator=lambda results, goal: consolidate_findings(provider, results, goal),
+        consolidator=lambda results, goal, reviews: consolidate_findings(
+            provider,
+            results,
+            goal,
+            reviews,
+        ),
+        evidence_auditor=lambda findings, reviews, goal: audit_finding_evidence(
+            provider,
+            findings,
+            reviews,
+            goal,
+        ),
         requirement_builder=lambda findings, goal, total: build_requirements(
             provider, findings, goal, total
         ),

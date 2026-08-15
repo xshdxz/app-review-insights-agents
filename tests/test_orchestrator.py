@@ -4,7 +4,10 @@ from app_review_insights.errors import CollectionError, RecoverableModelError
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
     ConsolidationResult,
+    EvidenceAssessmentDraft,
+    EvidenceAuditResult,
     FindingDraft,
+    FindingEvidenceAuditDraft,
     ReviewSummaryDraft,
 )
 from app_review_insights.models import (
@@ -58,6 +61,17 @@ class SummarizingFailOnceOnSecondBatch:
                 for item in reviews
             ],
         )
+
+
+class FailOnceEvidenceAuditor:
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, findings, reviews, goal):
+        self.calls += 1
+        if self.calls == 1:
+            raise RecoverableModelError("temporary evidence audit failure")
+        return EvidenceAuditResult()
 
 
 def make_reviews(count: int) -> list[Review]:
@@ -151,6 +165,128 @@ def test_orchestrator_persists_completed_batch_summaries_before_model_retry(tmp_
         None,
         None,
     ]
+
+
+def test_orchestrator_persists_evidence_audit_before_validation(tmp_path):
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    received_audits = []
+
+    def analyze(reviews, goal):
+        return BatchAnalysisResult(
+            findings=[
+                FindingDraft(
+                    title="计时器暂停后冻结",
+                    problem_statement="用户暂停训练后无法恢复计时器。",
+                    topic_label="训练可靠性",
+                    supporting_review_ids=[reviews[0].review_id],
+                    reasoning_summary="评论直接描述了暂停后的冻结问题。",
+                )
+            ]
+        )
+
+    def audit_evidence(findings, reviews, goal):
+        return EvidenceAuditResult(
+            findings=[
+                FindingEvidenceAuditDraft(
+                    finding_index=0,
+                    assessments=[
+                        EvidenceAssessmentDraft(
+                            review_id=reviews[0].review_id,
+                            role="supporting",
+                            rationale_zh="评论直接支持该问题。",
+                        )
+                    ],
+                )
+            ]
+        )
+
+    def validate(findings, reviews, audit):
+        received_audits.append(audit)
+        return [], ValidationReport(valid=True)
+
+    services = PipelineServices(
+        repository=repo,
+        batch_analyzer=analyze,
+        consolidator=lambda results, goal: ConsolidationResult(findings=results[0].findings),
+        evidence_auditor=audit_evidence,
+        finding_validator=validate,
+        requirement_builder=lambda findings, goal, total: [],
+        test_case_builder=lambda requirements: [],
+        traceability_validator=lambda review_ids, findings, requirements, cases: ValidationReport(
+            valid=True
+        ),
+        batch_size=10,
+    )
+
+    completed = AnalysisOrchestrator(services).start(
+        AnalysisRequest(
+            source_type=SourceType.JSON,
+            analysis_goal="提升训练可靠性",
+        ),
+        imported_reviews=make_reviews(1),
+    )
+
+    audit_output = repo.get_output(completed.run_id, Stage.AUDIT_EVIDENCE)
+
+    assert completed.status == RunStatus.COMPLETED
+    assert audit_output["findings"][0]["assessments"][0]["role"] == "supporting"
+    assert received_audits[0].findings[0].finding_index == 0
+
+
+def test_orchestrator_resumes_evidence_audit_without_losing_prior_outputs(tmp_path):
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    auditor = FailOnceEvidenceAuditor()
+    services = make_services(repo, FailOnceOnSecondBatch())
+    services.evidence_auditor = auditor
+    services.finding_validator = lambda drafts, reviews, audit: (
+        [],
+        ValidationReport(valid=True),
+    )
+    orchestrator = AnalysisOrchestrator(services)
+
+    waiting = orchestrator.start(
+        AnalysisRequest(
+            source_type=SourceType.JSON,
+            analysis_goal="查找产品问题",
+        ),
+        imported_reviews=make_reviews(2),
+    )
+
+    assert waiting.status == RunStatus.WAITING
+    assert waiting.current_stage == Stage.AUDIT_EVIDENCE
+    assert repo.get_output(waiting.run_id, Stage.CLEAN) is not None
+    assert repo.get_output(waiting.run_id, Stage.ANALYZE_BATCHES, batch_index=0) is not None
+    assert repo.get_output(waiting.run_id, Stage.CONSOLIDATE) is not None
+    assert repo.get_output(waiting.run_id, Stage.AUDIT_EVIDENCE) is None
+
+    completed = orchestrator.resume(waiting.run_id)
+
+    assert completed.run_id == waiting.run_id
+    assert completed.status == RunStatus.COMPLETED
+    assert auditor.calls == 2
+
+
+def test_orchestrator_passes_cleaned_reviews_to_consolidator(tmp_path):
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    received_review_ids = []
+    services = make_services(repo, FailOnceOnSecondBatch())
+
+    def consolidate(results, goal, reviews):
+        received_review_ids.extend(item.review_id for item in reviews)
+        return ConsolidationResult(findings=[])
+
+    services.consolidator = consolidate
+
+    completed = AnalysisOrchestrator(services).start(
+        AnalysisRequest(
+            source_type=SourceType.JSON,
+            analysis_goal="查找产品问题",
+        ),
+        imported_reviews=make_reviews(2),
+    )
+
+    assert completed.status == RunStatus.COMPLETED
+    assert received_review_ids == ["r-0", "r-1"]
 
 
 def test_orchestrator_uses_persisted_batch_boundaries_after_config_change(tmp_path):

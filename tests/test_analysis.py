@@ -4,7 +4,10 @@ from app_review_insights.llm import schemas
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
     ConsolidationResult,
+    EvidenceAssessmentDraft,
+    EvidenceAuditResult,
     FindingDraft,
+    FindingEvidenceAuditDraft,
     ReviewSummaryDraft,
 )
 from app_review_insights.models import Review
@@ -43,6 +46,77 @@ def test_batch_analysis_result_accepts_traceable_chinese_review_summaries():
     result = BatchAnalysisResult(findings=[], review_summaries=[summary])
 
     assert result.review_summaries == [summary]
+
+
+def test_evidence_audit_result_accepts_per_finding_assessments():
+    audit = schemas.EvidenceAuditResult(
+        findings=[
+            schemas.FindingEvidenceAuditDraft(
+                finding_index=0,
+                assessments=[
+                    schemas.EvidenceAssessmentDraft(
+                        review_id="r-1",
+                        role="supporting",
+                        rationale_zh="评论直接描述了该问题。",
+                    )
+                ],
+            )
+        ]
+    )
+
+    assert audit.findings[0].finding_index == 0
+    assert audit.findings[0].assessments[0].role == "supporting"
+
+
+def test_evidence_audit_prompt_contains_only_cited_review_text():
+    provider = QueueProvider(
+        [
+            EvidenceAuditResult(
+                findings=[
+                    FindingEvidenceAuditDraft(
+                        finding_index=0,
+                        assessments=[
+                            EvidenceAssessmentDraft(
+                                review_id="r-1",
+                                role="supporting",
+                                rationale_zh="评论直接支持问题。",
+                            )
+                        ],
+                    )
+                ]
+            )
+        ]
+    )
+    findings = [
+        FindingDraft(
+            title="续费日期不清晰",
+            problem_statement="用户无法理解续费日期。",
+            topic_label="订阅",
+            supporting_review_ids=["r-1"],
+            conflicting_review_ids=["r-2"],
+            reasoning_summary="评论明确提到续费日期。",
+        )
+    ]
+    reviews = [
+        review("r-1", "The renewal date is unclear."),
+        review("r-2", "The renewal date is clearly shown."),
+        review("r-3", "The timer freezes after pause."),
+    ]
+
+    result = analysis_pipeline.audit_finding_evidence(
+        provider,
+        findings,
+        reviews,
+        "订阅转化",
+    )
+
+    assert result.findings[0].assessments[0].review_id == "r-1"
+    system_prompt, user_prompt, schema = provider.calls[0]
+    assert "证据语义" in system_prompt
+    assert "The renewal date is unclear." in user_prompt
+    assert "The renewal date is clearly shown." in user_prompt
+    assert "The timer freezes after pause." not in user_prompt
+    assert schema is EvidenceAuditResult
 
 
 def test_apply_review_summaries_updates_only_known_ids_once():
@@ -179,6 +253,41 @@ def test_consolidation_passes_cross_batch_candidates_and_goal():
     assert "训练可靠性" in user_prompt
     assert "r-1" in user_prompt and "r-2" in user_prompt
     assert schema is ConsolidationResult
+
+
+def test_consolidation_prompt_includes_only_candidate_evidence_text():
+    provider = QueueProvider([ConsolidationResult(findings=[])])
+    batches = [
+        BatchAnalysisResult(
+            findings=[
+                FindingDraft(
+                    title="续费日期不清晰",
+                    problem_statement="用户无法理解续费日期。",
+                    topic_label="订阅",
+                    supporting_review_ids=["r-1"],
+                    conflicting_review_ids=["r-2"],
+                    reasoning_summary="评论提到续费日期。",
+                )
+            ]
+        )
+    ]
+    reviews = [
+        review("r-1", "The renewal date is unclear."),
+        review("r-2", "The renewal date is clearly shown."),
+        review("r-3", "The timer freezes after pause."),
+    ]
+
+    analysis_pipeline.consolidate_findings(
+        provider,
+        batches,
+        "订阅转化",
+        reviews,
+    )
+
+    _, user_prompt, _ = provider.calls[0]
+    assert "The renewal date is unclear." in user_prompt
+    assert "The renewal date is clearly shown." in user_prompt
+    assert "The timer freezes after pause." not in user_prompt
 
 
 def test_consolidation_skips_model_when_there_are_no_candidate_findings():

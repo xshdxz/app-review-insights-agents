@@ -28,6 +28,22 @@ class ConsolidationResult(BaseModel):
     findings: list[FindingDraft]
 
 
+class EvidenceAssessmentDraft(BaseModel):
+    review_id: str
+    role: Literal["supporting", "conflicting", "irrelevant"]
+    rationale_zh: str = Field(min_length=1)
+
+
+class FindingEvidenceAuditDraft(BaseModel):
+    finding_index: int = Field(ge=0)
+    assessments: list[EvidenceAssessmentDraft] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+
+class EvidenceAuditResult(BaseModel):
+    findings: list[FindingEvidenceAuditDraft] = Field(default_factory=list)
+
+
 class RequirementDraft(BaseModel):
     finding_ids: list[str] = Field(min_length=1)
     title: str

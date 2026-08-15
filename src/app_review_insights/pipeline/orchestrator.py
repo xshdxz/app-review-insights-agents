@@ -1,3 +1,4 @@
+import inspect
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -8,7 +9,11 @@ from uuid import uuid4
 from app_review_insights.batching import make_review_batches
 from app_review_insights.cleaning import CleaningResult, clean_reviews
 from app_review_insights.errors import CollectionError, RecoverableModelError
-from app_review_insights.llm.schemas import BatchAnalysisResult, ConsolidationResult
+from app_review_insights.llm.schemas import (
+    BatchAnalysisResult,
+    ConsolidationResult,
+    EvidenceAuditResult,
+)
 from app_review_insights.models import (
     AnalysisRequest,
     Finding,
@@ -28,8 +33,9 @@ from app_review_insights.pipeline.validate import validate_finding_drafts
 from app_review_insights.storage.repository import RunRepository
 
 BatchAnalyzer = Callable[[list[Review], str], BatchAnalysisResult]
-Consolidator = Callable[[list[BatchAnalysisResult], str], ConsolidationResult]
-FindingValidator = Callable[[list[Any], list[Review]], tuple[list[Finding], ValidationReport]]
+Consolidator = Callable[..., ConsolidationResult]
+EvidenceAuditor = Callable[[list[Any], list[Review], str], EvidenceAuditResult]
+FindingValidator = Callable[..., tuple[list[Finding], ValidationReport]]
 RequirementBuilder = Callable[[list[Finding], str, int], list[Requirement]]
 TestCaseBuilder = Callable[[list[Requirement]], list[TestCase]]
 TraceabilityValidator = Callable[
@@ -44,6 +50,7 @@ class PipelineServices:
     batch_analyzer: BatchAnalyzer
     collector: Any | None = None
     consolidator: Consolidator | None = None
+    evidence_auditor: EvidenceAuditor | None = None
     finding_validator: FindingValidator | None = None
     requirement_builder: RequirementBuilder | None = None
     test_case_builder: TestCaseBuilder | None = None
@@ -159,6 +166,7 @@ class AnalysisOrchestrator:
                 consolidated = self._consolidate(
                     batch_results,
                     run.request.analysis_goal,
+                    cleaned_reviews,
                 )
             except RecoverableModelError as exc:
                 return self._wait(run, exc, cleaned_reviews)
@@ -175,12 +183,42 @@ class AnalysisOrchestrator:
         else:
             consolidated = ConsolidationResult.model_validate(consolidation_output)
 
+        evidence_audit: EvidenceAuditResult | None = None
+        if self.services.evidence_auditor is not None:
+            audit_output = self.repository.get_output(
+                run.run_id,
+                Stage.AUDIT_EVIDENCE,
+            )
+            if audit_output is None:
+                run = self._begin_stage(run, Stage.AUDIT_EVIDENCE)
+                try:
+                    evidence_audit = self._audit_evidence(
+                        consolidated,
+                        cleaned_reviews,
+                        run.request.analysis_goal,
+                    )
+                except RecoverableModelError as exc:
+                    return self._wait(run, exc, cleaned_reviews)
+                self.repository.save_output(
+                    run.run_id,
+                    Stage.AUDIT_EVIDENCE,
+                    evidence_audit.model_dump(mode="json"),
+                )
+                self._add_event(
+                    run,
+                    "Finding evidence audit completed",
+                    {"finding_count": len(evidence_audit.findings)},
+                )
+            else:
+                evidence_audit = EvidenceAuditResult.model_validate(audit_output)
+
         validation_output = self.repository.get_output(run.run_id, Stage.VALIDATE_FINDINGS)
         if validation_output is None:
             run = self._begin_stage(run, Stage.VALIDATE_FINDINGS)
             findings, finding_report = self._validate_findings(
                 consolidated,
                 cleaned_reviews,
+                evidence_audit,
             )
             self.repository.save_output(
                 run.run_id,
@@ -470,23 +508,49 @@ class AnalysisOrchestrator:
         self,
         batch_results: list[BatchAnalysisResult],
         goal: str,
+        reviews: list[Review],
     ) -> ConsolidationResult:
         if self.services.consolidator is None:
             return ConsolidationResult(
                 findings=[finding for result in batch_results for finding in result.findings]
             )
-        return ConsolidationResult.model_validate(self.services.consolidator(batch_results, goal))
+        parameters = inspect.signature(self.services.consolidator).parameters
+        if len(parameters) >= 3:
+            result = self.services.consolidator(batch_results, goal, reviews)
+        else:
+            result = self.services.consolidator(batch_results, goal)
+        return ConsolidationResult.model_validate(result)
 
     def _validate_findings(
         self,
         consolidated: ConsolidationResult,
         reviews: list[Review],
+        audit: EvidenceAuditResult | None = None,
     ) -> tuple[list[Finding], ValidationReport]:
         validator = self.services.finding_validator or validate_finding_drafts
-        findings, report = validator(consolidated.findings, reviews)
+        if audit is None:
+            findings, report = validator(consolidated.findings, reviews)
+        else:
+            findings, report = validator(consolidated.findings, reviews, audit)
         return (
             [Finding.model_validate(finding) for finding in findings],
             ValidationReport.model_validate(report),
+        )
+
+    def _audit_evidence(
+        self,
+        consolidated: ConsolidationResult,
+        reviews: list[Review],
+        goal: str,
+    ) -> EvidenceAuditResult:
+        if self.services.evidence_auditor is None:
+            return EvidenceAuditResult()
+        return EvidenceAuditResult.model_validate(
+            self.services.evidence_auditor(
+                consolidated.findings,
+                reviews,
+                goal,
+            )
         )
 
     def _build_requirements(
