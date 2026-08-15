@@ -13,8 +13,14 @@ class FindingDraft(BaseModel):
     limitations: list[str] = Field(default_factory=list)
 
 
+class ReviewSummaryDraft(BaseModel):
+    review_id: str
+    summary_zh: str = Field(min_length=1)
+
+
 class BatchAnalysisResult(BaseModel):
     findings: list[FindingDraft]
+    review_summaries: list[ReviewSummaryDraft] = Field(default_factory=list)
     batch_limitations: list[str] = Field(default_factory=list)
 
 

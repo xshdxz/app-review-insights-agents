@@ -22,15 +22,14 @@ from app_review_insights.models import (
     TestCase,
     ValidationReport,
 )
+from app_review_insights.pipeline.analyze import apply_review_summaries
 from app_review_insights.pipeline.traceability import validate_traceability
 from app_review_insights.pipeline.validate import validate_finding_drafts
 from app_review_insights.storage.repository import RunRepository
 
 BatchAnalyzer = Callable[[list[Review], str], BatchAnalysisResult]
 Consolidator = Callable[[list[BatchAnalysisResult], str], ConsolidationResult]
-FindingValidator = Callable[
-    [list[Any], list[Review]], tuple[list[Finding], ValidationReport]
-]
+FindingValidator = Callable[[list[Any], list[Review]], tuple[list[Finding], ValidationReport]]
 RequirementBuilder = Callable[[list[Finding], str, int], list[Requirement]]
 TestCaseBuilder = Callable[[list[Requirement]], list[TestCase]]
 TraceabilityValidator = Callable[
@@ -143,12 +142,17 @@ class AnalysisOrchestrator:
             cleaned_reviews = cleaning_result.reviews
 
         batch_results, run = self._analyze_batches(run, cleaned_reviews)
+        cleaned_reviews = apply_review_summaries(cleaned_reviews, batch_results)
+        cleaning_result = cleaning_result.model_copy(update={"reviews": cleaned_reviews})
+        self.repository.save_output(
+            run.run_id,
+            Stage.CLEAN,
+            cleaning_result.model_dump(mode="json"),
+        )
         if run.status == RunStatus.WAITING:
             return run
 
-        consolidation_output = self.repository.get_output(
-            run.run_id, Stage.CONSOLIDATE
-        )
+        consolidation_output = self.repository.get_output(run.run_id, Stage.CONSOLIDATE)
         if consolidation_output is None:
             run = self._begin_stage(run, Stage.CONSOLIDATE)
             try:
@@ -171,9 +175,7 @@ class AnalysisOrchestrator:
         else:
             consolidated = ConsolidationResult.model_validate(consolidation_output)
 
-        validation_output = self.repository.get_output(
-            run.run_id, Stage.VALIDATE_FINDINGS
-        )
+        validation_output = self.repository.get_output(run.run_id, Stage.VALIDATE_FINDINGS)
         if validation_output is None:
             run = self._begin_stage(run, Stage.VALIDATE_FINDINGS)
             findings, finding_report = self._validate_findings(
@@ -280,9 +282,7 @@ class AnalysisOrchestrator:
                 },
             )
         else:
-            traceability_report = ValidationReport.model_validate(
-                traceability_output
-            )
+            traceability_report = ValidationReport.model_validate(traceability_output)
 
         if not traceability_report.valid:
             run = self._update_run(
@@ -342,10 +342,7 @@ class AnalysisOrchestrator:
             for index in range(len(batches))
         ]
         completed_count = sum(output is not None for output in saved_outputs)
-        analysis_incomplete = (
-            not manifest.get("completed", False)
-            or completed_count < len(batches)
-        )
+        analysis_incomplete = not manifest.get("completed", False) or completed_count < len(batches)
         if analysis_incomplete:
             run = self._begin_stage(
                 run,
@@ -476,15 +473,9 @@ class AnalysisOrchestrator:
     ) -> ConsolidationResult:
         if self.services.consolidator is None:
             return ConsolidationResult(
-                findings=[
-                    finding
-                    for result in batch_results
-                    for finding in result.findings
-                ]
+                findings=[finding for result in batch_results for finding in result.findings]
             )
-        return ConsolidationResult.model_validate(
-            self.services.consolidator(batch_results, goal)
-        )
+        return ConsolidationResult.model_validate(self.services.consolidator(batch_results, goal))
 
     def _validate_findings(
         self,
@@ -631,9 +622,7 @@ class AnalysisOrchestrator:
         batch_review_indices: list[list[int]] = []
         next_index = 0
         for batch in batches:
-            batch_review_indices.append(
-                list(range(next_index, next_index + len(batch)))
-            )
+            batch_review_indices.append(list(range(next_index, next_index + len(batch))))
             next_index += len(batch)
         return {
             "batch_review_indices": batch_review_indices,
@@ -650,10 +639,7 @@ class AnalysisOrchestrator:
             raise ValueError("saved batch manifest is invalid")
 
         try:
-            boundaries = [
-                [int(index) for index in batch]
-                for batch in raw_boundaries
-            ]
+            boundaries = [[int(index) for index in batch] for batch in raw_boundaries]
         except (TypeError, ValueError) as exc:
             raise ValueError("saved batch manifest is invalid") from exc
 

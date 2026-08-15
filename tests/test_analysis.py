@@ -1,11 +1,14 @@
 from datetime import UTC, datetime
 
+from app_review_insights.llm import schemas
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
     ConsolidationResult,
     FindingDraft,
+    ReviewSummaryDraft,
 )
 from app_review_insights.models import Review
+from app_review_insights.pipeline import analyze as analysis_pipeline
 from app_review_insights.pipeline.analyze import analyze_batch, consolidate_findings
 from scripts.run_eval import evaluate_case, score_predictions
 
@@ -31,6 +34,62 @@ def review(review_id: str, content: str) -> Review:
     )
 
 
+def test_batch_analysis_result_accepts_traceable_chinese_review_summaries():
+    summary = schemas.ReviewSummaryDraft(
+        review_id="r-1",
+        summary_zh="用户反馈续费日期不清晰。",
+    )
+
+    result = BatchAnalysisResult(findings=[], review_summaries=[summary])
+
+    assert result.review_summaries == [summary]
+
+
+def test_apply_review_summaries_updates_only_known_ids_once():
+    reviews = [review("r-1", "First review"), review("r-2", "Second review")]
+    batch_results = [
+        BatchAnalysisResult(
+            findings=[],
+            review_summaries=[
+                ReviewSummaryDraft(review_id="r-1", summary_zh="第一条摘要"),
+                ReviewSummaryDraft(review_id="r-1", summary_zh="重复摘要"),
+                ReviewSummaryDraft(review_id="invented", summary_zh="虚构摘要"),
+            ],
+        )
+    ]
+
+    updated = analysis_pipeline.apply_review_summaries(reviews, batch_results)
+
+    assert [item.review_id for item in updated] == ["r-1", "r-2"]
+    assert updated[0].content_summary_zh == "第一条摘要"
+    assert updated[1].content_summary_zh is None
+
+
+def test_batch_prompt_requests_traceable_chinese_summary_for_each_review():
+    provider = QueueProvider(
+        [
+            BatchAnalysisResult(
+                findings=[],
+                review_summaries=[
+                    ReviewSummaryDraft(
+                        review_id="r-1",
+                        summary_zh="用户反馈续费日期不清晰。",
+                    )
+                ],
+            )
+        ]
+    )
+
+    result = analyze_batch(provider, [review("r-1", "Renewal date is unclear.")], "订阅转化")
+
+    assert result.review_summaries[0].review_id == "r-1"
+    _, user_prompt, schema = provider.calls[0]
+    assert "中文摘要" in user_prompt
+    assert "summary_zh" in user_prompt
+    assert "每条评论" in user_prompt
+    assert schema is BatchAnalysisResult
+
+
 def test_analysis_preserves_review_ids_and_goal_as_data():
     provider = QueueProvider(
         [
@@ -38,14 +97,10 @@ def test_analysis_preserves_review_ids_and_goal_as_data():
                 findings=[
                     FindingDraft(
                         title="Trial terms unclear",
-                        problem_statement=(
-                            "Users cannot see renewal terms before purchase."
-                        ),
+                        problem_statement=("Users cannot see renewal terms before purchase."),
                         topic_label="subscription transparency",
                         supporting_review_ids=["r-1"],
-                        reasoning_summary=(
-                            "The review explicitly mentions renewal terms."
-                        ),
+                        reasoning_summary=("The review explicitly mentions renewal terms."),
                     )
                 ]
             )

@@ -5,6 +5,7 @@ from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
     ConsolidationResult,
     FindingDraft,
+    ReviewSummaryDraft,
 )
 from app_review_insights.models import (
     AnalysisRequest,
@@ -39,6 +40,26 @@ class FailOnceOnSecondBatch:
         return BatchAnalysisResult(findings=[], batch_limitations=[])
 
 
+class SummarizingFailOnceOnSecondBatch:
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, reviews, goal):
+        self.calls += 1
+        if self.calls == 2:
+            raise RecoverableModelError("temporary failure")
+        return BatchAnalysisResult(
+            findings=[],
+            review_summaries=[
+                ReviewSummaryDraft(
+                    review_id=item.review_id,
+                    summary_zh=f"评论 {item.review_id} 的中文摘要",
+                )
+                for item in reviews
+            ],
+        )
+
+
 def make_reviews(count: int) -> list[Review]:
     return [
         Review(
@@ -66,11 +87,7 @@ def make_services(repo, analyzer, traceability_validator=None):
         test_case_builder=lambda requirements: [],
         traceability_validator=(
             traceability_validator
-            or (
-                lambda review_ids, findings, requirements, cases: ValidationReport(
-                    valid=True
-                )
-            )
+            or (lambda review_ids, findings, requirements, cases: ValidationReport(valid=True))
         ),
         batch_size=2,
         batch_max_characters=10000,
@@ -109,6 +126,31 @@ def test_orchestrator_resumes_same_run_without_repeating_completed_batch(tmp_pat
     assert completed.current_stage == Stage.COMPLETE
     assert analyzer.calls == 3
     assert len(repo.list_events(waiting.run_id)) >= 5
+
+
+def test_orchestrator_persists_completed_batch_summaries_before_model_retry(tmp_path):
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    analyzer = SummarizingFailOnceOnSecondBatch()
+    orchestrator = AnalysisOrchestrator(make_services(repo, analyzer))
+
+    waiting = orchestrator.start(
+        AnalysisRequest(
+            source_type=SourceType.JSON,
+            analysis_goal="查找产品问题",
+        ),
+        imported_reviews=make_reviews(4),
+    )
+
+    clean_output = repo.get_output(waiting.run_id, Stage.CLEAN)
+
+    assert waiting.status == RunStatus.WAITING
+    assert clean_output["stats"]["output_count"] == 4
+    assert [item["content_summary_zh"] for item in clean_output["reviews"]] == [
+        "评论 r-0 的中文摘要",
+        "评论 r-1 的中文摘要",
+        None,
+        None,
+    ]
 
 
 def test_orchestrator_uses_persisted_batch_boundaries_after_config_change(tmp_path):
@@ -165,16 +207,12 @@ def test_orchestrator_records_batch_completion_event_only_once_on_late_resume(
     ]
 
     assert completed.status == RunStatus.COMPLETED
-    assert [event.stage for event in batch_completion_events] == [
-        Stage.ANALYZE_BATCHES
-    ]
+    assert [event.stage for event in batch_completion_events] == [Stage.ANALYZE_BATCHES]
 
 
 def test_orchestrator_enters_batch_stage_when_there_are_no_reviews(tmp_path):
     repo = RunRepository(tmp_path / "runs.sqlite3")
-    result = AnalysisOrchestrator(
-        make_services(repo, FailOnceOnSecondBatch())
-    ).start(
+    result = AnalysisOrchestrator(make_services(repo, FailOnceOnSecondBatch())).start(
         AnalysisRequest(
             source_type=SourceType.JSON,
             analysis_goal="查找产品问题",
@@ -264,9 +302,7 @@ def test_orchestrator_persists_final_evidence_chain(tmp_path):
     services = PipelineServices(
         repository=repo,
         batch_analyzer=analyze,
-        consolidator=lambda results, goal: ConsolidationResult(
-            findings=results[0].findings
-        ),
+        consolidator=lambda results, goal: ConsolidationResult(findings=results[0].findings),
         finding_validator=validate,
         requirement_builder=build_requirements,
         test_case_builder=build_cases,
@@ -287,9 +323,7 @@ def test_orchestrator_persists_final_evidence_chain(tmp_path):
     assert len(repo.get_output(completed.run_id, Stage.VALIDATE_FINDINGS)["findings"]) == 1
     plan_output = repo.get_output(completed.run_id, Stage.PLAN)
     assert len(plan_output["requirements"]) == 1
-    assert plan_output["quantity_notice"] == (
-        "可验证证据不足，因此本次输出少于 5 个核心需求。"
-    )
+    assert plan_output["quantity_notice"] == ("可验证证据不足，因此本次输出少于 5 个核心需求。")
     assert len(repo.get_output(completed.run_id, Stage.GENERATE_TESTS)["test_cases"]) == 2
     assert repo.get_output(completed.run_id, Stage.VALIDATE_TRACEABILITY)["valid"] is True
     assert any(
@@ -306,8 +340,8 @@ def test_orchestrator_marks_invalid_traceability_as_partial(tmp_path):
     services = make_services(
         repo,
         analyzer,
-        traceability_validator=lambda review_ids, findings, requirements, cases: (
-            ValidationReport(valid=False)
+        traceability_validator=lambda review_ids, findings, requirements, cases: ValidationReport(
+            valid=False
         ),
     )
 
