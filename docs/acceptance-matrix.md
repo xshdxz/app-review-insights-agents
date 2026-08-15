@@ -17,17 +17,17 @@
 | 9 | DeepSeek 失败时保留进度 | ✅ | 真实运行 `2391b909` 首次尝试因输出截断失败进入 `waiting_for_model`，检查点保留（COLLECT/CLEAN 完整） |
 | 10 | 续跑沿用原始 `run_id` 并跳过已完成批次 | ✅ | 同一 run_id 续跑完成；`analyzer.calls == 3` 回归测试；真实续跑事件序列确认 |
 | 11 | 缓存被明确标记为历史数据/非实时数据 | ✅ | `data/cache/demo-run.json`：`mode=historical_cache_demo`、`is_live=false`；`test_demo_cache_is_explicitly_labeled` |
-| 12 | 下载文件包含 ID 和 UTF-8 文本 | ⏳ | 从真实运行构造下载并校验（待执行） |
-| 13 | 全新克隆后可按 README 完成启动 | ⏳ | 同级目录全新克隆安装验证（待完成） |
+| 12 | 下载文件包含 ID 和 UTF-8 文本 | ✅ | 从真实运行 `2391b909` 构造下载：证据链 CSV 17 行（表头 `review_ids,finding_id,requirement_id,test_case_id` + 16 行，UTF-8 BOM），PRD JSON 4 个需求均含 ID |
+| 13 | 全新克隆后可按 README 完成启动 | ✅ | 同级目录 `ari-fresh-check` 全新克隆：`pip install -e ".[dev]"` 成功、140 测试通过、`streamlit run app.py` HTTP 200、无密钥演示模式可用、样例 JSON 导入 20 条 |
 | 14 | 仓库未跟踪密钥或私有文件 | ✅ | `git status --short --ignored`：`.env`、`data/runs/`、`output/`、`tmp/`、`.planning/` 均忽略；密钥扫描无真实密钥命中 |
 
 ## 演示截图清单（docs/images/）
 
-- [ ] 输入与运行进度页面
-- [ ] 一个同时包含支持与冲突评论的已验证发现（Finding）
-- [ ] 一个带验收标准的 PRD 需求
-- [ ] 一条测试用例及其追溯路径
-- [ ] 模型失败与续跑状态（可复用真实 `waiting_for_model` 记录或演示缓存）
+- [x] 输入与运行进度页面 — `01-workbench-main.png`（真实完成运行 + 输入表单 + 运行状态面板）
+- [x] 一个同时包含支持与冲突评论的已验证发现（Finding）— `02-finding-with-conflicts.png`（Workout 运行 F-001：15 支持 + 3 冲突，演示档案模式）
+- [x] 一个带验收标准的 PRD 需求 — `03-prd-requirement.png`（REQ-001 展开，含验收标准）
+- [x] 一条测试用例及其追溯路径 — `04-test-cases.png`（测试用例表，来源评论 ID 完整继承）
+- [x] 模型失败与续跑状态 — `05-model-failure-resume.png`（`waiting_for_model` + 继续分析按钮，错误信息已脱敏）
 
 ## 最终验证命令
 
