@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 import streamlit as st
 
@@ -9,7 +10,13 @@ from app_review_insights.config import Settings, load_settings
 from app_review_insights.errors import InputDataError
 from app_review_insights.input_parsing import import_reviews, parse_app_store_url
 from app_review_insights.llm import DeepSeekProvider
-from app_review_insights.models import AnalysisRequest, RunRecord, RunStatus, SourceType
+from app_review_insights.models import (
+    AnalysisRequest,
+    RunRecord,
+    RunStatus,
+    SourceType,
+    StageEvent,
+)
 from app_review_insights.pipeline.analyze import analyze_batch, consolidate_findings
 from app_review_insights.pipeline.orchestrator import (
     AnalysisOrchestrator,
@@ -20,9 +27,15 @@ from app_review_insights.pipeline.test_generation import generate_test_cases
 from app_review_insights.pipeline.traceability import validate_traceability
 from app_review_insights.pipeline.validate import validate_finding_drafts
 from app_review_insights.storage import RunRepository
+from app_review_insights.storage.cache import (
+    build_demo_downloads,
+    build_downloads,
+    load_demo_run,
+)
 from app_review_insights.ui.components import (
     render_model_status,
     render_provenance_legend,
+    render_result_payloads,
     render_result_tabs,
     render_run_status,
 )
@@ -30,6 +43,9 @@ from app_review_insights.ui.components import (
 EventWriter = Callable[[object], None]
 
 _SOURCE_OPTIONS = ("在线采集", "JSON 导入", "CSV 导入")
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_SAMPLE_PATH = _PROJECT_ROOT / "data" / "samples" / "reviews-sample.json"
+_DEMO_PATH = _PROJECT_ROOT / "data" / "cache" / "demo-run.json"
 
 
 def build_services(use_fake_provider: bool = False) -> PipelineServices:
@@ -184,6 +200,82 @@ def _render_input_form(settings: Settings, model_ready: bool):
     return submitted, source_label, app_url, analysis_goal, review_limit, upload
 
 
+def _render_downloads(downloads: dict[str, bytes], *, key_prefix: str) -> None:
+    st.subheader("下载交付物", anchor=False)
+    with st.container(horizontal=True, gap="small"):
+        st.download_button(
+            "下载清洗评论 JSON",
+            downloads["cleaned_reviews"],
+            "cleaned-reviews.json",
+            mime="application/json",
+            icon=":material/download:",
+            on_click="ignore",
+            key=f"{key_prefix}-cleaned",
+        )
+        st.download_button(
+            "下载 PRD JSON",
+            downloads["prd"],
+            "prd.json",
+            mime="application/json",
+            icon=":material/download:",
+            on_click="ignore",
+            key=f"{key_prefix}-prd",
+        )
+        st.download_button(
+            "下载测试用例 CSV",
+            downloads["test_cases"],
+            "test-cases.csv",
+            mime="text/csv",
+            icon=":material/download:",
+            on_click="ignore",
+            key=f"{key_prefix}-tests",
+        )
+        st.download_button(
+            "下载证据链 CSV",
+            downloads["traceability"],
+            "traceability.csv",
+            mime="text/csv",
+            icon=":material/download:",
+            on_click="ignore",
+            key=f"{key_prefix}-traceability",
+        )
+
+
+def _render_demo_archive() -> None:
+    try:
+        demo = load_demo_run(_DEMO_PATH)
+        run = RunRecord.model_validate(demo["run"])
+        events = [StageEvent.model_validate(item) for item in demo.get("events", [])]
+    except (KeyError, OSError, ValueError) as exc:
+        st.error(f"无法读取历史演示缓存：{exc}", icon=":material/database_off:")
+        return
+
+    st.warning(
+        "当前展示历史缓存演示，不是本次实时分析；结果仅用于离线演示界面与证据链。",
+        icon=":material/history:",
+    )
+    left, right = st.columns([3, 1], gap="large", vertical_alignment="top")
+    with left:
+        with st.container(border=True):
+            st.subheader("历史审阅档案", anchor=False)
+            st.caption(
+                f"生成时间：{demo['collected_at']} · 模型：{demo.get('model_name', '未记录')}"
+            )
+            st.caption("数据方式：人工样例 JSON（非 App Store 实时采集）")
+            st.write(f"参考 App（仅作为演示上下文）：{demo.get('source_app_url', '未记录')}")
+        render_result_payloads(run, demo["result"], "historical-demo", events)
+        _render_downloads(build_demo_downloads(demo), key_prefix="demo")
+
+    with right:
+        with st.container(border=True):
+            st.subheader("演示状态", anchor=False)
+            st.badge("Historical cache", color="orange", icon=":material/history:")
+            st.badge("Non-live", color="gray", icon=":material/cloud_off:")
+            st.caption(f"Run ID：`{run.run_id}`")
+            st.write("实时模型调用：`未执行`")
+            st.write("缓存标签校验：`已通过`")
+
+
 def main() -> None:
     st.set_page_config(
         page_title="证据审阅工作台 · App Review Insights",
@@ -201,11 +293,28 @@ def main() -> None:
     st.caption("编辑部档案 · 将 App Store 评论整理为可核验的 Findings、PRD、测试用例与证据链")
     render_provenance_legend()
     render_model_status(model_ready, settings.model_name)
+    demo_mode = st.toggle(
+        "查看历史缓存演示",
+        help="无需模型密钥；始终明确标记为历史缓存和非实时结果。",
+        key="demo-mode",
+    )
+    if demo_mode:
+        _render_demo_archive()
+        return
 
     left, right = st.columns([3, 1], gap="large", vertical_alignment="top")
     with left:
         submitted, source_label, app_url, goal, limit, upload = _render_input_form(
             settings, model_ready
+        )
+        st.download_button(
+            "下载样例评论 JSON",
+            _SAMPLE_PATH.read_bytes(),
+            "reviews-sample.json",
+            mime="application/json",
+            icon=":material/download:",
+            on_click="ignore",
+            key="sample-reviews-download",
         )
         if submitted:
             if not model_ready:
@@ -239,6 +348,10 @@ def main() -> None:
             events = services.repository.list_events(run_id)
             st.subheader("当前档案", anchor=False)
             render_result_tabs(services.repository, run_id, events)
+            _render_downloads(
+                build_downloads(services.repository, run_id),
+                key_prefix=f"run-{run_id}",
+            )
         else:
             with st.container(border=True):
                 st.subheader("当前档案", anchor=False)

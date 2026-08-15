@@ -7,6 +7,7 @@ from app_review_insights.llm.schemas import (
 )
 from app_review_insights.models import Review
 from app_review_insights.pipeline.analyze import analyze_batch, consolidate_findings
+from scripts.run_eval import evaluate_case, score_predictions
 
 
 class QueueProvider:
@@ -136,3 +137,67 @@ def test_consolidation_skips_model_when_there_are_no_candidate_findings():
 
     assert result == ConsolidationResult(findings=[])
     assert provider.calls == []
+
+
+def test_eval_scores_reference_precision_and_topic_recall():
+    score = score_predictions(
+        expected_topics={"subscription", "timer"},
+        expected_review_ids={"r-1", "r-2"},
+        predicted_topics={"subscription"},
+        predicted_review_ids={"r-1", "invented"},
+    )
+
+    assert score["topic_recall"] == 0.5
+    assert score["reference_precision"] == 0.5
+
+
+def test_eval_treats_empty_expected_and_predicted_sets_as_correct():
+    score = score_predictions(set(), set(), set(), set())
+
+    assert score == {"topic_recall": 1.0, "reference_precision": 1.0}
+
+
+def test_evaluate_case_runs_production_batch_prompt_and_scores_output():
+    provider = QueueProvider(
+        [
+            BatchAnalysisResult(
+                findings=[
+                    FindingDraft(
+                        title="Trial terms unclear",
+                        problem_statement="Renewal date is hidden.",
+                        topic_label="subscription transparency",
+                        supporting_review_ids=["eval-r-001", "invented"],
+                        reasoning_summary="One supported and one invalid reference.",
+                    )
+                ]
+            )
+        ]
+    )
+    case = {
+        "case_id": "subscription-01",
+        "analysis_goal": "重点分析订阅转化",
+        "expected_topics": ["subscription transparency", "pricing clarity"],
+        "expected_review_ids": ["eval-r-001", "eval-r-002"],
+        "reviews": [
+            {
+                "review_id": "eval-r-001",
+                "content": "The renewal date was hidden.",
+                "rating": 2,
+                "published_at": "2026-06-01T10:00:00Z",
+            },
+            {
+                "review_id": "eval-r-002",
+                "content": "The price appeared at the final step.",
+                "rating": 1,
+                "published_at": "2026-06-02T10:00:00Z",
+            },
+        ],
+    }
+
+    result = evaluate_case(provider, case)
+
+    assert result["case_id"] == "subscription-01"
+    assert result["topic_recall"] == 0.5
+    assert result["reference_precision"] == 0.5
+    assert result["structured_output_success"] is True
+    assert result["predicted_review_ids"] == ["eval-r-001", "invented"]

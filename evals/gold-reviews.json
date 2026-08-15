@@ -1,0 +1,101 @@
+{
+  "cases": [
+    {
+      "case_id": "eval-subscription-01",
+      "analysis_goal": "重点分析订阅转化",
+      "expected_topics": ["subscription transparency"],
+      "expected_review_ids": ["eval-r-001", "eval-r-002"],
+      "reviews": [
+        {
+          "review_id": "eval-r-001",
+          "content": "The free trial renewal date was hidden until the last screen.",
+          "rating": 2,
+          "published_at": "2026-06-01T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-002",
+          "content": "I wanted to know the monthly price before starting the trial.",
+          "rating": 1,
+          "published_at": "2026-06-02T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-003",
+          "content": "The subscription price and renewal terms were clear to me.",
+          "rating": 5,
+          "published_at": "2026-06-03T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-004",
+          "content": "Great workout selection.",
+          "rating": 5,
+          "published_at": "2026-06-04T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "case_id": "eval-timer-01",
+      "analysis_goal": "重点分析训练可用性",
+      "expected_topics": ["workout timer reliability", "audio guidance"],
+      "expected_review_ids": ["eval-r-005", "eval-r-006", "eval-r-007"],
+      "reviews": [
+        {
+          "review_id": "eval-r-005",
+          "content": "The timer freezes when I resume after a pause.",
+          "rating": 1,
+          "published_at": "2026-06-05T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-006",
+          "content": "暂停以后计时器不会继续。",
+          "rating": 2,
+          "published_at": "2026-06-06T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-007",
+          "content": "Voice instructions are too quiet while music is playing.",
+          "rating": 3,
+          "published_at": "2026-06-07T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-008",
+          "content": "The timer freezes when I resume after a pause.",
+          "rating": 1,
+          "published_at": "2026-06-08T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "case_id": "eval-insufficient-01",
+      "analysis_goal": "识别下一版本高优先级问题",
+      "expected_topics": [],
+      "expected_review_ids": [],
+      "expected_assumption_review_ids": ["eval-r-009"],
+      "reviews": [
+        {
+          "review_id": "eval-r-009",
+          "content": "The app crashed once after I changed my plan.",
+          "rating": 3,
+          "published_at": "2026-06-09T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-010",
+          "content": "I love the new workout plan.",
+          "rating": 5,
+          "published_at": "2026-06-10T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-011",
+          "content": "Please add more stretching routines.",
+          "rating": 4,
+          "published_at": "2026-06-11T10:00:00Z"
+        },
+        {
+          "review_id": "eval-r-012",
+          "content": "The interface is easy to use.",
+          "rating": 5,
+          "published_at": "2026-06-12T10:00:00Z"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1861 @@
+{
+  "mode": "historical_cache_demo",
+  "is_live": false,
+  "collected_at": "2026-08-15T02:23:46.075779+00:00",
+  "source_app_url": "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684",
+  "model_provider": "deepseek",
+  "model_name": "deepseek-chat",
+  "run": {
+    "run_id": "886f03cf-339f-452c-8c57-4ebbd0c3224a",
+    "request": {
+      "source_type": "json",
+      "analysis_goal": "识别影响健身体验和产品增长的核心问题，形成5至10个证据充分、可追溯的核心需求",
+      "app_url": null,
+      "review_limit": 100,
+      "ratings": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "app_versions": []
+    },
+    "current_stage": "complete",
+    "status": "completed",
+    "current_batch": 1,
+    "total_batches": 1,
+    "coverage_ratio": 1.0,
+    "last_error": null,
+    "created_at": "2026-08-15T02:22:36.339542Z",
+    "updated_at": "2026-08-15T02:23:46.054715Z"
+  },
+  "events": [
+    {
+      "stage": "scope",
+      "status": "pending",
+      "message": "Analysis run created",
+      "payload": {},
+      "created_at": "2026-08-15T02:22:36.349613Z"
+    },
+    {
+      "stage": "collect",
+      "status": "running",
+      "message": "Stage started: collect",
+      "payload": {},
+      "created_at": "2026-08-15T02:22:36.365523Z"
+    },
+    {
+      "stage": "collect",
+      "status": "running",
+      "message": "Review collection completed",
+      "payload": {
+        "review_count": 20
+      },
+      "created_at": "2026-08-15T02:22:36.381344Z"
+    },
+    {
+      "stage": "clean",
+      "status": "running",
+      "message": "Stage started: clean",
+      "payload": {},
+      "created_at": "2026-08-15T02:22:36.397080Z"
+    },
+    {
+      "stage": "clean",
+      "status": "running",
+      "message": "Review cleaning completed",
+      "payload": {
+        "input_count": 20,
+        "output_count": 19
+      },
+      "created_at": "2026-08-15T02:22:36.415176Z"
+    },
+    {
+      "stage": "analyze_batches",
+      "status": "running",
+      "message": "Stage started: analyze_batches",
+      "payload": {},
+      "created_at": "2026-08-15T02:22:36.436436Z"
+    },
+    {
+      "stage": "analyze_batches",
+      "status": "running",
+      "message": "Batch analysis completed",
+      "payload": {
+        "batch_index": 0,
+        "completed_batches": 1,
+        "total_batches": 1
+      },
+      "created_at": "2026-08-15T02:22:45.620628Z"
+    },
+    {
+      "stage": "analyze_batches",
+      "status": "running",
+      "message": "All review batches analyzed",
+      "payload": {
+        "total_batches": 1
+      },
+      "created_at": "2026-08-15T02:22:45.634573Z"
+    },
+    {
+      "stage": "consolidate",
+      "status": "running",
+      "message": "Stage started: consolidate",
+      "payload": {},
+      "created_at": "2026-08-15T02:22:45.649450Z"
+    },
+    {
+      "stage": "consolidate",
+      "status": "running",
+      "message": "Finding consolidation completed",
+      "payload": {
+        "finding_count": 9
+      },
+      "created_at": "2026-08-15T02:22:51.742281Z"
+    },
+    {
+      "stage": "validate_findings",
+      "status": "running",
+      "message": "Stage started: validate_findings",
+      "payload": {},
+      "created_at": "2026-08-15T02:22:51.757511Z"
+    },
+    {
+      "stage": "validate_findings",
+      "status": "running",
+      "message": "Finding validation completed",
+      "payload": {
+        "finding_count": 9,
+        "valid": true
+      },
+      "created_at": "2026-08-15T02:22:51.771767Z"
+    },
+    {
+      "stage": "plan",
+      "status": "running",
+      "message": "Stage started: plan",
+      "payload": {},
+      "created_at": "2026-08-15T02:22:51.788437Z"
+    },
+    {
+      "stage": "plan",
+      "status": "running",
+      "message": "Product planning completed",
+      "payload": {
+        "requirement_count": 9
+      },
+      "created_at": "2026-08-15T02:23:10.703716Z"
+    },
+    {
+      "stage": "generate_tests",
+      "status": "running",
+      "message": "Stage started: generate_tests",
+      "payload": {},
+      "created_at": "2026-08-15T02:23:10.720985Z"
+    },
+    {
+      "stage": "generate_tests",
+      "status": "running",
+      "message": "Test generation completed",
+      "payload": {
+        "test_case_count": 36
+      },
+      "created_at": "2026-08-15T02:23:46.007599Z"
+    },
+    {
+      "stage": "validate_traceability",
+      "status": "running",
+      "message": "Stage started: validate_traceability",
+      "payload": {},
+      "created_at": "2026-08-15T02:23:46.026651Z"
+    },
+    {
+      "stage": "validate_traceability",
+      "status": "running",
+      "message": "Traceability validation completed",
+      "payload": {
+        "valid": true,
+        "issue_count": 0
+      },
+      "created_at": "2026-08-15T02:23:46.045902Z"
+    },
+    {
+      "stage": "complete",
+      "status": "completed",
+      "message": "Analysis run completed",
+      "payload": {
+        "valid": true
+      },
+      "created_at": "2026-08-15T02:23:46.063467Z"
+    }
+  ],
+  "result": {
+    "clean": {
+      "reviews": [
+        {
+          "review_id": "sample-001",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "The free trial renewal date was not clear before I subscribed.",
+          "content_summary_zh": null,
+          "rating": 2,
+          "app_version": "8.4.0",
+          "author": null,
+          "published_at": "2026-07-01T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "7334c12a84bd848ffe1c"
+        },
+        {
+          "review_id": "sample-002",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "I did not see the monthly price until the final confirmation.",
+          "content_summary_zh": null,
+          "rating": 1,
+          "app_version": "8.4.0",
+          "author": null,
+          "published_at": "2026-07-02T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "670a57eaf0f971a218ca"
+        },
+        {
+          "review_id": "sample-003",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "The subscription terms were clear and easy to understand.",
+          "content_summary_zh": null,
+          "rating": 5,
+          "app_version": "8.4.0",
+          "author": null,
+          "published_at": "2026-07-03T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "690f15e75e58c63b28f9"
+        },
+        {
+          "review_id": "sample-004",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "暂停训练以后计时器不会继续。",
+          "content_summary_zh": null,
+          "rating": 2,
+          "app_version": "8.4.1",
+          "author": null,
+          "published_at": "2026-07-04T10:00:00Z",
+          "language": "zh-cn",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "5211854f6f014728c9eb"
+        },
+        {
+          "review_id": "sample-005",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "暂停训练后计时器有时无法继续。",
+          "content_summary_zh": null,
+          "rating": 2,
+          "app_version": "8.4.1",
+          "author": null,
+          "published_at": "2026-07-05T10:00:00Z",
+          "language": "zh-cn",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "de71b6465f6cbf3d2e26"
+        },
+        {
+          "review_id": "sample-006",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "Voice instructions are too quiet while music is playing.",
+          "content_summary_zh": null,
+          "rating": 3,
+          "app_version": "8.4.1",
+          "author": null,
+          "published_at": "2026-07-06T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "df68425755e5a22c0307"
+        },
+        {
+          "review_id": "sample-007",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "I love the voice guidance and workout pacing.",
+          "content_summary_zh": null,
+          "rating": 5,
+          "app_version": "8.4.1",
+          "author": null,
+          "published_at": "2026-07-07T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "1fc93c1c0c9b603268ac"
+        },
+        {
+          "review_id": "sample-008",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "The exercise preview is too short for unfamiliar movements.",
+          "content_summary_zh": null,
+          "rating": 3,
+          "app_version": "8.4.1",
+          "author": null,
+          "published_at": "2026-07-08T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "09b8f81962eda78ea0c8"
+        },
+        {
+          "review_id": "sample-009",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "希望动作开始前能有更长的示范时间。",
+          "content_summary_zh": null,
+          "rating": 3,
+          "app_version": "8.4.1",
+          "author": null,
+          "published_at": "2026-07-09T10:00:00Z",
+          "language": "zh-cn",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "216aa82a0a3aac7eb2e4"
+        },
+        {
+          "review_id": "sample-010",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "The app crashed after I changed my weekly plan.",
+          "content_summary_zh": null,
+          "rating": 1,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-10T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "eaa7c3587d6eba7b230f"
+        },
+        {
+          "review_id": "sample-011",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "Changing my weekly plan worked perfectly.",
+          "content_summary_zh": null,
+          "rating": 5,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-11T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "a24d4ee7e43888347d3c"
+        },
+        {
+          "review_id": "sample-012",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "Please let me export a weekly workout summary.",
+          "content_summary_zh": null,
+          "rating": 4,
+          "app_version": null,
+          "author": null,
+          "published_at": "2026-07-12T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "0b75ca5fe7c0f085bc05"
+        },
+        {
+          "review_id": "sample-013",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "希望可以导出每周训练记录。",
+          "content_summary_zh": null,
+          "rating": 4,
+          "app_version": null,
+          "author": null,
+          "published_at": "2026-07-13T10:00:00Z",
+          "language": "zh-cn",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "7e8acb7d5791974e9717"
+        },
+        {
+          "review_id": "sample-015",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "Workouts are effective but the rest timer feels too short.",
+          "content_summary_zh": null,
+          "rating": 3,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-15T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "547b010d9112a78383ee"
+        },
+        {
+          "review_id": "sample-016",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "休息时间太短，希望可以自己调整。",
+          "content_summary_zh": null,
+          "rating": 3,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-16T10:00:00Z",
+          "language": "zh-cn",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "8a5d5c4c93578c7f7a3b"
+        },
+        {
+          "review_id": "sample-017",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "The adjustable difficulty is excellent.",
+          "content_summary_zh": null,
+          "rating": 5,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-17T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "a42489533e047de878c8"
+        },
+        {
+          "review_id": "sample-018",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "Beginner workouts become difficult too quickly.",
+          "content_summary_zh": null,
+          "rating": 2,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-18T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "37eae75cfd05c45ff091"
+        },
+        {
+          "review_id": "sample-019",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "Notifications arrive during my configured quiet hours.",
+          "content_summary_zh": null,
+          "rating": 2,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-19T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "96246c9c69be13dc7c6e"
+        },
+        {
+          "review_id": "sample-020",
+          "app_id": "sample-demo",
+          "storefront": "us",
+          "title": "",
+          "content_original": "Great workouts and a clean interface.",
+          "content_summary_zh": null,
+          "rating": 5,
+          "app_version": "8.4.2",
+          "author": null,
+          "published_at": "2026-07-20T10:00:00Z",
+          "language": "en",
+          "source": "import:json",
+          "source_page": null,
+          "content_hash": "ac7d20f307919c165ff1"
+        }
+      ],
+      "stats": {
+        "input_count": 20,
+        "output_count": 19,
+        "exact_duplicates": 1,
+        "near_duplicates": 0,
+        "empty_removed": 0
+      }
+    },
+    "validate_findings": {
+      "findings": [
+        {
+          "finding_id": "F-001",
+          "title": "订阅价格与试用续订信息不透明",
+          "problem_statement": "用户在订阅前未能清晰了解免费试用续订日期和月付价格，导致意外扣费或不满。",
+          "topic_label": "订阅透明度",
+          "supporting_review_ids": [
+            "sample-001",
+            "sample-002"
+          ],
+          "conflicting_review_ids": [
+            "sample-003"
+          ],
+          "support_count": 2,
+          "conflict_count": 1,
+          "confidence": 0.38,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-001 和 sample-002 分别指出试用续订日期和月付价格在订阅前不明确，而 sample-003 表示条款清晰，形成冲突。",
+          "limitations": [
+            "样本量小，可能不全面",
+            "存在 1 条冲突评论。"
+          ]
+        },
+        {
+          "finding_id": "F-002",
+          "title": "暂停训练后计时器无法继续",
+          "problem_statement": "用户暂停训练后，计时器无法继续或有时无法继续，影响训练体验。",
+          "topic_label": "计时器功能缺陷",
+          "supporting_review_ids": [
+            "sample-004",
+            "sample-005"
+          ],
+          "conflicting_review_ids": [],
+          "support_count": 2,
+          "conflict_count": 0,
+          "confidence": 0.46,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-004 和 sample-005 均报告暂停后计时器无法继续，且 sample-005 提到“有时”，表明问题可能间歇性发生。",
+          "limitations": [
+            "未提供具体复现步骤"
+          ]
+        },
+        {
+          "finding_id": "F-003",
+          "title": "语音指导音量过小",
+          "problem_statement": "播放音乐时语音指导音量过小，用户难以听清。",
+          "topic_label": "音频体验",
+          "supporting_review_ids": [
+            "sample-006"
+          ],
+          "conflicting_review_ids": [
+            "sample-007"
+          ],
+          "support_count": 1,
+          "conflict_count": 1,
+          "confidence": 0.22,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-006 抱怨语音指导音量小，而 sample-007 称赞语音指导，表明音量问题可能因设备或设置而异。",
+          "limitations": [
+            "仅一条支持证据",
+            "存在 1 条冲突评论。"
+          ]
+        },
+        {
+          "finding_id": "F-004",
+          "title": "动作预览时间过短",
+          "problem_statement": "动作预览时间太短，用户对不熟悉的动作无法充分理解。",
+          "topic_label": "动作指导",
+          "supporting_review_ids": [
+            "sample-008",
+            "sample-009"
+          ],
+          "conflicting_review_ids": [],
+          "support_count": 2,
+          "conflict_count": 0,
+          "confidence": 0.46,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-008 和 sample-009 分别用英文和中文表达预览时间不足，希望有更长的示范。",
+          "limitations": [
+            "未说明具体期望时长"
+          ]
+        },
+        {
+          "finding_id": "F-005",
+          "title": "修改周计划后应用崩溃",
+          "problem_statement": "用户修改每周计划后应用崩溃，影响使用。",
+          "topic_label": "稳定性",
+          "supporting_review_ids": [
+            "sample-010"
+          ],
+          "conflicting_review_ids": [
+            "sample-011"
+          ],
+          "support_count": 1,
+          "conflict_count": 1,
+          "confidence": 0.22,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-010 报告崩溃，而 sample-011 表示修改计划正常，可能为偶发问题或特定设备问题。",
+          "limitations": [
+            "仅一条支持证据，且无版本信息",
+            "存在 1 条冲突评论。"
+          ]
+        },
+        {
+          "finding_id": "F-006",
+          "title": "缺少每周训练摘要导出功能",
+          "problem_statement": "用户希望导出每周训练摘要，但应用未提供该功能。",
+          "topic_label": "数据导出",
+          "supporting_review_ids": [
+            "sample-012",
+            "sample-013"
+          ],
+          "conflicting_review_ids": [],
+          "support_count": 2,
+          "conflict_count": 0,
+          "confidence": 0.46,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-012 和 sample-013 分别用英文和中文请求导出每周训练记录，表明该功能缺失。",
+          "limitations": [
+            "无版本信息，可能已在新版本中实现"
+          ]
+        },
+        {
+          "finding_id": "F-007",
+          "title": "休息计时器过短且不可调节",
+          "problem_statement": "休息时间太短，用户希望可以自行调整。",
+          "topic_label": "训练自定义",
+          "supporting_review_ids": [
+            "sample-015",
+            "sample-016"
+          ],
+          "conflicting_review_ids": [],
+          "support_count": 2,
+          "conflict_count": 0,
+          "confidence": 0.46,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-015 和 sample-016 均抱怨休息时间短，并希望可调整。",
+          "limitations": [
+            "未说明具体期望时长"
+          ]
+        },
+        {
+          "finding_id": "F-008",
+          "title": "初学者难度曲线过陡",
+          "problem_statement": "初学者训练难度上升过快，导致用户难以适应。",
+          "topic_label": "难度设置",
+          "supporting_review_ids": [
+            "sample-018"
+          ],
+          "conflicting_review_ids": [
+            "sample-017"
+          ],
+          "support_count": 1,
+          "conflict_count": 1,
+          "confidence": 0.22,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-018 指出初学者难度增加过快，而 sample-017 称赞可调难度，表明难度调节可能未覆盖初学者需求。",
+          "limitations": [
+            "仅一条支持证据",
+            "存在 1 条冲突评论。"
+          ]
+        },
+        {
+          "finding_id": "F-009",
+          "title": "通知在免打扰时段仍发送",
+          "problem_statement": "用户设置了免打扰时段，但通知仍然发送，打扰用户。",
+          "topic_label": "通知设置",
+          "supporting_review_ids": [
+            "sample-019"
+          ],
+          "conflicting_review_ids": [],
+          "support_count": 1,
+          "conflict_count": 0,
+          "confidence": 0.29,
+          "evidence_status": "validated",
+          "model_reasoning_summary": "sample-019 明确表示通知在配置的免打扰时段到达，说明设置未生效。",
+          "limitations": [
+            "仅一条支持证据"
+          ]
+        }
+      ],
+      "report": {
+        "valid": true,
+        "issues": []
+      }
+    },
+    "plan": {
+      "requirements": [
+        {
+          "requirement_id": "REQ-001",
+          "finding_ids": [
+            "F-004"
+          ],
+          "title": "延长动作预览时间",
+          "user_problem": "动作预览时间太短，用户对不熟悉的动作无法充分理解。",
+          "objective": "提供更长的动作预览，帮助用户正确掌握动作要领。",
+          "scope": [
+            "动作预览界面",
+            "视频播放控制"
+          ],
+          "non_goals": [
+            "增加新动作",
+            "改变动作库"
+          ],
+          "functional_rules": [
+            "将动作预览时间从当前时长延长至至少10秒。",
+            "提供重播按钮，允许用户重复观看预览。",
+            "在预览界面显示动作名称和关键要点。"
+          ],
+          "edge_cases": [
+            "网络慢时，预览加载时间过长，需优化加载。",
+            "用户跳过预览，不影响训练流程。"
+          ],
+          "acceptance_criteria": [
+            "预览时长不少于10秒，且可重播。",
+            "预览界面包含动作名称和要点文字。"
+          ],
+          "success_metrics": [
+            "用户对动作理解度提升20%",
+            "动作错误率降低15%"
+          ],
+          "impact": 4,
+          "complexity": "low",
+          "priority_score": 19.37,
+          "target_version": "V1.0",
+          "source_review_ids": [
+            "sample-008",
+            "sample-009"
+          ],
+          "assumptions": [
+            "现有预览视频可延长",
+            "用户需要更长时间"
+          ]
+        },
+        {
+          "requirement_id": "REQ-002",
+          "finding_ids": [
+            "F-007"
+          ],
+          "title": "允许自定义休息时间",
+          "user_problem": "休息时间太短，用户希望可以自行调整。",
+          "objective": "提供休息时间自定义功能，满足不同用户需求。",
+          "scope": [
+            "训练设置",
+            "休息计时器"
+          ],
+          "non_goals": [
+            "改变训练计划结构"
+          ],
+          "functional_rules": [
+            "在训练设置中增加“休息时间”选项，可设置范围30秒至5分钟。",
+            "用户可针对不同训练类型设置不同的休息时间。",
+            "训练中休息计时器使用用户自定义时间。"
+          ],
+          "edge_cases": [
+            "用户未设置时，使用默认休息时间。",
+            "设置时间超出范围时，提示并限制。"
+          ],
+          "acceptance_criteria": [
+            "用户可设置休息时间，并在训练中生效。",
+            "设置界面显示当前值，且可调整。"
+          ],
+          "success_metrics": [
+            "用户设置自定义休息时间的比例超过30%",
+            "训练完成率提升10%"
+          ],
+          "impact": 4,
+          "complexity": "low",
+          "priority_score": 19.37,
+          "target_version": "V1.0",
+          "source_review_ids": [
+            "sample-015",
+            "sample-016"
+          ],
+          "assumptions": [
+            "用户希望调整休息时间",
+            "现有计时器可配置"
+          ]
+        },
+        {
+          "requirement_id": "REQ-003",
+          "finding_ids": [
+            "F-001"
+          ],
+          "title": "订阅信息透明化",
+          "user_problem": "用户在订阅前无法清晰了解免费试用续订日期和月付价格，导致意外扣费或不满。",
+          "objective": "在订阅流程中提供清晰、明确的试用续订和价格信息，减少用户困惑和投诉。",
+          "scope": [
+            "订阅页面",
+            "确认弹窗",
+            "欢迎邮件"
+          ],
+          "non_goals": [
+            "调整定价策略",
+            "改变订阅计划"
+          ],
+          "functional_rules": [
+            "在订阅页面显著位置展示免费试用时长、续订日期和月付价格。",
+            "在用户确认订阅前，弹出确认框，明确提示试用结束后的扣费金额和日期。",
+            "在订阅成功后的欢迎邮件中，再次说明试用续订信息。"
+          ],
+          "edge_cases": [
+            "用户取消订阅后，不再显示续订信息。",
+            "价格变动时，需在订阅页面和邮件中同步更新。"
+          ],
+          "acceptance_criteria": [
+            "订阅页面包含所有必要信息，且字体大小不小于14px。",
+            "确认弹窗在用户点击订阅按钮后出现，且包含扣费金额和日期。",
+            "欢迎邮件在订阅后24小时内发送，且包含续订信息。"
+          ],
+          "success_metrics": [
+            "订阅相关投诉减少30%",
+            "订阅页面信息完整度评分提升至90%"
+          ],
+          "impact": 4,
+          "complexity": "low",
+          "priority_score": 16.0,
+          "target_version": "V1.0",
+          "source_review_ids": [
+            "sample-001",
+            "sample-002"
+          ],
+          "assumptions": [
+            "用户主要关注价格和续订日期",
+            "现有订阅流程可修改"
+          ]
+        },
+        {
+          "requirement_id": "REQ-004",
+          "finding_ids": [
+            "F-002"
+          ],
+          "title": "修复暂停后计时器无法继续的问题",
+          "user_problem": "用户暂停训练后，计时器无法继续或有时无法继续，影响训练体验。",
+          "objective": "确保暂停后计时器能够可靠地继续，提升训练连续性。",
+          "scope": [
+            "训练计时器模块",
+            "暂停/继续按钮"
+          ],
+          "non_goals": [
+            "增加新的计时器功能"
+          ],
+          "functional_rules": [
+            "用户点击暂停后，计时器停止并记录剩余时间。",
+            "用户点击继续后，计时器从剩余时间开始倒计时。",
+            "在暂停状态下，应用进入后台或锁屏，继续后计时器仍能正确恢复。"
+          ],
+          "edge_cases": [
+            "暂停后应用被系统杀死，重新打开时提示用户是否恢复训练。",
+            "多次暂停/继续操作，计时器时间准确。"
+          ],
+          "acceptance_criteria": [
+            "在模拟测试中，暂停后继续100次，计时器均能正确恢复。",
+            "暂停后锁屏再解锁，继续后计时器时间正确。"
+          ],
+          "success_metrics": [
+            "计时器相关bug报告减少50%",
+            "训练完成率提升5%"
+          ],
+          "impact": 5,
+          "complexity": "medium",
+          "priority_score": 12.11,
+          "target_version": "V1.0",
+          "source_review_ids": [
+            "sample-004",
+            "sample-005"
+          ],
+          "assumptions": [
+            "问题可复现",
+            "现有计时器逻辑可修复"
+          ]
+        },
+        {
+          "requirement_id": "REQ-005",
+          "finding_ids": [
+            "F-006"
+          ],
+          "title": "增加每周训练摘要导出功能",
+          "user_problem": "用户希望导出每周训练摘要，但应用未提供该功能。",
+          "objective": "提供每周训练摘要导出功能，满足用户数据管理需求。",
+          "scope": [
+            "训练历史页面",
+            "导出功能"
+          ],
+          "non_goals": [
+            "导出其他类型数据",
+            "自动分享功能"
+          ],
+          "functional_rules": [
+            "在训练历史页面提供“导出本周摘要”按钮。",
+            "导出格式为CSV或PDF，包含训练日期、动作、时长、消耗卡路里等。",
+            "导出文件通过系统分享功能发送。"
+          ],
+          "edge_cases": [
+            "本周无训练数据时，导出文件为空或提示无数据。",
+            "导出过程中网络中断，提示失败。"
+          ],
+          "acceptance_criteria": [
+            "点击导出按钮，生成文件并弹出分享菜单。",
+            "文件内容与训练记录一致。"
+          ],
+          "success_metrics": [
+            "导出功能使用率超过10%",
+            "用户满意度提升5%"
+          ],
+          "impact": 3,
+          "complexity": "medium",
+          "priority_score": 7.26,
+          "target_version": "V1.1",
+          "source_review_ids": [
+            "sample-012",
+            "sample-013"
+          ],
+          "assumptions": [
+            "用户有导出需求",
+            "系统支持文件分享"
+          ]
+        },
+        {
+          "requirement_id": "REQ-006",
+          "finding_ids": [
+            "F-009"
+          ],
+          "title": "修复免打扰时段通知问题",
+          "user_problem": "用户设置了免打扰时段，但通知仍然发送，打扰用户。",
+          "objective": "确保免打扰时段内不发送任何通知。",
+          "scope": [
+            "通知设置",
+            "通知发送逻辑"
+          ],
+          "non_goals": [
+            "增加新的通知类型"
+          ],
+          "functional_rules": [
+            "用户设置免打扰时段后，该时段内不发送任何通知。",
+            "免打扰时段设置可自定义开始和结束时间。",
+            "紧急通知（如系统警告）除外，但需在设置中说明。"
+          ],
+          "edge_cases": [
+            "跨天时段（如22:00-06:00）正确处理。",
+            "用户修改时段后立即生效。"
+          ],
+          "acceptance_criteria": [
+            "在免打扰时段内，不收到任何通知。",
+            "设置界面显示当前免打扰时段。"
+          ],
+          "success_metrics": [
+            "免打扰功能使用率提升20%",
+            "通知相关投诉减少30%"
+          ],
+          "impact": 3,
+          "complexity": "low",
+          "priority_score": 4.58,
+          "target_version": "V1.0",
+          "source_review_ids": [
+            "sample-019"
+          ],
+          "assumptions": [
+            "现有通知系统可控制",
+            "用户需要免打扰功能"
+          ]
+        },
+        {
+          "requirement_id": "REQ-007",
+          "finding_ids": [
+            "F-005"
+          ],
+          "title": "修复修改周计划后崩溃问题",
+          "user_problem": "用户修改每周计划后应用崩溃，影响使用。",
+          "objective": "确保修改周计划功能稳定，不出现崩溃。",
+          "scope": [
+            "周计划编辑界面",
+            "数据保存逻辑"
+          ],
+          "non_goals": [
+            "重新设计周计划功能"
+          ],
+          "functional_rules": [
+            "用户修改周计划后，点击保存，应用应正常保存并返回。",
+            "修复已知的崩溃原因，如空指针、数据格式错误等。",
+            "增加错误处理，保存失败时提示用户。"
+          ],
+          "edge_cases": [
+            "修改计划时网络中断，保存失败不崩溃。",
+            "计划中包含特殊字符或空值，保存正常。"
+          ],
+          "acceptance_criteria": [
+            "在测试环境中，连续修改周计划100次，无崩溃发生。",
+            "保存失败时显示错误提示，应用不退出。"
+          ],
+          "success_metrics": [
+            "崩溃率降低至0.1%以下",
+            "相关投诉减少80%"
+          ],
+          "impact": 5,
+          "complexity": "medium",
+          "priority_score": 2.89,
+          "target_version": "V1.0",
+          "source_review_ids": [
+            "sample-010"
+          ],
+          "assumptions": [
+            "崩溃可复现",
+            "有崩溃日志可分析"
+          ]
+        },
+        {
+          "requirement_id": "REQ-008",
+          "finding_ids": [
+            "F-008"
+          ],
+          "title": "优化初学者难度曲线",
+          "user_problem": "初学者训练难度上升过快，导致用户难以适应。",
+          "objective": "调整初学者训练计划，使难度递增更平缓。",
+          "scope": [
+            "初学者训练计划",
+            "难度设置"
+          ],
+          "non_goals": [
+            "改变高级用户计划"
+          ],
+          "functional_rules": [
+            "重新设计初学者计划，前两周难度增加幅度降低。",
+            "提供难度自评功能，根据用户反馈调整计划。",
+            "在计划中增加更多基础动作和休息时间。"
+          ],
+          "edge_cases": [
+            "用户已有健身基础，可选择跳过初学者计划。",
+            "难度调整后，用户可手动修改计划。"
+          ],
+          "acceptance_criteria": [
+            "初学者计划前两周的难度评分低于现有计划。",
+            "用户可反馈难度，系统根据反馈调整后续计划。"
+          ],
+          "success_metrics": [
+            "初学者用户留存率提升15%",
+            "难度相关投诉减少50%"
+          ],
+          "impact": 4,
+          "complexity": "medium",
+          "priority_score": 2.32,
+          "target_version": "V1.1",
+          "source_review_ids": [
+            "sample-018"
+          ],
+          "assumptions": [
+            "现有难度曲线确实过陡",
+            "可调整计划内容"
+          ]
+        },
+        {
+          "requirement_id": "REQ-009",
+          "finding_ids": [
+            "F-003"
+          ],
+          "title": "优化语音指导音量",
+          "user_problem": "播放音乐时语音指导音量过小，用户难以听清。",
+          "objective": "确保语音指导在音乐播放时清晰可闻，提升训练指导效果。",
+          "scope": [
+            "音频设置",
+            "语音指导播放逻辑"
+          ],
+          "non_goals": [
+            "改变音乐音量",
+            "增加语音指导类型"
+          ],
+          "functional_rules": [
+            "提供语音指导音量独立调节选项，范围0-100%。",
+            "当音乐播放时，自动降低音乐音量或提高语音音量，确保语音清晰。",
+            "用户可手动调整语音音量，并保存设置。"
+          ],
+          "edge_cases": [
+            "用户未播放音乐时，语音音量保持正常。",
+            "蓝牙耳机连接时，音量调节正常。"
+          ],
+          "acceptance_criteria": [
+            "在音乐播放时，语音指导音量可调且清晰。",
+            "用户调整语音音量后，下次训练仍保持该设置。"
+          ],
+          "success_metrics": [
+            "语音指导相关投诉减少40%",
+            "用户满意度评分提升10%"
+          ],
+          "impact": 3,
+          "complexity": "medium",
+          "priority_score": 1.74,
+          "target_version": "V1.1",
+          "source_review_ids": [
+            "sample-006"
+          ],
+          "assumptions": [
+            "用户设备支持音量独立调节",
+            "音频系统可编程控制"
+          ]
+        }
+      ],
+      "quantity_notice": null
+    },
+    "generate_tests": {
+      "test_cases": [
+        {
+          "test_case_id": "TC-001",
+          "requirement_id": "REQ-001",
+          "title": "验证动作预览时长至少为10秒",
+          "preconditions": [
+            "用户已登录",
+            "网络连接正常",
+            "进入动作预览界面"
+          ],
+          "steps": [
+            "打开应用并登录",
+            "选择一个动作进入预览界面",
+            "开始播放预览并计时"
+          ],
+          "expected_result": "预览视频播放时长不少于10秒，且播放过程中无中断",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-008",
+            "sample-009"
+          ]
+        },
+        {
+          "test_case_id": "TC-002",
+          "requirement_id": "REQ-001",
+          "title": "验证重播按钮功能",
+          "preconditions": [
+            "用户已登录",
+            "进入动作预览界面",
+            "预览视频已播放完毕或正在播放"
+          ],
+          "steps": [
+            "在预览界面找到重播按钮",
+            "点击重播按钮",
+            "观察视频是否重新开始播放"
+          ],
+          "expected_result": "点击重播按钮后，视频从开头重新播放，且可多次点击重播",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-008",
+            "sample-009"
+          ]
+        },
+        {
+          "test_case_id": "TC-003",
+          "requirement_id": "REQ-001",
+          "title": "验证预览界面显示动作名称和关键要点",
+          "preconditions": [
+            "用户已登录",
+            "进入动作预览界面"
+          ],
+          "steps": [
+            "观察预览界面",
+            "检查是否显示动作名称",
+            "检查是否显示关键要点文字"
+          ],
+          "expected_result": "预览界面显示动作名称和关键要点，文字清晰可读",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-008",
+            "sample-009"
+          ]
+        },
+        {
+          "test_case_id": "TC-004",
+          "requirement_id": "REQ-001",
+          "title": "验证网络慢时预览加载优化",
+          "preconditions": [
+            "用户已登录",
+            "网络速度较慢（如3G网络）",
+            "进入动作预览界面"
+          ],
+          "steps": [
+            "在慢速网络环境下打开动作预览",
+            "观察加载过程",
+            "记录加载完成所需时间"
+          ],
+          "expected_result": "预览视频在合理时间内加载完成（如不超过10秒），且加载过程中有进度提示，不出现长时间白屏",
+          "case_type": "boundary",
+          "source_review_ids": [
+            "sample-008",
+            "sample-009"
+          ]
+        },
+        {
+          "test_case_id": "TC-005",
+          "requirement_id": "REQ-002",
+          "title": "正常设置自定义休息时间并生效",
+          "preconditions": [
+            "用户已登录并进入训练设置页面"
+          ],
+          "steps": [
+            "在训练设置中找到“休息时间”选项",
+            "将休息时间设置为2分钟",
+            "保存设置",
+            "开始一个训练并进入休息计时器"
+          ],
+          "expected_result": "休息计时器显示2分钟倒计时，且按2分钟计时",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-015",
+            "sample-016"
+          ]
+        },
+        {
+          "test_case_id": "TC-006",
+          "requirement_id": "REQ-002",
+          "title": "设置休息时间超出范围时提示并限制",
+          "preconditions": [
+            "用户已登录并进入训练设置页面"
+          ],
+          "steps": [
+            "在训练设置中找到“休息时间”选项",
+            "尝试将休息时间设置为10分钟",
+            "观察系统响应"
+          ],
+          "expected_result": "系统提示休息时间必须在30秒至5分钟之间，且无法保存超出范围的值",
+          "case_type": "exception",
+          "source_review_ids": [
+            "sample-015",
+            "sample-016"
+          ]
+        },
+        {
+          "test_case_id": "TC-007",
+          "requirement_id": "REQ-002",
+          "title": "设置休息时间边界值30秒和5分钟",
+          "preconditions": [
+            "用户已登录并进入训练设置页面"
+          ],
+          "steps": [
+            "在训练设置中将休息时间设置为30秒并保存",
+            "开始训练并进入休息计时器，确认计时器显示30秒",
+            "返回设置将休息时间设置为5分钟并保存",
+            "开始训练并进入休息计时器，确认计时器显示5分钟"
+          ],
+          "expected_result": "30秒和5分钟均被接受，且休息计时器正确显示对应时间",
+          "case_type": "boundary",
+          "source_review_ids": [
+            "sample-015",
+            "sample-016"
+          ]
+        },
+        {
+          "test_case_id": "TC-008",
+          "requirement_id": "REQ-002",
+          "title": "用户未设置休息时间时使用默认值",
+          "preconditions": [
+            "用户已登录，且从未修改过休息时间设置"
+          ],
+          "steps": [
+            "进入训练设置页面，查看休息时间选项",
+            "不修改任何设置，直接开始训练并进入休息计时器"
+          ],
+          "expected_result": "休息计时器使用默认休息时间（如1分钟），且设置界面显示默认值",
+          "case_type": "regression",
+          "source_review_ids": [
+            "sample-015",
+            "sample-016"
+          ]
+        },
+        {
+          "test_case_id": "TC-009",
+          "requirement_id": "REQ-003",
+          "title": "订阅页面显示试用续订和价格信息",
+          "preconditions": [
+            "用户已登录",
+            "用户访问订阅页面"
+          ],
+          "steps": [
+            "打开订阅页面",
+            "查看页面上的试用时长、续订日期和月付价格信息"
+          ],
+          "expected_result": "订阅页面显著位置显示免费试用时长、续订日期和月付价格，且字体大小不小于14px。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-001",
+            "sample-002"
+          ]
+        },
+        {
+          "test_case_id": "TC-010",
+          "requirement_id": "REQ-003",
+          "title": "确认弹窗显示扣费金额和日期",
+          "preconditions": [
+            "用户已登录",
+            "用户已选择订阅计划"
+          ],
+          "steps": [
+            "点击订阅按钮",
+            "观察弹出的确认框"
+          ],
+          "expected_result": "确认弹窗出现，并明确提示试用结束后的扣费金额和日期。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-001",
+            "sample-002"
+          ]
+        },
+        {
+          "test_case_id": "TC-011",
+          "requirement_id": "REQ-003",
+          "title": "取消订阅后不显示续订信息",
+          "preconditions": [
+            "用户已订阅",
+            "用户已取消订阅"
+          ],
+          "steps": [
+            "取消订阅后重新访问订阅页面",
+            "检查页面是否显示续订信息"
+          ],
+          "expected_result": "订阅页面不再显示续订信息。",
+          "case_type": "exception",
+          "source_review_ids": [
+            "sample-001",
+            "sample-002"
+          ]
+        },
+        {
+          "test_case_id": "TC-012",
+          "requirement_id": "REQ-003",
+          "title": "价格变动后订阅页面和邮件同步更新",
+          "preconditions": [
+            "管理员已修改订阅价格"
+          ],
+          "steps": [
+            "打开订阅页面",
+            "查看月付价格",
+            "触发欢迎邮件发送（如新订阅）",
+            "检查邮件中的价格信息"
+          ],
+          "expected_result": "订阅页面和欢迎邮件中的月付价格均为更新后的价格。",
+          "case_type": "regression",
+          "source_review_ids": [
+            "sample-001",
+            "sample-002"
+          ]
+        },
+        {
+          "test_case_id": "TC-013",
+          "requirement_id": "REQ-004",
+          "title": "验证暂停后点击继续，计时器从剩余时间恢复",
+          "preconditions": [
+            "应用已启动并进入训练计时器界面",
+            "计时器正在运行"
+          ],
+          "steps": [
+            "1. 启动计时器，记录当前剩余时间T1",
+            "2. 点击暂停按钮",
+            "3. 等待5秒",
+            "4. 点击继续按钮",
+            "5. 观察计时器显示的时间"
+          ],
+          "expected_result": "计时器从T1开始继续倒计时，而不是从T1-5秒开始，且时间显示准确",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-004",
+            "sample-005"
+          ]
+        },
+        {
+          "test_case_id": "TC-014",
+          "requirement_id": "REQ-004",
+          "title": "验证暂停后锁屏再解锁，继续后计时器时间正确",
+          "preconditions": [
+            "应用已启动并进入训练计时器界面",
+            "计时器正在运行"
+          ],
+          "steps": [
+            "1. 启动计时器，记录当前剩余时间T1",
+            "2. 点击暂停按钮",
+            "3. 锁屏",
+            "4. 等待10秒",
+            "5. 解锁屏幕",
+            "6. 点击继续按钮",
+            "7. 观察计时器显示的时间"
+          ],
+          "expected_result": "计时器从T1开始继续倒计时，不受锁屏期间时间流逝影响",
+          "case_type": "regression",
+          "source_review_ids": [
+            "sample-004",
+            "sample-005"
+          ]
+        },
+        {
+          "test_case_id": "TC-015",
+          "requirement_id": "REQ-004",
+          "title": "验证多次暂停/继续操作后计时器时间准确",
+          "preconditions": [
+            "应用已启动并进入训练计时器界面",
+            "计时器正在运行"
+          ],
+          "steps": [
+            "1. 启动计时器，记录初始剩余时间T0",
+            "2. 重复以下操作10次：点击暂停，等待2秒，点击继续",
+            "3. 记录最终剩余时间T_final",
+            "4. 计算总暂停等待时间（10次*2秒=20秒）",
+            "5. 比较T_final与T0-20秒"
+          ],
+          "expected_result": "T_final等于T0-20秒，误差不超过1秒",
+          "case_type": "boundary",
+          "source_review_ids": [
+            "sample-004",
+            "sample-005"
+          ]
+        },
+        {
+          "test_case_id": "TC-016",
+          "requirement_id": "REQ-004",
+          "title": "验证暂停后应用被系统杀死，重新打开时提示恢复训练",
+          "preconditions": [
+            "应用已启动并进入训练计时器界面",
+            "计时器正在运行"
+          ],
+          "steps": [
+            "1. 启动计时器，记录剩余时间T1",
+            "2. 点击暂停按钮",
+            "3. 通过系统任务管理器强制杀死应用",
+            "4. 重新打开应用",
+            "5. 观察是否有恢复训练的提示"
+          ],
+          "expected_result": "应用弹出提示询问是否恢复训练，选择恢复后计时器从T1继续，选择不恢复则计时器重置",
+          "case_type": "exception",
+          "source_review_ids": [
+            "sample-004",
+            "sample-005"
+          ]
+        },
+        {
+          "test_case_id": "TC-017",
+          "requirement_id": "REQ-005",
+          "title": "正常导出本周训练摘要为CSV",
+          "preconditions": [
+            "用户已登录",
+            "训练历史页面存在本周至少一条训练记录",
+            "系统支持文件分享功能"
+          ],
+          "steps": [
+            "打开训练历史页面",
+            "点击“导出本周摘要”按钮",
+            "在弹出菜单中选择CSV格式",
+            "确认生成文件并分享"
+          ],
+          "expected_result": "生成CSV文件，包含训练日期、动作、时长、消耗卡路里等字段，内容与训练记录一致，并弹出系统分享菜单。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-012",
+            "sample-013"
+          ]
+        },
+        {
+          "test_case_id": "TC-018",
+          "requirement_id": "REQ-005",
+          "title": "本周无训练数据时导出提示无数据",
+          "preconditions": [
+            "用户已登录",
+            "训练历史页面本周无任何训练记录"
+          ],
+          "steps": [
+            "打开训练历史页面",
+            "点击“导出本周摘要”按钮"
+          ],
+          "expected_result": "系统提示“本周无训练数据”，不生成文件，不弹出分享菜单。",
+          "case_type": "exception",
+          "source_review_ids": [
+            "sample-012",
+            "sample-013"
+          ]
+        },
+        {
+          "test_case_id": "TC-019",
+          "requirement_id": "REQ-005",
+          "title": "导出过程中网络中断提示失败",
+          "preconditions": [
+            "用户已登录",
+            "训练历史页面存在本周训练记录",
+            "系统支持文件分享功能"
+          ],
+          "steps": [
+            "打开训练历史页面",
+            "点击“导出本周摘要”按钮",
+            "在导出过程中断开网络连接"
+          ],
+          "expected_result": "系统提示“导出失败，请检查网络连接”，不生成文件，不弹出分享菜单。",
+          "case_type": "exception",
+          "source_review_ids": [
+            "sample-012",
+            "sample-013"
+          ]
+        },
+        {
+          "test_case_id": "TC-020",
+          "requirement_id": "REQ-005",
+          "title": "导出PDF格式文件内容正确",
+          "preconditions": [
+            "用户已登录",
+            "训练历史页面存在本周至少一条训练记录",
+            "系统支持文件分享功能"
+          ],
+          "steps": [
+            "打开训练历史页面",
+            "点击“导出本周摘要”按钮",
+            "在弹出菜单中选择PDF格式",
+            "确认生成文件并分享"
+          ],
+          "expected_result": "生成PDF文件，包含训练日期、动作、时长、消耗卡路里等字段，内容与训练记录一致，并弹出系统分享菜单。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-012",
+            "sample-013"
+          ]
+        },
+        {
+          "test_case_id": "TC-021",
+          "requirement_id": "REQ-006",
+          "title": "验证免打扰时段内不发送通知",
+          "preconditions": [
+            "用户已登录系统",
+            "用户已设置免打扰时段为 22:00-06:00",
+            "当前时间在免打扰时段内（例如 23:00）"
+          ],
+          "steps": [
+            "触发一个非紧急通知（如新消息通知）",
+            "检查通知发送记录或用户端是否收到通知"
+          ],
+          "expected_result": "在免打扰时段内，非紧急通知不被发送，用户未收到任何通知。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-019"
+          ]
+        },
+        {
+          "test_case_id": "TC-022",
+          "requirement_id": "REQ-006",
+          "title": "验证跨天免打扰时段正确处理",
+          "preconditions": [
+            "用户已登录系统",
+            "用户已设置免打扰时段为 22:00-06:00",
+            "当前时间为 23:30（跨天时段内）"
+          ],
+          "steps": [
+            "触发一个非紧急通知",
+            "检查通知是否被阻止",
+            "将系统时间调整为次日 05:30，再次触发通知",
+            "检查通知是否仍被阻止"
+          ],
+          "expected_result": "在跨天时段内的所有时间点（22:00-06:00），非紧急通知均不被发送。",
+          "case_type": "boundary",
+          "source_review_ids": [
+            "sample-019"
+          ]
+        },
+        {
+          "test_case_id": "TC-023",
+          "requirement_id": "REQ-006",
+          "title": "验证紧急通知在免打扰时段内仍可发送",
+          "preconditions": [
+            "用户已登录系统",
+            "用户已设置免打扰时段为 22:00-06:00",
+            "当前时间在免打扰时段内（例如 23:00）"
+          ],
+          "steps": [
+            "触发一个紧急通知（如系统警告）",
+            "检查通知是否被发送"
+          ],
+          "expected_result": "紧急通知在免打扰时段内仍被发送，用户能收到该通知。",
+          "case_type": "exception",
+          "source_review_ids": [
+            "sample-019"
+          ]
+        },
+        {
+          "test_case_id": "TC-024",
+          "requirement_id": "REQ-006",
+          "title": "验证修改免打扰时段后立即生效",
+          "preconditions": [
+            "用户已登录系统",
+            "用户已设置免打扰时段为 22:00-06:00",
+            "当前时间为 21:00（不在原免打扰时段内）"
+          ],
+          "steps": [
+            "将免打扰时段修改为 20:00-23:00",
+            "立即触发一个非紧急通知",
+            "检查通知是否被阻止"
+          ],
+          "expected_result": "修改后立即生效，当前时间 21:00 在修改后的时段内，非紧急通知不被发送。",
+          "case_type": "regression",
+          "source_review_ids": [
+            "sample-019"
+          ]
+        },
+        {
+          "test_case_id": "TC-025",
+          "requirement_id": "REQ-007",
+          "title": "正常修改周计划并保存成功",
+          "preconditions": [
+            "应用已启动并登录",
+            "存在一个已创建的周计划"
+          ],
+          "steps": [
+            "打开周计划编辑界面",
+            "修改计划内容，如更改任务名称或日期",
+            "点击保存按钮",
+            "观察应用行为"
+          ],
+          "expected_result": "应用正常保存修改，返回周计划列表或显示成功提示，无崩溃发生。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-010"
+          ]
+        },
+        {
+          "test_case_id": "TC-026",
+          "requirement_id": "REQ-007",
+          "title": "保存时网络中断不崩溃且提示错误",
+          "preconditions": [
+            "应用已启动并登录",
+            "存在一个已创建的周计划",
+            "网络连接可用"
+          ],
+          "steps": [
+            "打开周计划编辑界面",
+            "修改计划内容",
+            "在点击保存前断开网络连接",
+            "点击保存按钮",
+            "观察应用行为"
+          ],
+          "expected_result": "应用不崩溃，显示保存失败的错误提示，应用保持运行状态。",
+          "case_type": "exception",
+          "source_review_ids": [
+            "sample-010"
+          ]
+        },
+        {
+          "test_case_id": "TC-027",
+          "requirement_id": "REQ-007",
+          "title": "计划包含特殊字符或空值保存正常",
+          "preconditions": [
+            "应用已启动并登录",
+            "存在一个已创建的周计划"
+          ],
+          "steps": [
+            "打开周计划编辑界面",
+            "在计划内容中输入特殊字符如@#￥%……&*",
+            "清空某个必填字段使其为空",
+            "点击保存按钮",
+            "观察应用行为"
+          ],
+          "expected_result": "应用正常处理，不崩溃，保存成功或给出明确的字段校验提示。",
+          "case_type": "boundary",
+          "source_review_ids": [
+            "sample-010"
+          ]
+        },
+        {
+          "test_case_id": "TC-028",
+          "requirement_id": "REQ-007",
+          "title": "连续修改周计划100次无崩溃",
+          "preconditions": [
+            "应用已启动并登录",
+            "存在一个已创建的周计划"
+          ],
+          "steps": [
+            "打开周计划编辑界面",
+            "重复执行修改计划内容并保存的操作100次",
+            "每次保存后确认应用未崩溃",
+            "记录所有操作结果"
+          ],
+          "expected_result": "连续100次修改保存均成功，应用无崩溃发生。",
+          "case_type": "regression",
+          "source_review_ids": [
+            "sample-010"
+          ]
+        },
+        {
+          "test_case_id": "TC-029",
+          "requirement_id": "REQ-008",
+          "title": "验证初学者计划前两周难度评分低于现有计划",
+          "preconditions": [
+            "系统存在现有初学者计划数据",
+            "系统存在重新设计后的初学者计划数据"
+          ],
+          "steps": [
+            "1. 登录系统并进入初学者训练计划管理页面",
+            "2. 查看重新设计后的初学者计划前两周的难度评分",
+            "3. 查看现有初学者计划前两周的难度评分",
+            "4. 比较两者评分"
+          ],
+          "expected_result": "重新设计后的初学者计划前两周的难度评分低于现有计划的评分",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-018"
+          ]
+        },
+        {
+          "test_case_id": "TC-030",
+          "requirement_id": "REQ-008",
+          "title": "验证难度自评功能可调整后续计划",
+          "preconditions": [
+            "用户已登录系统",
+            "用户处于初学者计划中"
+          ],
+          "steps": [
+            "1. 进入当前训练计划页面",
+            "2. 点击“难度自评”按钮",
+            "3. 选择“难度过高”选项并提交",
+            "4. 查看系统生成的后续计划"
+          ],
+          "expected_result": "系统根据用户反馈调整后续计划，降低难度或增加休息时间",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-018"
+          ]
+        },
+        {
+          "test_case_id": "TC-031",
+          "requirement_id": "REQ-008",
+          "title": "验证有健身基础的用户可跳过初学者计划",
+          "preconditions": [
+            "用户已登录系统",
+            "用户有健身基础（如历史训练记录）"
+          ],
+          "steps": [
+            "1. 进入训练计划选择页面",
+            "2. 查看是否有“跳过初学者计划”选项",
+            "3. 点击该选项",
+            "4. 确认跳过后进入高级计划"
+          ],
+          "expected_result": "系统允许用户跳过初学者计划，并直接进入高级计划",
+          "case_type": "boundary",
+          "source_review_ids": [
+            "sample-018"
+          ]
+        },
+        {
+          "test_case_id": "TC-032",
+          "requirement_id": "REQ-008",
+          "title": "验证难度调整后用户可手动修改计划",
+          "preconditions": [
+            "用户已登录系统",
+            "用户处于初学者计划中",
+            "系统已根据难度自评调整计划"
+          ],
+          "steps": [
+            "1. 进入当前训练计划页面",
+            "2. 点击“编辑计划”按钮",
+            "3. 修改计划中的动作或休息时间",
+            "4. 保存修改"
+          ],
+          "expected_result": "系统保存用户手动修改的计划，并在后续训练中应用",
+          "case_type": "regression",
+          "source_review_ids": [
+            "sample-018"
+          ]
+        },
+        {
+          "test_case_id": "TC-033",
+          "requirement_id": "REQ-009",
+          "title": "验证音乐播放时语音指导音量可独立调节并清晰可闻",
+          "preconditions": [
+            "设备已安装最新版本应用",
+            "用户已登录",
+            "设备已连接网络",
+            "音乐播放功能正常",
+            "语音指导功能正常"
+          ],
+          "steps": [
+            "打开应用并进入训练页面",
+            "开始播放音乐",
+            "开始一次训练，触发语音指导",
+            "在音频设置中找到语音指导音量调节选项",
+            "将语音指导音量从默认值调至80%",
+            "播放语音指导并注意听清程度"
+          ],
+          "expected_result": "语音指导音量可独立调节，调节后语音清晰可闻，音乐音量自动降低或语音音量提高，用户能清楚听到指导内容。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-006"
+          ]
+        },
+        {
+          "test_case_id": "TC-034",
+          "requirement_id": "REQ-009",
+          "title": "验证语音指导音量调节范围边界值0%和100%",
+          "preconditions": [
+            "设备已安装最新版本应用",
+            "用户已登录",
+            "音频设置页面可访问"
+          ],
+          "steps": [
+            "打开应用并进入音频设置",
+            "将语音指导音量调至0%",
+            "播放语音指导",
+            "将语音指导音量调至100%",
+            "播放语音指导"
+          ],
+          "expected_result": "音量调至0%时语音指导无声；调至100%时语音指导音量最大且无破音，调节范围正确。",
+          "case_type": "boundary",
+          "source_review_ids": [
+            "sample-006"
+          ]
+        },
+        {
+          "test_case_id": "TC-035",
+          "requirement_id": "REQ-009",
+          "title": "验证未播放音乐时语音指导音量保持正常",
+          "preconditions": [
+            "设备已安装最新版本应用",
+            "用户已登录",
+            "未播放音乐"
+          ],
+          "steps": [
+            "打开应用并进入训练页面",
+            "不播放音乐，直接开始训练",
+            "触发语音指导",
+            "观察语音指导音量"
+          ],
+          "expected_result": "语音指导音量正常，无异常增大或减小，与设置值一致。",
+          "case_type": "normal",
+          "source_review_ids": [
+            "sample-006"
+          ]
+        },
+        {
+          "test_case_id": "TC-036",
+          "requirement_id": "REQ-009",
+          "title": "验证蓝牙耳机连接时语音指导音量调节正常",
+          "preconditions": [
+            "设备已安装最新版本应用",
+            "用户已登录",
+            "蓝牙耳机已连接并配对成功"
+          ],
+          "steps": [
+            "连接蓝牙耳机",
+            "打开应用并进入音频设置",
+            "调节语音指导音量至60%",
+            "播放音乐并开始训练",
+            "触发语音指导，检查音量"
+          ],
+          "expected_result": "蓝牙耳机下语音指导音量调节正常，语音清晰，音乐音量自动调整，无异常。",
+          "case_type": "regression",
+          "source_review_ids": [
+            "sample-006"
+          ]
+        }
+      ]
+    },
+    "validate_traceability": {
+      "valid": true,
+      "issues": []
+    }
+  }
+}

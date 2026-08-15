@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 import pandas as pd
@@ -321,14 +321,33 @@ def render_result_tabs(
     events: list[StageEvent],
 ) -> None:
     run = repository.get_run(run_id)
-    clean = repository.get_output(run_id, Stage.CLEAN) or {"reviews": [], "stats": {}}
-    findings = repository.get_output(run_id, Stage.VALIDATE_FINDINGS) or {
+    outputs = {
+        stage.value: repository.get_output(run_id, stage)
+        for stage in (
+            Stage.CLEAN,
+            Stage.VALIDATE_FINDINGS,
+            Stage.PLAN,
+            Stage.GENERATE_TESTS,
+            Stage.VALIDATE_TRACEABILITY,
+        )
+    }
+    render_result_payloads(run, outputs, run_id, events)
+
+
+def render_result_payloads(
+    run: RunRecord,
+    outputs: Mapping[str, dict[str, Any] | None],
+    result_key: str,
+    events: list[StageEvent],
+) -> None:
+    clean = outputs.get(Stage.CLEAN.value) or {"reviews": [], "stats": {}}
+    findings = outputs.get(Stage.VALIDATE_FINDINGS.value) or {
         "findings": [],
         "report": {"valid": False, "issues": []},
     }
-    plan = repository.get_output(run_id, Stage.PLAN) or {"requirements": []}
-    test_output = repository.get_output(run_id, Stage.GENERATE_TESTS) or {"test_cases": []}
-    trace_output = repository.get_output(run_id, Stage.VALIDATE_TRACEABILITY)
+    plan = outputs.get(Stage.PLAN.value) or {"requirements": []}
+    test_output = outputs.get(Stage.GENERATE_TESTS.value) or {"test_cases": []}
+    trace_output = outputs.get(Stage.VALIDATE_TRACEABILITY.value)
     trace = trace_output or {"valid": False, "issues": []}
     run_limitations = _run_limitations(run, clean)
 
@@ -351,7 +370,7 @@ def render_result_tabs(
             clean.get("reviews", []),
             "尚无清洗评论。",
             _REVIEW_COLUMNS,
-            key=f"reviews-{run_id}",
+            key=f"reviews-{result_key}",
         )
     with tabs[2]:
         _render_findings(findings)
@@ -366,7 +385,7 @@ def render_result_tabs(
             test_output.get("test_cases", []),
             "尚无测试用例。",
             _TEST_CASE_COLUMNS,
-            key=f"test-cases-{run_id}",
+            key=f"test-cases-{result_key}",
         )
     with tabs[5]:
         st.badge("Deterministic", color="blue")
@@ -387,13 +406,13 @@ def render_result_tabs(
             rows,
             "尚无可展示的证据链。",
             ("requirement_id", "finding_ids", "review_ids", "test_case_ids"),
-            key=f"traceability-{run_id}",
+            key=f"traceability-{result_key}",
         )
         render_records(
             trace.get("issues", []),
             "没有追溯问题。",
             _ISSUE_COLUMNS,
-            key=f"traceability-issues-{run_id}",
+            key=f"traceability-issues-{result_key}",
         )
     with tabs[6]:
         event_rows = [
@@ -409,7 +428,7 @@ def render_result_tabs(
             event_rows,
             "尚无运行日志。",
             ("time", "stage", "status", "message"),
-            key=f"events-{run_id}",
+            key=f"events-{result_key}",
         )
         limitation_rows = [
             {
@@ -431,11 +450,11 @@ def render_result_tabs(
             limitation_rows,
             "当前没有记录运行或 Finding 局限。",
             ("scope", "entity_id", "limitation"),
-            key=f"limitations-{run_id}",
+            key=f"limitations-{result_key}",
         )
         render_records(
             findings.get("report", {}).get("issues", []),
             "当前没有 Finding 校验问题。",
             _ISSUE_COLUMNS,
-            key=f"finding-issues-{run_id}",
+            key=f"finding-issues-{result_key}",
         )

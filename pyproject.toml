@@ -9,7 +9,7 @@ description = "Evidence-grounded App Store review analysis and product planning"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-  "streamlit>=1.48,<2",
+  "streamlit>=1.61,<2",
   "pydantic>=2.11,<3",
   "pydantic-settings>=2.10,<3",
   "openai>=1.99,<2",

@@ -2463,7 +2463,7 @@ git commit -m "feat: orchestrate resumable analysis runs"
 - 创建： `src/app_review_insights/ui/main.py`
 - 测试： `tests/test_app_smoke.py`
 
-- [ ] **步骤 1：编写 UI 可导入构建的冒烟测试**
+- [x] **步骤 1：编写 UI 可导入构建的冒烟测试**
 
 ```python
 # tests/test_app_smoke.py
@@ -2486,13 +2486,13 @@ def test_build_services_without_key_keeps_demo_mode_available(tmp_path, monkeypa
     assert services.repository.path.exists()
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_app_smoke.py -v`
 
 预期：失败，因为 UI 模块尚不存在.
 
-- [ ] **步骤 3：实现可复用展示组件**
+- [x] **步骤 3：实现可复用展示组件**
 
 ```python
 # src/app_review_insights/ui/components.py
@@ -2600,7 +2600,7 @@ def render_result_tabs(repository, run_id: str):
         render_records(trace["issues"], "没有追溯问题。")
 ```
 
-- [ ] **步骤 4：实现服务装配与单页布局**
+- [x] **步骤 4：实现服务装配与单页布局**
 
 ```python
 # src/app_review_insights/ui/main.py
@@ -2719,7 +2719,7 @@ def main():
 """Streamlit user interface."""
 ```
 
-- [ ] **步骤 5：运行冒烟测试并手工启动应用**
+- [x] **步骤 5：运行冒烟测试并手工启动应用**
 
 运行：
 
@@ -2730,7 +2730,7 @@ def main():
 
 预期：测试通过；Streamlit 启动时没有导入异常；桌面与窄屏宽度下均能看到输入面板、结果标签页和右侧状态面板.
 
-- [ ] **步骤 6：提交 UI**
+- [x] **步骤 6：提交 UI**
 
 ```powershell
 git add src/app_review_insights/ui app.py tests/test_app_smoke.py
@@ -2746,7 +2746,7 @@ git commit -m "feat: add streamlit analysis workbench"
 - 修改： `src/app_review_insights/ui/main.py`
 - 测试： `tests/test_export.py`
 
-- [ ] **步骤 1：添加失败的缓存标记测试**
+- [x] **步骤 1：添加失败的缓存标记测试**
 
 ```python
 # append to tests/test_export.py
@@ -2760,13 +2760,13 @@ def test_demo_cache_is_explicitly_labeled():
     assert demo["collected_at"]
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_export.py::test_demo_cache_is_explicitly_labeled -v`
 
 预期：失败，因为 缓存加载模块和样例文件尚不存在.
 
-- [ ] **步骤 3：实现严格的演示缓存加载**
+- [x] **步骤 3：实现严格的演示缓存加载**
 
 ```python
 # src/app_review_insights/storage/cache.py
@@ -2809,7 +2809,7 @@ def build_downloads(repository, run_id: str) -> dict[str, bytes]:
     }
 ```
 
-- [ ] **步骤 4：创建小型人工导入样例，并通过真实流水线生成完整演示缓存**
+- [x] **步骤 4：创建小型人工导入样例，并通过真实流水线生成完整演示缓存**
 
 ```json
 {
@@ -2878,7 +2878,7 @@ def export_demo_run(repository, run_id: str, destination: str | Path, source_app
 
 不要手工向演示缓存填写结论。必须通过同一条流水线生成，并保留原始评论 ID。
 
-- [ ] **步骤 5：为 Streamlit 添加明确的演示模式和下载功能**
+- [x] **步骤 5：为 Streamlit 添加明确的演示模式和下载功能**
 
 ```python
 from app_review_insights.storage.cache import build_downloads, load_demo_run
@@ -2903,7 +2903,7 @@ if st.session_state.get("run_id"):
     )
 ```
 
-- [ ] **步骤 6：运行测试并提交**
+- [x] **步骤 6：运行测试并提交**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_export.py -v`
 
@@ -2922,7 +2922,7 @@ git commit -m "feat: add offline demo and result exports"
 - 创建： `docs/model-and-prompts.md`
 - 测试： `tests/test_analysis.py`
 
-- [ ] **步骤 1：添加确定性评分测试**
+- [x] **步骤 1：添加确定性评分测试**
 
 ```python
 # append to tests/test_analysis.py
@@ -2940,13 +2940,13 @@ def test_eval_scores_reference_precision_and_topic_recall():
     assert score["reference_precision"] == 0.5
 ```
 
-- [ ] **步骤 2：运行测试并确认失败**
+- [x] **步骤 2：运行测试并确认失败**
 
 运行：`.\.venv\Scripts\python -m pytest tests/test_analysis.py::test_eval_scores_reference_precision_and_topic_recall -v`
 
 预期：失败，因为 评测脚本尚不存在.
 
-- [ ] **步骤 3：实现确定性评测评分与 CLI 输出**
+- [x] **步骤 3：实现确定性评测评分与 CLI 输出**
 
 ```python
 # scripts/run_eval.py
@@ -2979,7 +2979,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **步骤 4：创建人工标注黄金数据集**
+- [x] **步骤 4：创建人工标注黄金数据集**
 
 ```json
 {
@@ -3039,7 +3039,7 @@ The model performs dynamic topic discovery, consolidation, requirement drafting,
 | 2026-08-15 | batch-v1 / FindingDraft-v1 | gold-reviews | record after first run | record after first run | record after first run | record one observed error | describe the next concrete prompt change |
 ```
 
-- [ ] **步骤 5：运行测试并提交**
+- [x] **步骤 5：运行测试并提交**
 
 运行：
 
