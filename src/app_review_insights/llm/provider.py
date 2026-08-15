@@ -18,9 +18,12 @@ class DeepSeekProvider:
         model: str,
         max_retries: int = 2,
         retry_delays: Sequence[float] | None = None,
+        max_tokens: int = 8192,
     ):
         if max_retries < 0:
             raise ValueError("max_retries must be non-negative")
+        if max_tokens <= 0:
+            raise ValueError("max_tokens must be positive")
 
         delays = tuple((1, 2) if retry_delays is None else retry_delays)
         if any(delay < 0 for delay in delays):
@@ -30,6 +33,7 @@ class DeepSeekProvider:
         self.model = model
         self.max_retries = max_retries
         self.retry_delays = delays
+        self.max_tokens = max_tokens
 
     @classmethod
     def from_settings(cls, settings):
@@ -42,6 +46,7 @@ class DeepSeekProvider:
             ),
             model=settings.model_name,
             max_retries=settings.model_max_retries,
+            max_tokens=settings.model_max_tokens,
         )
 
     def generate(self, system_prompt: str, user_prompt: str, schema: type[T]) -> T:
@@ -64,6 +69,7 @@ class DeepSeekProvider:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     temperature=0.1,
+                    max_tokens=self.max_tokens,
                     response_format={"type": "json_object"},
                     messages=messages,
                 )

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     model_base_url: str = Field(default="https://api.deepseek.com", alias="MODEL_BASE_URL")
     model_timeout_seconds: float = Field(default=60, alias="MODEL_TIMEOUT_SECONDS")
     model_max_retries: int = Field(default=2, alias="MODEL_MAX_RETRIES")
+    model_max_tokens: int = Field(default=8192, alias="MODEL_MAX_TOKENS")
     database_path: Path = Field(default=Path("data/runs/runs.sqlite3"), alias="DATABASE_PATH")
     default_review_limit: int = Field(default=500, alias="DEFAULT_REVIEW_LIMIT")
     batch_review_limit: int = Field(default=100, alias="BATCH_REVIEW_LIMIT")

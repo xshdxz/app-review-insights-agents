@@ -94,6 +94,21 @@ def test_provider_validates_json_against_schema():
     assert completions.calls[0]["temperature"] == 0.1
 
 
+def test_provider_forwards_configured_max_tokens():
+    client, completions = fake_client(['{"findings": [], "batch_limitations": []}'])
+    provider = DeepSeekProvider(
+        client=client,
+        model="deepseek-chat",
+        max_retries=0,
+        retry_delays=(),
+        max_tokens=8192,
+    )
+
+    provider.generate("system", "user", BatchAnalysisResult)
+
+    assert completions.calls[0]["max_tokens"] == 8192
+
+
 def test_provider_preserves_explicit_empty_retry_delays():
     client, _ = fake_client([])
 
