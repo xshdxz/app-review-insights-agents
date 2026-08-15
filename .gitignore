@@ -32,3 +32,6 @@ output/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Coverage artifacts
+.coverage

@@ -1,17 +1,17 @@
 {
   "mode": "historical_cache_demo",
   "is_live": false,
-  "collected_at": "2026-08-15T02:23:46.075779+00:00",
+  "collected_at": "2026-08-15T15:15:56.610140+00:00",
   "source_app_url": "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684",
   "model_provider": "deepseek",
   "model_name": "deepseek-chat",
   "run": {
-    "run_id": "886f03cf-339f-452c-8c57-4ebbd0c3224a",
+    "run_id": "2391b909-6947-4f70-88d3-dc11636420d6",
     "request": {
-      "source_type": "json",
-      "analysis_goal": "识别影响健身体验和产品增长的核心问题，形成5至10个证据充分、可追溯的核心需求",
-      "app_url": null,
-      "review_limit": 100,
+      "source_type": "online",
+      "analysis_goal": "重点分析订阅转化：试用期与续费透明度、付费墙体验和取消订阅路径",
+      "app_url": "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684",
+      "review_limit": 200,
       "ratings": [
         1,
         2,
@@ -27,8 +27,8 @@
     "total_batches": 1,
     "coverage_ratio": 1.0,
     "last_error": null,
-    "created_at": "2026-08-15T02:22:36.339542Z",
-    "updated_at": "2026-08-15T02:23:46.054715Z"
+    "created_at": "2026-08-15T15:10:08.612241Z",
+    "updated_at": "2026-08-15T15:14:23.087294Z"
   },
   "events": [
     {
@@ -36,47 +36,72 @@
       "status": "pending",
       "message": "Analysis run created",
       "payload": {},
-      "created_at": "2026-08-15T02:22:36.349613Z"
+      "created_at": "2026-08-15T15:10:08.618538Z"
     },
     {
       "stage": "collect",
       "status": "running",
       "message": "Stage started: collect",
       "payload": {},
-      "created_at": "2026-08-15T02:22:36.365523Z"
+      "created_at": "2026-08-15T15:10:08.634060Z"
     },
     {
       "stage": "collect",
       "status": "running",
       "message": "Review collection completed",
       "payload": {
-        "review_count": 20
+        "review_count": 100
       },
-      "created_at": "2026-08-15T02:22:36.381344Z"
+      "created_at": "2026-08-15T15:10:10.450385Z"
     },
     {
       "stage": "clean",
       "status": "running",
       "message": "Stage started: clean",
       "payload": {},
-      "created_at": "2026-08-15T02:22:36.397080Z"
+      "created_at": "2026-08-15T15:10:10.465857Z"
     },
     {
       "stage": "clean",
       "status": "running",
       "message": "Review cleaning completed",
       "payload": {
-        "input_count": 20,
-        "output_count": 19
+        "input_count": 100,
+        "output_count": 100
       },
-      "created_at": "2026-08-15T02:22:36.415176Z"
+      "created_at": "2026-08-15T15:10:11.007411Z"
     },
     {
       "stage": "analyze_batches",
       "status": "running",
       "message": "Stage started: analyze_batches",
       "payload": {},
-      "created_at": "2026-08-15T02:22:36.436436Z"
+      "created_at": "2026-08-15T15:10:11.028405Z"
+    },
+    {
+      "stage": "analyze_batches",
+      "status": "waiting_for_model",
+      "message": "Batch analysis paused for retry",
+      "payload": {
+        "batch_index": 0,
+        "completed_batches": 0,
+        "total_batches": 1
+      },
+      "created_at": "2026-08-15T15:11:59.401535Z"
+    },
+    {
+      "stage": "analyze_batches",
+      "status": "running",
+      "message": "Analysis run resumed",
+      "payload": {},
+      "created_at": "2026-08-15T15:13:24.145118Z"
+    },
+    {
+      "stage": "analyze_batches",
+      "status": "running",
+      "message": "Stage started: analyze_batches",
+      "payload": {},
+      "created_at": "2026-08-15T15:13:24.164331Z"
     },
     {
       "stage": "analyze_batches",
@@ -87,7 +112,7 @@
         "completed_batches": 1,
         "total_batches": 1
       },
-      "created_at": "2026-08-15T02:22:45.620628Z"
+      "created_at": "2026-08-15T15:13:45.042565Z"
     },
     {
       "stage": "analyze_batches",
@@ -96,79 +121,95 @@
       "payload": {
         "total_batches": 1
       },
-      "created_at": "2026-08-15T02:22:45.634573Z"
+      "created_at": "2026-08-15T15:13:45.056331Z"
     },
     {
       "stage": "consolidate",
       "status": "running",
       "message": "Stage started: consolidate",
       "payload": {},
-      "created_at": "2026-08-15T02:22:45.649450Z"
+      "created_at": "2026-08-15T15:13:45.082248Z"
     },
     {
       "stage": "consolidate",
       "status": "running",
       "message": "Finding consolidation completed",
       "payload": {
-        "finding_count": 9
+        "finding_count": 4
       },
-      "created_at": "2026-08-15T02:22:51.742281Z"
+      "created_at": "2026-08-15T15:13:49.065499Z"
+    },
+    {
+      "stage": "audit_evidence",
+      "status": "running",
+      "message": "Stage started: audit_evidence",
+      "payload": {},
+      "created_at": "2026-08-15T15:13:49.078790Z"
+    },
+    {
+      "stage": "audit_evidence",
+      "status": "running",
+      "message": "Finding evidence audit completed",
+      "payload": {
+        "finding_count": 4
+      },
+      "created_at": "2026-08-15T15:13:58.736844Z"
     },
     {
       "stage": "validate_findings",
       "status": "running",
       "message": "Stage started: validate_findings",
       "payload": {},
-      "created_at": "2026-08-15T02:22:51.757511Z"
+      "created_at": "2026-08-15T15:13:58.755337Z"
     },
     {
       "stage": "validate_findings",
       "status": "running",
       "message": "Finding validation completed",
       "payload": {
-        "finding_count": 9,
+        "finding_count": 4,
         "valid": true
       },
-      "created_at": "2026-08-15T02:22:51.771767Z"
+      "created_at": "2026-08-15T15:13:58.773460Z"
     },
     {
       "stage": "plan",
       "status": "running",
       "message": "Stage started: plan",
       "payload": {},
-      "created_at": "2026-08-15T02:22:51.788437Z"
+      "created_at": "2026-08-15T15:13:58.793324Z"
     },
     {
       "stage": "plan",
       "status": "running",
       "message": "Product planning completed",
       "payload": {
-        "requirement_count": 9
+        "requirement_count": 4
       },
-      "created_at": "2026-08-15T02:23:10.703716Z"
+      "created_at": "2026-08-15T15:14:08.350121Z"
     },
     {
       "stage": "generate_tests",
       "status": "running",
       "message": "Stage started: generate_tests",
       "payload": {},
-      "created_at": "2026-08-15T02:23:10.720985Z"
+      "created_at": "2026-08-15T15:14:08.364540Z"
     },
     {
       "stage": "generate_tests",
       "status": "running",
       "message": "Test generation completed",
       "payload": {
-        "test_case_count": 36
+        "test_case_count": 16
       },
-      "created_at": "2026-08-15T02:23:46.007599Z"
+      "created_at": "2026-08-15T15:14:23.051522Z"
     },
     {
       "stage": "validate_traceability",
       "status": "running",
       "message": "Stage started: validate_traceability",
       "payload": {},
-      "created_at": "2026-08-15T02:23:46.026651Z"
+      "created_at": "2026-08-15T15:14:23.066347Z"
     },
     {
       "stage": "validate_traceability",
@@ -178,7 +219,7 @@
         "valid": true,
         "issue_count": 0
       },
-      "created_at": "2026-08-15T02:23:46.045902Z"
+      "created_at": "2026-08-15T15:14:23.080435Z"
     },
     {
       "stage": "complete",
@@ -187,504 +228,1916 @@
       "payload": {
         "valid": true
       },
-      "created_at": "2026-08-15T02:23:46.063467Z"
+      "created_at": "2026-08-15T15:14:23.093736Z"
     }
   ],
   "result": {
     "clean": {
       "reviews": [
         {
-          "review_id": "sample-001",
-          "app_id": "sample-demo",
+          "review_id": "14424510771",
+          "app_id": "839285684",
           "storefront": "us",
-          "title": "",
-          "content_original": "The free trial renewal date was not clear before I subscribed.",
-          "content_summary_zh": null,
-          "rating": 2,
-          "app_version": "8.4.0",
-          "author": null,
-          "published_at": "2026-07-01T10:00:00Z",
+          "title": "Amiyah",
+          "content_original": "I loved this it made me so slim I look like a pencil",
+          "content_summary_zh": "喜欢此应用，让我变苗条",
+          "rating": 5,
+          "app_version": "8.5.0",
+          "author": "The best service gh",
+          "published_at": "2026-08-13T23:17:56Z",
           "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "7334c12a84bd848ffe1c"
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "d7ae71aa67d9aa6d02a8"
         },
         {
-          "review_id": "sample-002",
-          "app_id": "sample-demo",
+          "review_id": "14424309790",
+          "app_id": "839285684",
           "storefront": "us",
-          "title": "",
-          "content_original": "I did not see the monthly price until the final confirmation.",
-          "content_summary_zh": null,
+          "title": "used to be waaay more free options",
+          "content_original": "I used this app a lot between 2020 and 2024, came back to it, and I can barely use anything since you can only do one workout with an ad or the rest are behind a paywall.",
+          "content_summary_zh": "以前常用，现在只能做一个训练，其余付费",
           "rating": 1,
-          "app_version": "8.4.0",
-          "author": null,
-          "published_at": "2026-07-02T10:00:00Z",
+          "app_version": "8.5.0",
+          "author": "Franchesca :)",
+          "published_at": "2026-08-13T21:59:17Z",
           "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "670a57eaf0f971a218ca"
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "c57e45546f9c68414e99"
         },
         {
-          "review_id": "sample-003",
-          "app_id": "sample-demo",
+          "review_id": "14423833481",
+          "app_id": "839285684",
           "storefront": "us",
-          "title": "",
-          "content_original": "The subscription terms were clear and easy to understand.",
-          "content_summary_zh": null,
-          "rating": 5,
-          "app_version": "8.4.0",
-          "author": null,
-          "published_at": "2026-07-03T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "690f15e75e58c63b28f9"
-        },
-        {
-          "review_id": "sample-004",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "暂停训练以后计时器不会继续。",
-          "content_summary_zh": null,
-          "rating": 2,
-          "app_version": "8.4.1",
-          "author": null,
-          "published_at": "2026-07-04T10:00:00Z",
-          "language": "zh-cn",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "5211854f6f014728c9eb"
-        },
-        {
-          "review_id": "sample-005",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "暂停训练后计时器有时无法继续。",
-          "content_summary_zh": null,
-          "rating": 2,
-          "app_version": "8.4.1",
-          "author": null,
-          "published_at": "2026-07-05T10:00:00Z",
-          "language": "zh-cn",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "de71b6465f6cbf3d2e26"
-        },
-        {
-          "review_id": "sample-006",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "Voice instructions are too quiet while music is playing.",
-          "content_summary_zh": null,
-          "rating": 3,
-          "app_version": "8.4.1",
-          "author": null,
-          "published_at": "2026-07-06T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "df68425755e5a22c0307"
-        },
-        {
-          "review_id": "sample-007",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "I love the voice guidance and workout pacing.",
-          "content_summary_zh": null,
-          "rating": 5,
-          "app_version": "8.4.1",
-          "author": null,
-          "published_at": "2026-07-07T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "1fc93c1c0c9b603268ac"
-        },
-        {
-          "review_id": "sample-008",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "The exercise preview is too short for unfamiliar movements.",
-          "content_summary_zh": null,
-          "rating": 3,
-          "app_version": "8.4.1",
-          "author": null,
-          "published_at": "2026-07-08T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "09b8f81962eda78ea0c8"
-        },
-        {
-          "review_id": "sample-009",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "希望动作开始前能有更长的示范时间。",
-          "content_summary_zh": null,
-          "rating": 3,
-          "app_version": "8.4.1",
-          "author": null,
-          "published_at": "2026-07-09T10:00:00Z",
-          "language": "zh-cn",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "216aa82a0a3aac7eb2e4"
-        },
-        {
-          "review_id": "sample-010",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "The app crashed after I changed my weekly plan.",
-          "content_summary_zh": null,
+          "title": "No longer free to use",
+          "content_original": "I had to update my previous 5 star review. I was using this app for years but now they’ve changed it so I am unable to do any workouts without paying. It says my free access has been reached. Really sad to have to use a different app now.",
+          "content_summary_zh": "更新后无法免费训练，被迫换应用",
           "rating": 1,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-10T10:00:00Z",
+          "app_version": "8.5.0",
+          "author": "Gabzzz.01",
+          "published_at": "2026-08-13T19:05:33Z",
           "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "eaa7c3587d6eba7b230f"
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "6c9f5d9986ab0cc1ef4f"
         },
         {
-          "review_id": "sample-011",
-          "app_id": "sample-demo",
+          "review_id": "14422561156",
+          "app_id": "839285684",
           "storefront": "us",
-          "title": "",
-          "content_original": "Changing my weekly plan worked perfectly.",
-          "content_summary_zh": null,
-          "rating": 5,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-11T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "a24d4ee7e43888347d3c"
-        },
-        {
-          "review_id": "sample-012",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "Please let me export a weekly workout summary.",
-          "content_summary_zh": null,
-          "rating": 4,
-          "app_version": null,
-          "author": null,
-          "published_at": "2026-07-12T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "0b75ca5fe7c0f085bc05"
-        },
-        {
-          "review_id": "sample-013",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "希望可以导出每周训练记录。",
-          "content_summary_zh": null,
-          "rating": 4,
-          "app_version": null,
-          "author": null,
-          "published_at": "2026-07-13T10:00:00Z",
-          "language": "zh-cn",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "7e8acb7d5791974e9717"
-        },
-        {
-          "review_id": "sample-015",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "Workouts are effective but the rest timer feels too short.",
-          "content_summary_zh": null,
+          "title": "Eh.",
+          "content_original": "It’s okay I guess? I mean it was fine the first time I did it but I don’t wanna pay the subscription.. why pay a subscription for your body getting a workout?",
+          "content_summary_zh": "应用还行，但不想为训练付费",
           "rating": 3,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-15T10:00:00Z",
+          "app_version": "8.5.0",
+          "author": "Ray ig",
+          "published_at": "2026-08-13T12:43:16Z",
           "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "547b010d9112a78383ee"
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "1a1f808d041410a3043c"
         },
         {
-          "review_id": "sample-016",
-          "app_id": "sample-demo",
+          "review_id": "14421357217",
+          "app_id": "839285684",
           "storefront": "us",
-          "title": "",
-          "content_original": "休息时间太短，希望可以自己调整。",
-          "content_summary_zh": null,
+          "title": "Used to be great",
+          "content_original": "Like other people have said, this used to be an awesome app. Now you get like two free workouts and then you gotta pay. Ai slop everywhere. I miss when it was free and fun. 👎",
+          "content_summary_zh": "以前免费好玩，现在两个免费训练后需付费",
+          "rating": 1,
+          "app_version": "8.5.0",
+          "author": "Pipeypony",
+          "published_at": "2026-08-13T05:06:21Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "57a49a230c6fde8365ff"
+        },
+        {
+          "review_id": "14412891541",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "amazing!!!",
+          "content_original": "really good. helped motivate me and kept the workouts easy, fun, and productive. i just wish there were more free courses, or the option to watch an add to use all of the courses that are premium.",
+          "content_summary_zh": "应用不错，希望有更多免费课程或广告解锁",
+          "rating": 4,
+          "app_version": "8.4.29",
+          "author": "Yeetoutofcontext",
+          "published_at": "2026-08-11T02:49:27Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "88cdee9e59967d1dd3a0"
+        },
+        {
+          "review_id": "14411802642",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Impossible to exit ads",
+          "content_original": "Even after you watch the 90 second ads, there’s no way to get out of it and proceed to the app. Total waste of time.",
+          "content_summary_zh": "看90秒广告后无法继续，浪费时间",
+          "rating": 1,
+          "app_version": "8.5.0",
+          "author": "ndhshahka",
+          "published_at": "2026-08-10T19:57:40Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "03bbf49ee05b4a35bbd8"
+        },
+        {
+          "review_id": "14408658475",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Used to be free, not anymore",
+          "content_original": "I used to love this app for daily, quick workouts, but they recently changed it so you are unable to use it for free. Very disappointed in the changes this app has had, lots of AI use for their workouts as well. Sad to see this app go downhill.",
+          "content_summary_zh": "以前喜欢，现在无法免费使用，失望",
+          "rating": 1,
+          "app_version": "8.4.29",
+          "author": "Blue Nat",
+          "published_at": "2026-08-10T01:06:39Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "e5789bcfa7cc0ab5b2bd"
+        },
+        {
+          "review_id": "14401657445",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Abs",
+          "content_original": "I didn’t feel anything on my stomach where I’m supposed to get abs",
+          "content_summary_zh": "腹部训练没感觉",
+          "rating": 4,
+          "app_version": "8.4.29",
+          "author": "Audrina1771",
+          "published_at": "2026-08-08T05:45:14Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "ef3d2002eb9ff3e520b6"
+        },
+        {
+          "review_id": "14397715067",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "disappointed, hidden charges and app quality has gone downhill",
+          "content_original": "This app has become a money grab. I have used this app for a long time, but the current version is extremely disappointing. The biggest issue is the subscription trap. I signed up for a trial expecting a trial experience, but I was charged afterward without a clear enough reminder. I have reported this to Apple because this kind of payment experience is not acceptable. What makes it worse is that the app itself is getting worse every year. The workouts are outdated, repetitive, and lack creativity. It feels like the team is recycling old content instead of creating new and useful fitness programs. For a paid fitness app, the lack of fresh content is unacceptable. I also noticed that critical reviews disappear, which makes me question how much the company values honest user feedback. This app used to have potential, but now it feels like the priority is getting subscriptions rather than delivering a quality fitness experience. Save your money and look for a better fitness app.",
+          "content_summary_zh": "订阅陷阱，试用后扣费，内容陈旧，差评被删",
+          "rating": 1,
+          "app_version": "8.4.29",
+          "author": "ThornHona",
+          "published_at": "2026-08-07T05:38:14Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "5aeafc06afd8fd153620"
+        },
+        {
+          "review_id": "14395044140",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Do not buy",
+          "content_original": "I downloaded this app, thinking it would be different from all the other Workout apps that I used in the past, but that is not the case the questionnaire is the exact same from all the other Workout apps that I’ve downloaded.",
+          "content_summary_zh": "问卷与其他应用相同，无新意",
+          "rating": 1,
+          "app_version": "8.4.29",
+          "author": "skaoshfh",
+          "published_at": "2026-08-06T13:48:32Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "71df9dd355df15f4f2c8"
+        },
+        {
+          "review_id": "14386691397",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "I enjoyed this app",
+          "content_original": "This app made me feel the burn and so far it’s been great",
+          "content_summary_zh": "训练有效果，感觉很好",
+          "rating": 4,
+          "app_version": "8.4.29",
+          "author": "I dream abt Billie",
+          "published_at": "2026-08-04T12:41:07Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "36dcea882220ddafb1ca"
+        },
+        {
+          "review_id": "14381025970",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Is forcing me out of the free option",
+          "content_original": "I’ve been using this app for years for free and recently they’ve refused to let me work out using their app unless I pay, saying I’ve used my limit, which is absolutely ridiculous",
+          "content_summary_zh": "多年免费使用，现在被限制需付费",
+          "rating": 1,
+          "app_version": "8.4.28",
+          "author": "Genevieve.veile16",
+          "published_at": "2026-08-03T02:44:45Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "b776e5bddd28a012acfa"
+        },
+        {
+          "review_id": "14373055910",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "AMAZING",
+          "content_original": "✨You better get it now✨",
+          "content_summary_zh": "推荐现在获取",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Weezer fan77453",
+          "published_at": "2026-08-01T03:15:55Z",
+          "language": "af",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "0362ea38824f9636ee4d"
+        },
+        {
+          "review_id": "14367493057",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Not worth it anymore. I’m disappointed.",
+          "content_original": "I used to use this app alllll the time in 2020 I recently decided I wanted to use it again, but it’s not the same at ALL. It’s all AI slip and you have to pay. It used to be free and easy to use and so helpful and effective. Now it’s useless. I wouldn’t recommend getting this app at all.",
+          "content_summary_zh": "以前免费好用，现在全是AI和付费，不推荐",
+          "rating": 1,
+          "app_version": "8.4.28",
+          "author": "IzzyWizzy0505",
+          "published_at": "2026-07-30T18:15:57Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "2a5bab4bf2eea7ef5b38"
+        },
+        {
+          "review_id": "14366900095",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Military workout",
+          "content_original": "I would like a longer interval time but overall I loved my first workout!",
+          "content_summary_zh": "希望间隔更长，但首次训练很棒",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Pam14290",
+          "published_at": "2026-07-30T15:17:49Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "bdaf0452e53e7eca4863"
+        },
+        {
+          "review_id": "14366479265",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Not as Good as it Used To Be",
+          "content_original": "I’ve been using this app on and off for a few years. I’ve always felt it was worth the money, and could feel soreness the next day where the daily workout would target. However, since the app remodel, the daily workout seems so inconsistent. It has me doing legs every single day, I’m 10 days in, and I’ve never done arms. I have to keep resetting the Plan Settings because they keep changing or defaulting without notice. It’s frustrating because I loved the app back then, but it just doesn’t work for me now.",
+          "content_summary_zh": "更新后训练不一致，计划设置常重置",
           "rating": 3,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-16T10:00:00Z",
-          "language": "zh-cn",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "8a5d5c4c93578c7f7a3b"
+          "app_version": "8.4.28",
+          "author": "AppReview…",
+          "published_at": "2026-07-30T13:19:13Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "9342aa9f9780623b4f18"
         },
         {
-          "review_id": "sample-017",
-          "app_id": "sample-demo",
+          "review_id": "14365412685",
+          "app_id": "839285684",
           "storefront": "us",
-          "title": "",
-          "content_original": "The adjustable difficulty is excellent.",
-          "content_summary_zh": null,
+          "title": "False advertising",
+          "content_original": "Stop putting stuff under free thats not free if I wanted to pay for it I would get a personal trainer",
+          "content_summary_zh": "免费内容不免费，不如请私教",
+          "rating": 1,
+          "app_version": "8.4.28",
+          "author": "MYOB_",
+          "published_at": "2026-07-30T06:50:13Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "5a38d45819d7851224e0"
+        },
+        {
+          "review_id": "14364512490",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Good workout app for woman",
+          "content_original": "I think this is one of the best workout apps, It has really good plans and you do not have to pay and great if you want to get in shape if you are a mom or someone who works at home I 100% recommend.",
+          "content_summary_zh": "最佳训练应用，免费且适合居家",
           "rating": 5,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-17T10:00:00Z",
+          "app_version": "8.4.28",
+          "author": "Maya.nako",
+          "published_at": "2026-07-30T00:51:23Z",
           "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "a42489533e047de878c8"
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "814374a364c125a43f2e"
         },
         {
-          "review_id": "sample-018",
-          "app_id": "sample-demo",
+          "review_id": "14364018861",
+          "app_id": "839285684",
           "storefront": "us",
-          "title": "",
-          "content_original": "Beginner workouts become difficult too quickly.",
-          "content_summary_zh": null,
-          "rating": 2,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-18T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "37eae75cfd05c45ff091"
-        },
-        {
-          "review_id": "sample-019",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "Notifications arrive during my configured quiet hours.",
-          "content_summary_zh": null,
-          "rating": 2,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-19T10:00:00Z",
-          "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "96246c9c69be13dc7c6e"
-        },
-        {
-          "review_id": "sample-020",
-          "app_id": "sample-demo",
-          "storefront": "us",
-          "title": "",
-          "content_original": "Great workouts and a clean interface.",
-          "content_summary_zh": null,
+          "title": "BEST WORKOUT FITNESS APP FOR WOMEN THAT IVE EVER EXPERIENCED (WOULD RECOMMEND)",
+          "content_original": "This app is (THE BEST) in my opinion and so far I’ve felt refreshed and proud of myself and the experience was amazing. (Again would highly recommend)",
+          "content_summary_zh": "应用很棒，体验好，强烈推荐",
           "rating": 5,
-          "app_version": "8.4.2",
-          "author": null,
-          "published_at": "2026-07-20T10:00:00Z",
+          "app_version": "8.4.28",
+          "author": "ฅ^•ﻌ•^(☆▽☆)",
+          "published_at": "2026-07-29T21:39:00Z",
           "language": "en",
-          "source": "import:json",
-          "source_page": null,
-          "content_hash": "ac7d20f307919c165ff1"
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "9425536460341d0fe4af"
+        },
+        {
+          "review_id": "14363613368",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Love this app",
+          "content_original": "Love that fact I can do it any where and is diferente routine every time never dull",
+          "content_summary_zh": "可随时随地训练，每次不同不枯燥",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "yese 77",
+          "published_at": "2026-07-29T19:14:26Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "4a206576553d38010d66"
+        },
+        {
+          "review_id": "14360927559",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Workout for women home and gym",
+          "content_original": "Great app can already feel it working within just two days",
+          "content_summary_zh": "两天就见效，很棒",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "rubiead",
+          "published_at": "2026-07-29T03:41:05Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "c0d2a8054892c3d3bebd"
+        },
+        {
+          "review_id": "14359950060",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Used all the time, now I’ve  deleted it",
+          "content_original": "I used to love workout women, before they were bought out. I’d use the free workouts every time, when it was real women avatars during the workouts and not some cheesy AI mockups showing unrealistic images for the different kinds of workouts. (Like a tiny waist and big butt) like whattt? It NEVER used to be like this! You can miss me with this lousy marketing makeover design that looks SO fake. It’s literally all AI. I’m so sad to see the original company/developer is no longer in charge of this app bc I used it all the time plus everything is behind some sketchy paywall. Cheap and cheesy (weird ads too, not even like normal ones you would usually see) third tier developer has made it so horrible and unable to use and most of all FAKE AI women used everywhere.",
+          "content_summary_zh": "被收购后变差，全是AI和付费墙",
+          "rating": 1,
+          "app_version": "8.4.28",
+          "author": "livrose2001",
+          "published_at": "2026-07-28T21:28:48Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "9af58d4648a7d4247da6"
+        },
+        {
+          "review_id": "14357059177",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Aa",
+          "content_original": "Love this app so so muchhhh",
+          "content_summary_zh": "非常喜欢此应用",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Yanirt",
+          "published_at": "2026-07-28T05:04:53Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "a7ea2e3b715af4adee88"
+        },
+        {
+          "review_id": "14354823157",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Short. Sweet. To the point",
+          "content_original": "I love that each exercise is only 30-45 seconds. I can do (almost) anything for 30-45 seconds!",
+          "content_summary_zh": "每个动作30-45秒，容易坚持",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Anonymous User365",
+          "published_at": "2026-07-27T15:48:35Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "405ca5f3bef6c7befcdb"
+        },
+        {
+          "review_id": "14353095830",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Injury",
+          "content_original": "Overall a great app however if I select to avoid knees why does it still have lots of squats and lunges. I have to just skip over those workouts and I would like if it was actually tailored to me like it says.",
+          "content_summary_zh": "选择避免膝盖但仍有很多深蹲，未个性化",
+          "rating": 3,
+          "app_version": "8.4.28",
+          "author": "Grace033",
+          "published_at": "2026-07-27T05:46:16Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "2b739780d5ba648c5b8e"
+        },
+        {
+          "review_id": "14344823980",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Workout for women",
+          "content_original": "Feels great it’s like we get this whole thing to ourselves to work and make ourselves sleep better for ourselves",
+          "content_summary_zh": "感觉很好，有助于睡眠",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Wfw💕",
+          "published_at": "2026-07-25T02:53:15Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "66558fed72f2e854eb09"
+        },
+        {
+          "review_id": "14343192193",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Good workouts",
+          "content_original": "This is a great at-home workout with lots of variety and great instructions. I do miss working out with others but this is great when you need to get in a workout on your own time.",
+          "content_summary_zh": "居家训练好，种类多，指导好",
+          "rating": 5,
+          "app_version": "8.4.26",
+          "author": "Shanghyde",
+          "published_at": "2026-07-24T16:51:21Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "3c38073ad58fa6406294"
+        },
+        {
+          "review_id": "14342854364",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Handling of issues is poor",
+          "content_original": "Workout part was fine BUT Wanting to cancel my year long payment from renewing but unable to figure out how. The app doesn’t have an account with my email and when I tried asking their customer support it doesn’t submit my question because it’s flagged for likely to be spam?? Very frustrating",
+          "content_summary_zh": "无法取消年付，客服提交被拒",
+          "rating": 2,
+          "app_version": "8.4.28",
+          "author": "HappyLion7",
+          "published_at": "2026-07-24T15:11:57Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "90e9a134be7485dac34f"
+        },
+        {
+          "review_id": "14334995806",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Horrible",
+          "content_original": "I have used this app for YEARS. I loved it due to it being free and also easy but now everything is behind a paywall. I can’t even use basic workouts I used to do for free anymore. This is upsetting to know how much things have changed to where everything needs to be behind a paywall.",
+          "content_summary_zh": "多年免费，现在全部付费墙，失望",
+          "rating": 1,
+          "app_version": "8.4.28",
+          "author": "strongfox83",
+          "published_at": "2026-07-22T16:23:48Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "cbc82bbfd0df2310e138"
+        },
+        {
+          "review_id": "14334052046",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Review",
+          "content_original": "10000/10 All exercises are not impossible to do…and they are also very effective",
+          "content_summary_zh": "训练有效，不困难",
+          "rating": 5,
+          "app_version": "8.4.26",
+          "author": "lovehugo_07",
+          "published_at": "2026-07-22T11:48:38Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "3add9a1b2de3c01471e0"
+        },
+        {
+          "review_id": "14330714176",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Love this app!",
+          "content_original": "This is my second year with this app. It has everything from face yoga to military style workouts. Customized or ladies choice. I am truly not a gym enthusiast, by the time I get ready, drive to the gym etc I have already had a workout at home. The cost is more than fair as well, basically a year subscription for the cost of one month at the gym, in my area (Boston). I mirror it to my TV and bounce around my living room lol and it works! So happy with the results and grateful to the developers for an app that does what it promised.",
+          "content_summary_zh": "第二年使用，内容丰富，性价比高",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Lilmisspastry",
+          "published_at": "2026-07-21T15:12:50Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "41305d3db106820db981"
+        },
+        {
+          "review_id": "14330268991",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Toxic Fitness Culture",
+          "content_original": "Good app overall for daily fitness training. I just have a few thoughts. I feel this app is objectifying women’s bodies rather than focusing on heath or strength. Plays into toxic fitness culture and manipulative marketing. When you first get started by choosing your “body type” and “goals” the imagery of the women is unreal. Cartoonish women that are busty, skinny waist, wide hips. Not how real women look. And then when you answer the motivational prompts, they ask like “do you want to get fit?” And u click yes. But then they ask you “do you want to be attractive?” This is not a motivational question to lift women up. A much better question would be “do you want to feel strong?” Or something like it. Very disappointed by this.",
+          "content_summary_zh": "应用不错但物化女性，营销不当",
+          "rating": 3,
+          "app_version": "8.4.28",
+          "author": "let me choose a nickname!!!!!",
+          "published_at": "2026-07-21T13:06:50Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "21af5ab02bef1909e431"
+        },
+        {
+          "review_id": "14329131554",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Not free",
+          "content_original": "I downloaded it for at least 7 days free but at day 3 it doesn’t work and ask for the payment ….after I rate yesterday for it today it doesn’t work It’s bad",
+          "content_summary_zh": "7天免费但第3天就要求付费",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Solfamlife",
+          "published_at": "2026-07-21T05:55:07Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "f90fe042001da9ac4ef7"
+        },
+        {
+          "review_id": "14328378845",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Mama Bear",
+          "content_original": "Mom of 6, wanting to get into shape. I love the options. My favorite right now is the dumbbell workout! I’m sweating and feeling the burn! Perfect amount of time for this busy Mama Bear! ♥️",
+          "content_summary_zh": "适合忙碌妈妈，哑铃训练很棒",
+          "rating": 5,
+          "app_version": "8.4.28",
+          "author": "Mama Bear (Sega)",
+          "published_at": "2026-07-21T00:55:16Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "f9bce89b2496d3dd812e"
+        },
+        {
+          "review_id": "14324972618",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Very easy to follow!",
+          "content_original": "I haven’t worked out in years. Its an app that’s easy to use. Some things are free but to get the full advantage you would need to pay a fee.",
+          "content_summary_zh": "应用易用，部分免费，完整需付费",
+          "rating": 5,
+          "app_version": "8.4.27",
+          "author": "G from the 702",
+          "published_at": "2026-07-20T04:35:18Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "f797ee5747e20413d590"
+        },
+        {
+          "review_id": "14324253567",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Not bad",
+          "content_original": "You have to pay to feel proud and I don’t like that",
+          "content_summary_zh": "需付费才能感到自豪，不喜欢",
+          "rating": 2,
+          "app_version": "8.4.27",
+          "author": "𝓟𝓼 𝓭𝓸 𝓫𝓮𝓽𝓽𝓮𝓻",
+          "published_at": "2026-07-19T23:46:23Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "006a0d233bbb47a508ff"
+        },
+        {
+          "review_id": "14322864027",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Updates",
+          "content_original": "Loved this app, paid for it. Sadly it gets worse with every update.",
+          "content_summary_zh": "曾付费，但更新后越来越差",
+          "rating": 2,
+          "app_version": "8.4.27",
+          "author": "too beans",
+          "published_at": "2026-07-19T15:49:42Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "4c74e34fa7a691fbf077"
+        },
+        {
+          "review_id": "14320776504",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "THIS APP IS STUPID DONT RECOMMEND",
+          "content_original": "Okay so I read all the reviews and naturally I thought it would be a good app so I downloaded it and I logged in and everything and when I tried to click to do an exercise, all would pop up is like premium something basically that I had to pay and it did that for everything I tried to do and literally didn’t even get single exercise in. This app is so stupid. I don’t recommend. Please don’t download this and waste your time like I did.",
+          "content_summary_zh": "点击训练全是付费提示，无法训练",
+          "rating": 1,
+          "app_version": "8.4.27",
+          "author": "the great stevie",
+          "published_at": "2026-07-19T03:29:21Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "4efb8f6dc60c4bb34720"
+        },
+        {
+          "review_id": "14314433809",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Quality Declining",
+          "content_original": "I’ve been using this app since 2018. I used to really love it. Every workout was free (without ads) and there was a lot to choose from. In the past couple months they’ve put everything behind a paywall and randomly during my workouts the app redirects me to Shein’s website. This is extremely disappointing.",
+          "content_summary_zh": "以前免费无广告，现在付费墙且跳转Shein",
+          "rating": 1,
+          "app_version": "8.4.27",
+          "author": "mrgslo",
+          "published_at": "2026-07-17T14:12:19Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "0fe52ee693246b934c75"
+        },
+        {
+          "review_id": "14312293284",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Really good app",
+          "content_original": "This app is the best. I definitely recommend to people who want to start. Work out It’s really good. And it helped loose weight. It was really good.👍👍👍👍👍👍",
+          "content_summary_zh": "最佳应用，帮助减肥，推荐",
+          "rating": 5,
+          "app_version": "8.4.26",
+          "author": "Kuromi@123",
+          "published_at": "2026-07-17T01:03:06Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "872286c2b7dae0021580"
+        },
+        {
+          "review_id": "14308859067",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Download right now",
+          "content_original": "Love it",
+          "content_summary_zh": "喜欢",
+          "rating": 5,
+          "app_version": "8.4.27",
+          "author": "kittywon1009",
+          "published_at": "2026-07-16T04:55:57Z",
+          "language": null,
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "5a595287270a28226188"
+        },
+        {
+          "review_id": "14307471563",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Love This App",
+          "content_original": "Finally I’m motivated!!! Daily!!!",
+          "content_summary_zh": "终于每天有动力",
+          "rating": 5,
+          "app_version": "8.4.26",
+          "author": "SugarLux",
+          "published_at": "2026-07-15T20:00:05Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "9322ef2d27f494c2f9e5"
+        },
+        {
+          "review_id": "14306466803",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "No longer free????",
+          "content_original": "I’ve been using and loving this app for years. Now after recent update, it won’t let me do anything without a subscription. Still claims that you can use for free, so please fix this!!! Tried to contact and it said my email couldn’t be sent. Hoping they read these??",
+          "content_summary_zh": "更新后无法免费使用，联系客服失败",
+          "rating": 2,
+          "app_version": "8.4.27",
+          "author": "Lyssarosanna",
+          "published_at": "2026-07-15T14:52:38Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "5b2e34f25b4e362d3895"
+        },
+        {
+          "review_id": "14303029084",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Paying",
+          "content_original": "I’m not paying to workout that is stupid",
+          "content_summary_zh": "不愿为训练付费",
+          "rating": 3,
+          "app_version": "8.4.27",
+          "author": "Mallorykras",
+          "published_at": "2026-07-14T17:55:53Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "efee8091e1d4a870b43d"
+        },
+        {
+          "review_id": "14297707993",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Poor handling of informing people of their subscription and where to find out information about it",
+          "content_original": "Hi, I subscribed to what I thought was a year plan for 39.99 and a 6 day trial. It did not let me know before the trail was over so I couldn’t cancel it. I was going to keep it but then discovered that it was 39.99 per month not 39.99 for the entire year. This was very misleading. When I tried to go into your app to see my subscription detail I could not find it any where. I would like a refund of the money that was taken out of my account. And I have already cancelled my subscription",
+          "content_summary_zh": "误以为年付39.99，实际月付，试用未提醒扣费",
+          "rating": 1,
+          "app_version": "8.4.26",
+          "author": "K3kio",
+          "published_at": "2026-07-13T11:29:12Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "decc7f720daa04e1d4b8"
+        },
+        {
+          "review_id": "14297668170",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Perfect for in your 50’s",
+          "content_original": "This is a great workout especially for women in their 50’s .",
+          "content_summary_zh": "适合50多岁女性的好训练",
+          "rating": 5,
+          "app_version": "8.4.26",
+          "author": "JenBro27",
+          "published_at": "2026-07-13T11:15:19Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "6925857c3a080aad71c8"
+        },
+        {
+          "review_id": "14291852699",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "I cannot log into app",
+          "content_original": "I paid for a year membership and I cannot log into the account because it says it does not exist. I’ve tried to message the company and it says my message seems like spam and my inquiry won’t be submitted. I’ve tried multiple ways to submit to bypass this with no luck. There is no way to contact them otherwise and now I have 8 months that’s I paid for left that I do not have access to and all I want is to be able to access the app. So now what…",
+          "content_summary_zh": "付费年会员无法登录，客服提交被拒",
+          "rating": 1,
+          "app_version": "8.4.26",
+          "author": "No customer supporttt",
+          "published_at": "2026-07-11T22:45:23Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "fa55efb5eda7f8ab2735"
+        },
+        {
+          "review_id": "14290422468",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Full Body Slim",
+          "content_original": "Great App",
+          "content_summary_zh": "很棒的应用",
+          "rating": 5,
+          "app_version": "8.4.26",
+          "author": "NannaAy",
+          "published_at": "2026-07-11T14:48:09Z",
+          "language": null,
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "3f4a6819bf8211aee86e"
+        },
+        {
+          "review_id": "14286721683",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "capitalism ruined it",
+          "content_original": "i used this app back in 2023 to lose weight i downloaded it back in 2026 EVERYTHING requires money , everything is behind a paywall.. why make a app free if you’re gonna do mini in-app purchases for everything.",
+          "content_summary_zh": "以前免费，现在所有功能都需付费",
+          "rating": 1,
+          "app_version": "8.4.26",
+          "author": "pinkbarbwire",
+          "published_at": "2026-07-10T16:19:28Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 1,
+          "content_hash": "5db62d192505955698f7"
+        },
+        {
+          "review_id": "14280991777",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Crazy",
+          "content_original": "It really doesn’t work",
+          "content_summary_zh": "应用不太有效",
+          "rating": 3,
+          "app_version": "8.4.26",
+          "author": "67 ff",
+          "published_at": "2026-07-09T07:04:50Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "22c0eb4c95797c9ddbc2"
+        },
+        {
+          "review_id": "14279948531",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Deleted after years of use",
+          "content_original": "I used to LOVE this app. It allowed me to access work outs on my own time, in my own way. It was free forever, then recently required 90sec ads to do workouts, which was fine. All of a sudden I couldn’t access anything without paying an outrageous price. Apparently for them, money is more important than helping all people now. Used to be great, now is not at all.",
+          "content_summary_zh": "以前免费，后需看广告，现在全部付费",
+          "rating": 1,
+          "app_version": "8.4.26",
+          "author": "Kv223",
+          "published_at": "2026-07-09T00:10:06Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "b2d8c2ae6620746aa202"
+        },
+        {
+          "review_id": "14277925854",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "The SHEIN ads are out of control",
+          "content_original": "While you’re working out, the app will close and the Shein website will open and this will happen multiple times without you prompting or touching your phone",
+          "content_summary_zh": "训练时应用关闭并打开Shein网站",
+          "rating": 1,
+          "app_version": "8.4.25",
+          "author": "Walet P.",
+          "published_at": "2026-07-08T12:59:25Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "cb450183ada6ab43128a"
+        },
+        {
+          "review_id": "14276572019",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Great workouts",
+          "content_original": "I’m just starting and they have all types of exercises and all types of levels so u choose the one that’s best for you",
+          "content_summary_zh": "刚开始，有各种训练和级别可选",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "ahcj k",
+          "published_at": "2026-07-08T04:01:24Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "8de5a8ca560ef645139f"
+        },
+        {
+          "review_id": "14276064361",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Free trial wasn’t free",
+          "content_original": "I wanted to try the free trial, I was told in app that there would be no charge until the end of the free trial and you guys immediately charged me! Now there is just a charge pending and I can’t pay for it. I’d like the trial to be cancelled so I don’t get charged the 39.99! I’m broke as hell and this is just ruining my experience. I used to use this app for free all the time and now suddenly I HAVE to pay or use a free trial? This is very disheartening. Please cancel my trial and cancel the payment so I don’t get charged. Thanks. Also wanted to just contact support for this but kept getting flagged as “spam” so yeah.",
+          "content_summary_zh": "试用期立即扣费，联系客服被拒",
+          "rating": 1,
+          "app_version": "8.4.26",
+          "author": "squishymallow",
+          "published_at": "2026-07-08T00:45:43Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "95a3953a16f344415c15"
+        },
+        {
+          "review_id": "14275682276",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Updates",
+          "content_original": "I’ve had this app for over five years now and I’ve loved them, but hate how they kept going from completely free to charging for everything now. Really great app but not paying for it.",
+          "content_summary_zh": "多年使用，现在从免费变为收费，不付费",
+          "rating": 4,
+          "app_version": "8.4.26",
+          "author": "Alex Symone",
+          "published_at": "2026-07-07T22:15:30Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "8e15e2c9dadf9ca4383b"
+        },
+        {
+          "review_id": "14275420028",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Cost",
+          "content_original": "I get it life is not easy you have to pay for stuff but really? Why does it have to cost money I want a workout im under 18 no job how do I pay? Still the question were understandable seemed like it was really gonna help",
+          "content_summary_zh": "理解收费但未成年人无法支付",
+          "rating": 4,
+          "app_version": "8.4.26",
+          "author": "For real yes",
+          "published_at": "2026-07-07T20:38:21Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "fb636742de0f11cd50db"
+        },
+        {
+          "review_id": "14274175102",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Nice",
+          "content_original": "I love it",
+          "content_summary_zh": "喜欢",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "MommyJ&K",
+          "published_at": "2026-07-07T14:13:54Z",
+          "language": null,
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "ca28114f0378eeeb5fbc"
+        },
+        {
+          "review_id": "14271423099",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Very good!",
+          "content_original": "A very good app for motivation and everything, it’s fun to do for me at least, I love the warm ups and cool downs and demonstrations. Worth the money really.",
+          "content_summary_zh": "激励好，热身和演示好，物有所值",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "Nova700",
+          "published_at": "2026-07-06T20:45:22Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "841c3419d3deba201cb3"
+        },
+        {
+          "review_id": "14270786563",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Started great, then locked up",
+          "content_original": "The app allows you to access almost everything at the start, and then begins to restrict. I’ve had the app for over a year now and I am unable to do anything at all. I cannot do saved workouts or any other plan that I used to be able to access after watching over a minute of ads.",
+          "content_summary_zh": "开始几乎全开放，后逐渐限制，现在无法使用",
+          "rating": 2,
+          "app_version": "8.4.25",
+          "author": "Sparkkles28",
+          "published_at": "2026-07-06T17:20:45Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "a2b2611dd28308f1b586"
+        },
+        {
+          "review_id": "14264918620",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Idk",
+          "content_original": "It made me pay after the first day and u didn’t like it",
+          "content_summary_zh": "第一天后就要付费，不喜欢",
+          "rating": 1,
+          "app_version": "8.4.25",
+          "author": "Meotdjsscsjdvddng",
+          "published_at": "2026-07-05T06:49:12Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "6bf8347b4f1114344b62"
+        },
+        {
+          "review_id": "14260733949",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Maggie",
+          "content_original": "It's ok",
+          "content_summary_zh": "还行",
+          "rating": 4,
+          "app_version": "8.4.25",
+          "author": "Be a  good   Eate",
+          "published_at": "2026-07-04T05:08:01Z",
+          "language": null,
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "4d1d5a0a29bd6cb92500"
+        },
+        {
+          "review_id": "14254614594",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "The best!!",
+          "content_original": "This app has everything you need to get in shape and be healthy. Very easy to follow good music and great workouts. Highly recommended.",
+          "content_summary_zh": "包含塑形所需一切，易跟，推荐",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "Catica Botero",
+          "published_at": "2026-07-02T17:27:16Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "1d4546765f6737d7c4f6"
+        },
+        {
+          "review_id": "14251432995",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Very good app",
+          "content_original": "I am really enjoying this app… lots of different options.",
+          "content_summary_zh": "享受应用，选项多",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "gsss123",
+          "published_at": "2026-07-01T23:30:25Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "27106c088c825cb4faf0"
+        },
+        {
+          "review_id": "14250373918",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Love this app!",
+          "content_original": "Finally found an app that fits my workout needs!",
+          "content_summary_zh": "终于找到适合的训练应用",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "knsyoung",
+          "published_at": "2026-07-01T17:29:44Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "8a142256149a6f659c9e"
+        },
+        {
+          "review_id": "14249980354",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Great app, downloads impossible",
+          "content_original": "This app and the workouts are great. Even with a paid subscription, you cannot download. No help or steps from online searches help.",
+          "content_summary_zh": "训练好，但付费后无法下载，无帮助",
+          "rating": 3,
+          "app_version": "8.4.25",
+          "author": "Workout 53",
+          "published_at": "2026-07-01T15:39:13Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "be12d13f0b09e2ec18f5"
+        },
+        {
+          "review_id": "14246967026",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Cannot access paid subscription",
+          "content_original": "I was logged out of the app recently and cannot log back in to access my workouts and benefits of my paid subscription",
+          "content_summary_zh": "被登出后无法登录，无法访问付费内容",
+          "rating": 3,
+          "app_version": "8.4.25",
+          "author": "Workwork Wanda",
+          "published_at": "2026-06-30T22:30:32Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "e10e8c8321883b2ac018"
+        },
+        {
+          "review_id": "14243194565",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Nothing but paywalls",
+          "content_original": "Is there anything that is free on this app anymore?? Even workouts I had previously saved now ask you to pay. Ridiculous",
+          "content_summary_zh": "所有内容都需付费，包括已保存的训练",
+          "rating": 1,
+          "app_version": "8.4.25",
+          "author": "Alexiana96",
+          "published_at": "2026-06-30T01:47:03Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "1f15333066aac35f3b17"
+        },
+        {
+          "review_id": "14241644246",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Great for beginners",
+          "content_original": "I’ve been off and on with the Sweat app but it’s a lot of dedication from the start. Workout for Women from home and gym it’s great for beginners and it’s not killer or time consuming. I can fit 20 min or less anytime in between my schedule. Works out aren’t out of this world and one can sustain it for beginners. Def recommend!",
+          "content_summary_zh": "适合初学者，时间短，推荐",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "Lirovi",
+          "published_at": "2026-06-29T16:45:23Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "8640da3672dab01bf93d"
+        },
+        {
+          "review_id": "14229833137",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Good, but...",
+          "content_original": "I LOVE this app. Great workouts for all ages. But... I am on the free version and there are a lot of things that I can't do without paying. Still has good options for the free version but please allow the free version to make me able to do more things.",
+          "content_summary_zh": "免费版限制多，希望更多免费功能",
+          "rating": 4,
+          "app_version": "8.4.25",
+          "author": "🐯🪷",
+          "published_at": "2026-06-26T19:13:48Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "10ca819601cd04937000"
+        },
+        {
+          "review_id": "14227812994",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Thank you",
+          "content_original": "Im Liking the app so far thanks so Much!!!",
+          "content_summary_zh": "目前喜欢此应用",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": "Duchess2020",
+          "published_at": "2026-06-26T08:50:46Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "b0c0790bf27c55f92911"
+        },
+        {
+          "review_id": "14225692756",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "￼So great",
+          "content_original": "Short workouts perfect for anyday",
+          "content_summary_zh": "短训练适合每天",
+          "rating": 5,
+          "app_version": "8.4.25",
+          "author": ".:)…..",
+          "published_at": "2026-06-25T18:51:31Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "81a886df6f44299365c1"
+        },
+        {
+          "review_id": "14222226181",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Scam and expensive",
+          "content_original": "Cancelled my subscription and then received not one but two charges in the same day totaling almost $100!!! Don’t do it! Not worth it.",
+          "content_summary_zh": "取消订阅后仍被扣两次费，共100美元",
+          "rating": 1,
+          "app_version": "8.4.25",
+          "author": "JessiRuff",
+          "published_at": "2026-06-24T21:58:30Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "26ac751b959a289b26fe"
+        },
+        {
+          "review_id": "14221168828",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Subscriptions",
+          "content_original": "The is a good workout app but the only thing that i don’t like is that it said it was giving me a free subscription because it was my first time using this app, i get the subscription and its charged me 30 dollars idk if i did something wrong but warning, just stick to the free version and don’t be scammed like me 😭",
+          "content_summary_zh": "声称免费订阅却扣30美元，警告",
+          "rating": 3,
+          "app_version": "8.4.25",
+          "author": "sweet_milky",
+          "published_at": "2026-06-24T16:06:59Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "c54e6d2c40b12c984bd4"
+        },
+        {
+          "review_id": "14220597773",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "The Best Workout App in the World",
+          "content_original": "Update, June 24, 2026 - I’ve been using this app for a while and I like it even more than when I started. One of the rare and fantastic things about the workouts is that they are genuinely well thought out, really nicely put together. It seems a person sat down and thought this through and put the exercises in the right order and the most beneficial exercises. So, there are no surprises. The workouts do what they say they will do. Anyway, I do wish they’d put out some new PROGRAMS, though I’m sure at some point they will. ———- I am absolutely crazy about this app. It has everything, almost (no tai chi, yet). All types of exercises and yoga . . . Of various lengths. I am on a 30 day dumbbell program right now. The variety of exercises in that one program is amazing. I’ve never seen some of those moves. Also, doing a 7-minute workout in the morning; love those unique moves, too. Basically, you get this and you don’t need anything else. I downloaded dozens of workout apps and this is the one who stood out way, way above the others; nothing even compares. Totally love it!",
+          "content_summary_zh": "训练设计好，希望有新程序",
+          "rating": 5,
+          "app_version": "8.4.24",
+          "author": "Dawn30000",
+          "published_at": "2026-06-24T13:22:35Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "7ad449f338458c5c7fdf"
+        },
+        {
+          "review_id": "14217181753",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Good but why subscription??!!😭",
+          "content_original": "The app is good! I had it once before but I stopped using it then I started using again then bam u have to get a subscription on the 4th day. I don’t know why but I just hope it won’t happen again. Anyway besides that the app is pretty good. Though I do suggest getting younger ages below 18 because some girls who want to change and get a bit healthier in 6th grade or older can be a better version of themselves.",
+          "content_summary_zh": "应用好，但第4天需订阅，建议年轻用户",
+          "rating": 5,
+          "app_version": "8.4.24",
+          "author": "🥨ADS",
+          "published_at": "2026-06-23T15:49:01Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "32d7795ca370273bd9bb"
+        },
+        {
+          "review_id": "14212862587",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Subscription",
+          "content_original": "Cancelled subscription and still got charged for it. No spot in app to manage no place on website either. Went to contact support and every time I hit submit it would say the request couldn’t be submitted because it’s spam. Don’t get app it not free it will make you sign up for a subscription and not let you cancel it.",
+          "content_summary_zh": "取消后仍扣费，无管理入口，客服被拒",
+          "rating": 1,
+          "app_version": "8.4.24",
+          "author": "Bobillena",
+          "published_at": "2026-06-22T13:28:51Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "5285cd93cb2195c05ebb"
+        },
+        {
+          "review_id": "14210920635",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Free Version So Frustrating",
+          "content_original": "I do not care if I have to watch ads but what I do care about is if I get a pop up screen with no continuation option only advertising the paid version. The workout is available with ads yet the interface traps you with their predatory ads.",
+          "content_summary_zh": "广告后弹窗无继续选项，强制付费",
+          "rating": 1,
+          "app_version": "8.4.24",
+          "author": "kyacma",
+          "published_at": "2026-06-21T23:55:36Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "58b21f83c3680cb4b50b"
+        },
+        {
+          "review_id": "14209021980",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Great app",
+          "content_original": "Love the variety of the workouts and being able to choose different programs",
+          "content_summary_zh": "训练多样，可选不同程序",
+          "rating": 5,
+          "app_version": "8.4.23",
+          "author": "Jessrn2021",
+          "published_at": "2026-06-21T13:10:42Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "358b523db0c7e409bfc0"
+        },
+        {
+          "review_id": "14204125134",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Free trial SCAM",
+          "content_original": "I downloaded this app yesterday and I wanted to try the 1-week free trial, but once I used the Apple Pay feature to subscribe to the free trial I was charged $29.99!? Dealing with my bank now to get my money back but it literally said I would not get charged until a week after.",
+          "content_summary_zh": "试用期立即扣29.99美元，与承诺不符",
+          "rating": 1,
+          "app_version": "8.4.24",
+          "author": "Tinazwrld143",
+          "published_at": "2026-06-20T06:19:22Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "e81ef2799ead5ccf2698"
+        },
+        {
+          "review_id": "14203283136",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "My #1.",
+          "content_original": "Life changing. <3",
+          "content_summary_zh": "改变生活",
+          "rating": 5,
+          "app_version": "8.4.24",
+          "author": "DianaG0718",
+          "published_at": "2026-06-20T00:38:51Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "3ea4daa8319ec21ee35d"
+        },
+        {
+          "review_id": "14190183704",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "My opinio",
+          "content_original": "It’s perfect",
+          "content_summary_zh": "完美",
+          "rating": 5,
+          "app_version": "8.4.23",
+          "author": "ftmh atash",
+          "published_at": "2026-06-16T16:55:44Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "ab90d68c2b17fd9f16ba"
+        },
+        {
+          "review_id": "14187519047",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Kendall Serage WFW Review",
+          "content_original": "This workout app is probably the best option out there! It gives me so much motivation and excitement to get up and do the workouts in the morning. The best thing about it is that you can pick the type of workouts you want to focus on, whether it’s pilates, wall pilates, fitness, postpartum workouts, and more! Truly the best option.🫶🏻",
+          "content_summary_zh": "最佳选择，种类多，激励强",
+          "rating": 5,
+          "app_version": "8.4.23",
+          "author": "Kendall WFW Review",
+          "published_at": "2026-06-15T23:48:35Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "f4bbf011620fb2b13bf4"
+        },
+        {
+          "review_id": "14185702009",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Syn",
+          "content_original": "I had a trouble with a few things but I really love this app and I definitely feel like I wanna do more!",
+          "content_summary_zh": "有些问题但喜欢应用，想继续",
+          "rating": 4,
+          "app_version": "8.4.23",
+          "author": "Sassy_syn",
+          "published_at": "2026-06-15T13:53:29Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "09354db19b6fad6d9829"
+        },
+        {
+          "review_id": "14174937162",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Stupid",
+          "content_original": "It let me start my training on the \"free app\" but the second day it was making me have to pay to continue so I don't recommend getting it unless u have the money to waste on it if u do it's pretty great",
+          "content_summary_zh": "第二天就要付费，不推荐",
+          "rating": 1,
+          "app_version": "8.4.23",
+          "author": "Jude /Judith",
+          "published_at": "2026-06-12T18:44:17Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "4403e444d29c125abe0e"
+        },
+        {
+          "review_id": "14174692818",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Workout at home",
+          "content_original": "Amazing",
+          "content_summary_zh": "很棒",
+          "rating": 5,
+          "app_version": "8.4.21",
+          "author": "gioriadyu.dire",
+          "published_at": "2026-06-12T17:26:30Z",
+          "language": null,
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "51165a3c1b8b44ab7365"
+        },
+        {
+          "review_id": "14174457575",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Easy to follow along",
+          "content_original": "Love the easy every day consistency. The daily quotes help me with my mental health and keep me motivated.",
+          "content_summary_zh": "每日名言激励，帮助心理健康",
+          "rating": 5,
+          "app_version": "8.4.21",
+          "author": "Karley V.",
+          "published_at": "2026-06-12T16:16:02Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "ab68e8d3e2ea5f8d3e2c"
+        },
+        {
+          "review_id": "14167037105",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "I’m giving it five stars so you can see it",
+          "content_original": "It’s OK for the first day, but as soon as you hit the second day, it fires in your face, a bunch of different ads to get their premium, which you have to pay for and you can’t get to the without paying",
+          "content_summary_zh": "第一天好，第二天广告和付费墙",
+          "rating": 5,
+          "app_version": "8.4.22",
+          "author": "Yes yes no no no",
+          "published_at": "2026-06-10T18:25:33Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "3a872058e9e54fa86603"
+        },
+        {
+          "review_id": "14166078145",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "🧐🧐🧐🧐🧐🧐",
+          "content_original": "You told me a free trial for a week and the charged me $19.99 right away. What can I do?!",
+          "content_summary_zh": "免费试用一周却立即扣19.99美元",
+          "rating": 1,
+          "app_version": "8.4.21",
+          "author": "Akslug",
+          "published_at": "2026-06-10T13:35:45Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "e3bb38397d1d9f2c9ecb"
+        },
+        {
+          "review_id": "14165948645",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "They say is free but they charge you",
+          "content_original": "They offer a free week then when you accept they charge you. Also doesn’t let you use the free part of the app anymore. Very disappointed I used to love this app",
+          "content_summary_zh": "免费周后扣费，且无法使用免费部分",
+          "rating": 1,
+          "app_version": "8.4.21",
+          "author": "Yuri GHP",
+          "published_at": "2026-06-10T12:56:48Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "07a1b419e77985b018c9"
+        },
+        {
+          "review_id": "14163546305",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Great app!",
+          "content_original": "I started using this app when I was in the Marines and am now using it postpartum! I still love it! I have purchased the membership a couple times with breaks in between. So I like how convenient it is to be able to take a break. No match for an expensive gym membership. I prefer this for its simplicity and motivational content. I can work around my babies naps now that I’m almost a year postpartum. I’m also easing my body back into movement by doing the postpartum recovery plan! There’s so many options. And I have a bad back and knee problem, along with shoulder issues too. Just need to listen to your body. Check it out!!",
+          "content_summary_zh": "多年使用，方便暂停，适合产后恢复",
+          "rating": 5,
+          "app_version": "8.4.21",
+          "author": "Brendaaaa :)",
+          "published_at": "2026-06-09T20:29:24Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "cae0f605cf3938ab3b87"
+        },
+        {
+          "review_id": "14162328271",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "No longer free bummer",
+          "content_original": "I used this app for years and it’s no longer free, you have to pay monthly or yearly",
+          "content_summary_zh": "以前免费，现在需月付或年付",
+          "rating": 2,
+          "app_version": "8.4.21",
+          "author": "2014hunter!",
+          "published_at": "2026-06-09T14:05:31Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "7b64879e23fb999f46bd"
+        },
+        {
+          "review_id": "14160080073",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "AMack91",
+          "content_original": "Great app for working at your own pace. It really helped me tone and lose weight. Plenty workout outs and exercises too. I took away two stars because I used this app a lot when most of the exercise routines were free. Now everything I click on they want you to subscribe and that sucks",
+          "content_summary_zh": "以前免费，现在所有内容需订阅",
+          "rating": 3,
+          "app_version": "8.4.21",
+          "author": "AMack91",
+          "published_at": "2026-06-08T22:57:37Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "c64b84a93d317ea0b5ad"
+        },
+        {
+          "review_id": "14157097193",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Horrible",
+          "content_original": "Horrible wouldn’t let me cancel my subscription",
+          "content_summary_zh": "无法取消订阅，糟糕",
+          "rating": 1,
+          "app_version": "8.4.21",
+          "author": "Alexishog",
+          "published_at": "2026-06-08T04:40:12Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "3ad335d7b2ff51cc8468"
+        },
+        {
+          "review_id": "14152184353",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "No longer free with ads",
+          "content_original": "Paywall to use what a disapppointment once you have reached “free access limit”",
+          "content_summary_zh": "达到免费限制后付费墙，失望",
+          "rating": 1,
+          "app_version": "8.4.21",
+          "author": "Rista87",
+          "published_at": "2026-06-06T21:26:27Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "05cfd61eb38f4d11c582"
+        },
+        {
+          "review_id": "14149160522",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Great app.",
+          "content_original": "This is a beautiful app. It’s amazing. I got this app last year in October. And I already lost 80 pounds I recommend this app a lot.",
+          "content_summary_zh": "应用很棒，已减80磅，推荐",
+          "rating": 5,
+          "app_version": "8.4.21",
+          "author": "Bbuccs888",
+          "published_at": "2026-06-06T03:16:47Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "487042b8fbf309bbb42e"
+        },
+        {
+          "review_id": "14148499373",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Workouts",
+          "content_original": "Really gets you sweating and pumped great for any exercise!!",
+          "content_summary_zh": "训练出汗，适合任何锻炼",
+          "rating": 4,
+          "app_version": "8.4.21",
+          "author": "Stewart.101",
+          "published_at": "2026-06-05T22:55:07Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "decfcee0aef73df9a247"
+        },
+        {
+          "review_id": "14147454883",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Awesome and Great Experience!",
+          "content_original": "My first initial thought was this was just gonna be any other workout app I’ve downloaded before but it actually wasn’t the case at all! I really liked it overall and just the app itself is very helpful and easygoing. I liked how consistent the app is whenever it is time to get that daily workout in and how easy it is to customize and navigate your way through. The app is I would say easy to use especially for beginners because I was a beginner myself. I would recommend having more workout or exercise options though.",
+          "content_summary_zh": "应用易用，适合初学者，希望更多选项",
+          "rating": 5,
+          "app_version": "8.4.21",
+          "author": "Nadya C.",
+          "published_at": "2026-06-05T16:47:46Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "3857300ac87c0701157a"
+        },
+        {
+          "review_id": "14144994589",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Very good overall",
+          "content_original": "Very good overall but I was looking for a workout plan that was free and I didn’t have to pay so if they could that you had to pay for the 2nd training session that’ll be great",
+          "content_summary_zh": "整体好，但第二次训练需付费",
+          "rating": 4,
+          "app_version": "8.4.21",
+          "author": "..yo girl..",
+          "published_at": "2026-06-05T01:20:08Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "1d910c5d922892289e79"
+        },
+        {
+          "review_id": "14144426555",
+          "app_id": "839285684",
+          "storefront": "us",
+          "title": "Audrey’s review",
+          "content_original": "I think it’s great but I hate that we have to pay just to work out when we already have a lot to do like pay bills and extra but everything else is great",
+          "content_summary_zh": "训练需付费，但其他都好",
+          "rating": 5,
+          "app_version": "8.4.21",
+          "author": "Luv_sleeping89",
+          "published_at": "2026-06-04T21:29:05Z",
+          "language": "en",
+          "source": "apple-rss:us",
+          "source_page": 2,
+          "content_hash": "02a4c213cb376d03f4b4"
         }
       ],
       "stats": {
-        "input_count": 20,
-        "output_count": 19,
-        "exact_duplicates": 1,
+        "input_count": 100,
+        "output_count": 100,
+        "exact_duplicates": 0,
         "near_duplicates": 0,
-        "empty_removed": 0
+        "empty_removed": 0,
+        "review_id_collisions": 0
       }
     },
     "validate_findings": {
       "findings": [
         {
           "finding_id": "F-001",
-          "title": "订阅价格与试用续订信息不透明",
-          "problem_statement": "用户在订阅前未能清晰了解免费试用续订日期和月付价格，导致意外扣费或不满。",
-          "topic_label": "订阅透明度",
+          "title": "免费内容大幅减少，付费墙限制基本功能",
+          "problem_statement": "用户反映应用更新后免费内容大幅减少，基本训练被付费墙限制，无法继续免费使用。",
+          "topic_label": "付费墙体验",
           "supporting_review_ids": [
-            "sample-001",
-            "sample-002"
+            "14424309790",
+            "14423833481",
+            "14421357217",
+            "14408658475",
+            "14381025970",
+            "14367493057",
+            "14334995806",
+            "14314433809",
+            "14286721683",
+            "14279948531",
+            "14270786563",
+            "14243194565",
+            "14162328271",
+            "14160080073",
+            "14152184353"
           ],
           "conflicting_review_ids": [
-            "sample-003"
+            "14364512490",
+            "14324972618",
+            "14229833137"
           ],
-          "support_count": 2,
-          "conflict_count": 1,
-          "confidence": 0.38,
+          "support_count": 15,
+          "conflict_count": 3,
+          "confidence": 0.92,
           "evidence_status": "validated",
-          "model_reasoning_summary": "sample-001 和 sample-002 分别指出试用续订日期和月付价格在订阅前不明确，而 sample-003 表示条款清晰，形成冲突。",
+          "model_reasoning_summary": "大量评论指出应用从免费变为付费墙，用户无法进行基本训练，与少数认为仍有免费内容的评论冲突。",
+          "schema_validated": true,
+          "reference_validated": true,
+          "semantic_validated": true,
+          "evidence_assessments": [
+            {
+              "review_id": "14424309790",
+              "role": "supporting",
+              "rationale_zh": "评论明确表示只能做一个训练，其余在付费墙后，直接支持免费内容减少、付费墙限制基本功能的说法。"
+            },
+            {
+              "review_id": "14423833481",
+              "role": "supporting",
+              "rationale_zh": "评论指出更新后无法免费做任何训练，达到免费访问限制，直接支持付费墙限制基本功能。"
+            },
+            {
+              "review_id": "14421357217",
+              "role": "supporting",
+              "rationale_zh": "评论提到只有两个免费训练，之后需付费，支持免费内容大幅减少。"
+            },
+            {
+              "review_id": "14408658475",
+              "role": "supporting",
+              "rationale_zh": "评论表示最近更改后无法免费使用，支持付费墙限制。"
+            },
+            {
+              "review_id": "14381025970",
+              "role": "supporting",
+              "rationale_zh": "评论说除非付费否则无法锻炼，达到使用限制，支持付费墙限制。"
+            },
+            {
+              "review_id": "14367493057",
+              "role": "supporting",
+              "rationale_zh": "评论指出必须付费，以前免费，支持免费内容减少。"
+            },
+            {
+              "review_id": "14334995806",
+              "role": "supporting",
+              "rationale_zh": "评论说所有内容都在付费墙后，无法使用基本训练，支持付费墙限制。"
+            },
+            {
+              "review_id": "14314433809",
+              "role": "supporting",
+              "rationale_zh": "评论提到所有内容都在付费墙后，支持免费内容减少。"
+            },
+            {
+              "review_id": "14286721683",
+              "role": "supporting",
+              "rationale_zh": "评论说所有内容都需要钱，都在付费墙后，支持付费墙限制。"
+            },
+            {
+              "review_id": "14279948531",
+              "role": "supporting",
+              "rationale_zh": "评论说突然无法访问任何内容除非付费，支持付费墙限制。"
+            },
+            {
+              "review_id": "14270786563",
+              "role": "supporting",
+              "rationale_zh": "评论说开始几乎全开放，后逐渐限制，现在无法做任何事，支持付费墙限制。"
+            },
+            {
+              "review_id": "14243194565",
+              "role": "supporting",
+              "rationale_zh": "评论说所有内容都需付费，包括已保存的训练，支持付费墙限制。"
+            },
+            {
+              "review_id": "14162328271",
+              "role": "supporting",
+              "rationale_zh": "评论说不再免费，需付费，支持免费内容减少。"
+            },
+            {
+              "review_id": "14160080073",
+              "role": "supporting",
+              "rationale_zh": "评论说现在所有点击的内容都要求订阅，支持付费墙限制。"
+            },
+            {
+              "review_id": "14152184353",
+              "role": "supporting",
+              "rationale_zh": "评论说达到免费访问限制后出现付费墙，支持付费墙限制。"
+            },
+            {
+              "review_id": "14364512490",
+              "role": "conflicting",
+              "rationale_zh": "评论认为应用免费且推荐，与付费墙限制基本功能的说法冲突。"
+            },
+            {
+              "review_id": "14324972618",
+              "role": "conflicting",
+              "rationale_zh": "评论说有些东西免费，但完整需付费，暗示仍有免费内容，与免费内容大幅减少冲突。"
+            },
+            {
+              "review_id": "14229833137",
+              "role": "conflicting",
+              "rationale_zh": "评论说免费版有很多不能做，但仍有好的选项，暗示仍有免费内容，与付费墙限制基本功能冲突。"
+            }
+          ],
           "limitations": [
-            "样本量小，可能不全面",
-            "存在 1 条冲突评论。"
+            "部分评论未明确提及具体功能限制",
+            "存在 3 条冲突评论。"
           ]
         },
         {
           "finding_id": "F-002",
-          "title": "暂停训练后计时器无法继续",
-          "problem_statement": "用户暂停训练后，计时器无法继续或有时无法继续，影响训练体验。",
-          "topic_label": "计时器功能缺陷",
+          "title": "试用期扣费不透明，存在误导性收费",
+          "problem_statement": "用户反映试用期未明确提醒即被扣费，或试用期承诺免费但立即收费，造成经济损失。",
+          "topic_label": "试用期与续费透明度",
           "supporting_review_ids": [
-            "sample-004",
-            "sample-005"
+            "14397715067",
+            "14297707993",
+            "14276064361",
+            "14204125134",
+            "14166078145",
+            "14165948645",
+            "14221168828"
           ],
           "conflicting_review_ids": [],
-          "support_count": 2,
+          "support_count": 7,
           "conflict_count": 0,
-          "confidence": 0.46,
+          "confidence": 0.87,
           "evidence_status": "validated",
-          "model_reasoning_summary": "sample-004 和 sample-005 均报告暂停后计时器无法继续，且 sample-005 提到“有时”，表明问题可能间歇性发生。",
+          "model_reasoning_summary": "多条评论描述试用期后未提醒即扣费，或试用期立即收费，与承诺不符。",
+          "schema_validated": true,
+          "reference_validated": true,
+          "semantic_validated": true,
+          "evidence_assessments": [
+            {
+              "review_id": "14397715067",
+              "role": "supporting",
+              "rationale_zh": "评论明确提到订阅陷阱，试用后扣费且提醒不足，支持试用期扣费不透明。"
+            },
+            {
+              "review_id": "14297707993",
+              "role": "supporting",
+              "rationale_zh": "评论说试用期未提醒扣费，且价格误导，支持试用期扣费不透明。"
+            },
+            {
+              "review_id": "14276064361",
+              "role": "supporting",
+              "rationale_zh": "评论说试用期立即扣费，与承诺不符，支持试用期扣费不透明。"
+            },
+            {
+              "review_id": "14204125134",
+              "role": "supporting",
+              "rationale_zh": "评论说试用期立即扣费，与承诺不符，支持试用期扣费不透明。"
+            },
+            {
+              "review_id": "14166078145",
+              "role": "supporting",
+              "rationale_zh": "评论说免费试用一周却立即扣费，支持试用期扣费不透明。"
+            },
+            {
+              "review_id": "14165948645",
+              "role": "supporting",
+              "rationale_zh": "评论说免费周后扣费，支持试用期扣费不透明。"
+            },
+            {
+              "review_id": "14221168828",
+              "role": "supporting",
+              "rationale_zh": "评论说声称免费订阅却扣费，支持试用期扣费不透明。"
+            }
+          ],
           "limitations": [
-            "未提供具体复现步骤"
+            "部分评论未提供具体扣费金额或时间"
           ]
         },
         {
           "finding_id": "F-003",
-          "title": "语音指导音量过小",
-          "problem_statement": "播放音乐时语音指导音量过小，用户难以听清。",
-          "topic_label": "音频体验",
+          "title": "取消订阅路径困难，客服支持无效",
+          "problem_statement": "用户无法在应用内找到取消订阅选项，联系客服时被标记为垃圾信息，导致无法取消或退款。",
+          "topic_label": "取消订阅路径",
           "supporting_review_ids": [
-            "sample-006"
+            "14342854364",
+            "14291852699",
+            "14212862587",
+            "14157097193",
+            "14222226181"
           ],
-          "conflicting_review_ids": [
-            "sample-007"
-          ],
-          "support_count": 1,
-          "conflict_count": 1,
-          "confidence": 0.22,
+          "conflicting_review_ids": [],
+          "support_count": 5,
+          "conflict_count": 0,
+          "confidence": 0.75,
           "evidence_status": "validated",
-          "model_reasoning_summary": "sample-006 抱怨语音指导音量小，而 sample-007 称赞语音指导，表明音量问题可能因设备或设置而异。",
+          "model_reasoning_summary": "用户反馈取消订阅困难，客服提交被拒，甚至取消后仍被扣费。",
+          "schema_validated": true,
+          "reference_validated": true,
+          "semantic_validated": true,
+          "evidence_assessments": [
+            {
+              "review_id": "14342854364",
+              "role": "supporting",
+              "rationale_zh": "评论说无法取消年付，客服提交被拒，支持取消订阅路径困难。"
+            },
+            {
+              "review_id": "14291852699",
+              "role": "supporting",
+              "rationale_zh": "评论说无法登录账户，客服提交被拒，支持取消订阅路径困难。"
+            },
+            {
+              "review_id": "14212862587",
+              "role": "supporting",
+              "rationale_zh": "评论说取消后仍扣费，无管理入口，客服被拒，支持取消订阅路径困难。"
+            },
+            {
+              "review_id": "14157097193",
+              "role": "supporting",
+              "rationale_zh": "评论说无法取消订阅，支持取消订阅路径困难。"
+            },
+            {
+              "review_id": "14222226181",
+              "role": "supporting",
+              "rationale_zh": "评论说取消后仍被扣两次费，支持取消订阅路径困难。"
+            }
+          ],
           "limitations": [
-            "仅一条支持证据",
-            "存在 1 条冲突评论。"
+            "部分评论未说明具体操作步骤"
           ]
         },
         {
           "finding_id": "F-004",
-          "title": "动作预览时间过短",
-          "problem_statement": "动作预览时间太短，用户对不熟悉的动作无法充分理解。",
-          "topic_label": "动作指导",
+          "title": "广告体验差，强制跳转外部网站",
+          "problem_statement": "用户反映观看广告后无法继续，或应用强制跳转至Shein等外部网站，干扰使用。",
+          "topic_label": "付费墙体验",
           "supporting_review_ids": [
-            "sample-008",
-            "sample-009"
+            "14411802642",
+            "14277925854",
+            "14314433809",
+            "14210920635"
           ],
           "conflicting_review_ids": [],
-          "support_count": 2,
+          "support_count": 4,
           "conflict_count": 0,
-          "confidence": 0.46,
+          "confidence": 0.67,
           "evidence_status": "validated",
-          "model_reasoning_summary": "sample-008 和 sample-009 分别用英文和中文表达预览时间不足，希望有更长的示范。",
+          "model_reasoning_summary": "多条评论指出广告无法关闭或跳转外部网站，影响正常使用。",
+          "schema_validated": true,
+          "reference_validated": true,
+          "semantic_validated": true,
+          "evidence_assessments": [
+            {
+              "review_id": "14411802642",
+              "role": "supporting",
+              "rationale_zh": "评论说看广告后无法继续，支持广告体验差。"
+            },
+            {
+              "review_id": "14277925854",
+              "role": "supporting",
+              "rationale_zh": "评论说训练时应用关闭并打开Shein网站，支持强制跳转外部网站。"
+            },
+            {
+              "review_id": "14314433809",
+              "role": "supporting",
+              "rationale_zh": "评论说训练时跳转Shein网站，支持强制跳转外部网站。"
+            },
+            {
+              "review_id": "14210920635",
+              "role": "supporting",
+              "rationale_zh": "评论说广告后弹窗无继续选项，支持广告体验差。"
+            }
+          ],
           "limitations": [
-            "未说明具体期望时长"
-          ]
-        },
-        {
-          "finding_id": "F-005",
-          "title": "修改周计划后应用崩溃",
-          "problem_statement": "用户修改每周计划后应用崩溃，影响使用。",
-          "topic_label": "稳定性",
-          "supporting_review_ids": [
-            "sample-010"
-          ],
-          "conflicting_review_ids": [
-            "sample-011"
-          ],
-          "support_count": 1,
-          "conflict_count": 1,
-          "confidence": 0.22,
-          "evidence_status": "validated",
-          "model_reasoning_summary": "sample-010 报告崩溃，而 sample-011 表示修改计划正常，可能为偶发问题或特定设备问题。",
-          "limitations": [
-            "仅一条支持证据，且无版本信息",
-            "存在 1 条冲突评论。"
-          ]
-        },
-        {
-          "finding_id": "F-006",
-          "title": "缺少每周训练摘要导出功能",
-          "problem_statement": "用户希望导出每周训练摘要，但应用未提供该功能。",
-          "topic_label": "数据导出",
-          "supporting_review_ids": [
-            "sample-012",
-            "sample-013"
-          ],
-          "conflicting_review_ids": [],
-          "support_count": 2,
-          "conflict_count": 0,
-          "confidence": 0.46,
-          "evidence_status": "validated",
-          "model_reasoning_summary": "sample-012 和 sample-013 分别用英文和中文请求导出每周训练记录，表明该功能缺失。",
-          "limitations": [
-            "无版本信息，可能已在新版本中实现"
-          ]
-        },
-        {
-          "finding_id": "F-007",
-          "title": "休息计时器过短且不可调节",
-          "problem_statement": "休息时间太短，用户希望可以自行调整。",
-          "topic_label": "训练自定义",
-          "supporting_review_ids": [
-            "sample-015",
-            "sample-016"
-          ],
-          "conflicting_review_ids": [],
-          "support_count": 2,
-          "conflict_count": 0,
-          "confidence": 0.46,
-          "evidence_status": "validated",
-          "model_reasoning_summary": "sample-015 和 sample-016 均抱怨休息时间短，并希望可调整。",
-          "limitations": [
-            "未说明具体期望时长"
-          ]
-        },
-        {
-          "finding_id": "F-008",
-          "title": "初学者难度曲线过陡",
-          "problem_statement": "初学者训练难度上升过快，导致用户难以适应。",
-          "topic_label": "难度设置",
-          "supporting_review_ids": [
-            "sample-018"
-          ],
-          "conflicting_review_ids": [
-            "sample-017"
-          ],
-          "support_count": 1,
-          "conflict_count": 1,
-          "confidence": 0.22,
-          "evidence_status": "validated",
-          "model_reasoning_summary": "sample-018 指出初学者难度增加过快，而 sample-017 称赞可调难度，表明难度调节可能未覆盖初学者需求。",
-          "limitations": [
-            "仅一条支持证据",
-            "存在 1 条冲突评论。"
-          ]
-        },
-        {
-          "finding_id": "F-009",
-          "title": "通知在免打扰时段仍发送",
-          "problem_statement": "用户设置了免打扰时段，但通知仍然发送，打扰用户。",
-          "topic_label": "通知设置",
-          "supporting_review_ids": [
-            "sample-019"
-          ],
-          "conflicting_review_ids": [],
-          "support_count": 1,
-          "conflict_count": 0,
-          "confidence": 0.29,
-          "evidence_status": "validated",
-          "model_reasoning_summary": "sample-019 明确表示通知在配置的免打扰时段到达，说明设置未生效。",
-          "limitations": [
-            "仅一条支持证据"
+            "部分评论未明确广告时长或频率"
           ]
         }
       ],
@@ -698,1157 +2151,649 @@
         {
           "requirement_id": "REQ-001",
           "finding_ids": [
-            "F-004"
+            "F-001"
           ],
-          "title": "延长动作预览时间",
-          "user_problem": "动作预览时间太短，用户对不熟悉的动作无法充分理解。",
-          "objective": "提供更长的动作预览，帮助用户正确掌握动作要领。",
+          "title": "优化免费内容与付费墙体验",
+          "user_problem": "用户反映应用更新后免费内容大幅减少，基本训练被付费墙限制，无法继续免费使用，导致用户流失和负面评价。",
+          "objective": "在保持订阅收入的同时，提供有意义的免费内容，改善付费墙体验，减少用户不满。",
           "scope": [
-            "动作预览界面",
-            "视频播放控制"
+            "免费内容策略",
+            "付费墙设计",
+            "用户引导"
           ],
           "non_goals": [
-            "增加新动作",
-            "改变动作库"
+            "完全移除付费墙",
+            "改变订阅价格"
           ],
           "functional_rules": [
-            "将动作预览时间从当前时长延长至至少10秒。",
-            "提供重播按钮，允许用户重复观看预览。",
-            "在预览界面显示动作名称和关键要点。"
+            "保留至少3个基础训练课程免费开放",
+            "付费墙出现前明确提示用户剩余免费次数",
+            "提供免费内容预览，展示付费内容价值",
+            "允许用户免费使用基础功能（如记录训练）"
           ],
           "edge_cases": [
-            "网络慢时，预览加载时间过长，需优化加载。",
-            "用户跳过预览，不影响训练流程。"
+            "用户已订阅时不应显示付费墙",
+            "免费内容需定期更新以保持吸引力"
           ],
           "acceptance_criteria": [
-            "预览时长不少于10秒，且可重播。",
-            "预览界面包含动作名称和要点文字。"
+            "新用户可完成至少3个免费训练",
+            "付费墙出现前有明确提示",
+            "免费内容覆盖不同训练类型"
           ],
           "success_metrics": [
-            "用户对动作理解度提升20%",
-            "动作错误率降低15%"
+            "免费用户留存率提升",
+            "付费墙点击率降低",
+            "负面评价减少"
           ],
-          "impact": 4,
-          "complexity": "low",
-          "priority_score": 19.37,
+          "impact": 5,
+          "complexity": "medium",
+          "priority_score": 34.5,
           "target_version": "V1.0",
           "source_review_ids": [
-            "sample-008",
-            "sample-009"
+            "14424309790",
+            "14423833481",
+            "14421357217",
+            "14408658475",
+            "14381025970",
+            "14367493057",
+            "14334995806",
+            "14314433809",
+            "14286721683",
+            "14279948531",
+            "14270786563",
+            "14243194565",
+            "14162328271",
+            "14160080073",
+            "14152184353"
           ],
           "assumptions": [
-            "现有预览视频可延长",
-            "用户需要更长时间"
+            "免费内容不会显著降低订阅转化率"
           ]
         },
         {
           "requirement_id": "REQ-002",
           "finding_ids": [
-            "F-007"
+            "F-002"
           ],
-          "title": "允许自定义休息时间",
-          "user_problem": "休息时间太短，用户希望可以自行调整。",
-          "objective": "提供休息时间自定义功能，满足不同用户需求。",
+          "title": "提高试用期与续费透明度",
+          "user_problem": "用户反映试用期未明确提醒即被扣费，或试用期承诺免费但立即收费，造成经济损失和信任危机。",
+          "objective": "确保用户在试用和续费前充分知情，避免误导性收费，提升用户信任。",
           "scope": [
-            "训练设置",
-            "休息计时器"
+            "试用期流程",
+            "扣费提醒",
+            "订阅条款展示"
           ],
           "non_goals": [
-            "改变训练计划结构"
+            "取消试用期",
+            "改变订阅价格"
           ],
           "functional_rules": [
-            "在训练设置中增加“休息时间”选项，可设置范围30秒至5分钟。",
-            "用户可针对不同训练类型设置不同的休息时间。",
-            "训练中休息计时器使用用户自定义时间。"
+            "试用期开始前明确展示扣费日期和金额",
+            "试用期结束前24小时发送提醒通知",
+            "订阅页面清晰展示续费条款",
+            "扣费前需用户确认（如弹窗）"
           ],
           "edge_cases": [
-            "用户未设置时，使用默认休息时间。",
-            "设置时间超出范围时，提示并限制。"
+            "用户取消试用后不应收到扣费提醒",
+            "用户更换设备时提醒同步"
           ],
           "acceptance_criteria": [
-            "用户可设置休息时间，并在训练中生效。",
-            "设置界面显示当前值，且可调整。"
+            "新用户订阅时看到明确的扣费说明",
+            "试用期结束前收到提醒",
+            "扣费前有确认步骤"
           ],
           "success_metrics": [
-            "用户设置自定义休息时间的比例超过30%",
-            "训练完成率提升10%"
+            "因扣费不透明产生的投诉减少",
+            "试用期转化率保持稳定"
           ],
-          "impact": 4,
-          "complexity": "low",
-          "priority_score": 19.37,
+          "impact": 5,
+          "complexity": "medium",
+          "priority_score": 15.23,
           "target_version": "V1.0",
           "source_review_ids": [
-            "sample-015",
-            "sample-016"
+            "14397715067",
+            "14297707993",
+            "14276064361",
+            "14204125134",
+            "14166078145",
+            "14165948645",
+            "14221168828"
           ],
           "assumptions": [
-            "用户希望调整休息时间",
-            "现有计时器可配置"
+            "用户愿意接受扣费前确认步骤"
           ]
         },
         {
           "requirement_id": "REQ-003",
           "finding_ids": [
-            "F-001"
+            "F-004"
           ],
-          "title": "订阅信息透明化",
-          "user_problem": "用户在订阅前无法清晰了解免费试用续订日期和月付价格，导致意外扣费或不满。",
-          "objective": "在订阅流程中提供清晰、明确的试用续订和价格信息，减少用户困惑和投诉。",
+          "title": "改善广告体验，避免强制跳转",
+          "user_problem": "用户反映观看广告后无法继续，或应用强制跳转至Shein等外部网站，干扰使用。",
+          "objective": "优化广告展示，确保广告不干扰正常使用，避免强制跳转。",
           "scope": [
-            "订阅页面",
-            "确认弹窗",
-            "欢迎邮件"
+            "广告展示方式",
+            "广告关闭机制",
+            "外部跳转控制"
           ],
           "non_goals": [
-            "调整定价策略",
-            "改变订阅计划"
+            "移除所有广告",
+            "改变广告收入模式"
           ],
           "functional_rules": [
-            "在订阅页面显著位置展示免费试用时长、续订日期和月付价格。",
-            "在用户确认订阅前，弹出确认框，明确提示试用结束后的扣费金额和日期。",
-            "在订阅成功后的欢迎邮件中，再次说明试用续订信息。"
+            "广告播放后提供明确的关闭或继续按钮",
+            "禁止自动跳转外部网站",
+            "广告时长不超过30秒",
+            "广告频率限制（如每训练最多1次）"
           ],
           "edge_cases": [
-            "用户取消订阅后，不再显示续订信息。",
-            "价格变动时，需在订阅页面和邮件中同步更新。"
+            "广告加载失败时提供跳过选项",
+            "用户关闭广告后正常返回应用"
           ],
           "acceptance_criteria": [
-            "订阅页面包含所有必要信息，且字体大小不小于14px。",
-            "确认弹窗在用户点击订阅按钮后出现，且包含扣费金额和日期。",
-            "欢迎邮件在订阅后24小时内发送，且包含续订信息。"
+            "广告播放后可正常继续使用",
+            "无自动跳转外部网站",
+            "广告频率符合设定"
           ],
           "success_metrics": [
-            "订阅相关投诉减少30%",
-            "订阅页面信息完整度评分提升至90%"
+            "广告相关负面评价减少",
+            "广告点击率保持稳定"
           ],
-          "impact": 4,
+          "impact": 3,
           "complexity": "low",
-          "priority_score": 16.0,
-          "target_version": "V1.0",
+          "priority_score": 8.04,
+          "target_version": "V1.1",
           "source_review_ids": [
-            "sample-001",
-            "sample-002"
+            "14411802642",
+            "14277925854",
+            "14314433809",
+            "14210920635"
           ],
           "assumptions": [
-            "用户主要关注价格和续订日期",
-            "现有订阅流程可修改"
+            "广告收入不会因限制而大幅下降"
           ]
         },
         {
           "requirement_id": "REQ-004",
           "finding_ids": [
-            "F-002"
+            "F-003"
           ],
-          "title": "修复暂停后计时器无法继续的问题",
-          "user_problem": "用户暂停训练后，计时器无法继续或有时无法继续，影响训练体验。",
-          "objective": "确保暂停后计时器能够可靠地继续，提升训练连续性。",
+          "title": "简化取消订阅流程并提升客服支持",
+          "user_problem": "用户无法在应用内找到取消订阅选项，联系客服时被标记为垃圾信息，导致无法取消或退款。",
+          "objective": "提供清晰、便捷的取消订阅路径，并确保客服支持有效，减少用户困扰。",
           "scope": [
-            "训练计时器模块",
-            "暂停/继续按钮"
+            "应用内取消订阅入口",
+            "客服支持流程",
+            "退款处理"
           ],
           "non_goals": [
-            "增加新的计时器功能"
+            "自动退款所有请求",
+            "移除订阅功能"
           ],
           "functional_rules": [
-            "用户点击暂停后，计时器停止并记录剩余时间。",
-            "用户点击继续后，计时器从剩余时间开始倒计时。",
-            "在暂停状态下，应用进入后台或锁屏，继续后计时器仍能正确恢复。"
+            "在应用设置中提供明显的取消订阅入口",
+            "取消订阅流程不超过3步",
+            "客服请求在24小时内响应",
+            "提供邮件或应用内客服渠道"
           ],
           "edge_cases": [
-            "暂停后应用被系统杀死，重新打开时提示用户是否恢复训练。",
-            "多次暂停/继续操作，计时器时间准确。"
+            "用户已通过应用商店订阅时引导至相应商店",
+            "取消后仍被扣费时提供快速退款通道"
           ],
           "acceptance_criteria": [
-            "在模拟测试中，暂停后继续100次，计时器均能正确恢复。",
-            "暂停后锁屏再解锁，继续后计时器时间正确。"
+            "用户可在应用内找到取消订阅选项",
+            "取消订阅流程可完成",
+            "客服请求得到响应"
           ],
           "success_metrics": [
-            "计时器相关bug报告减少50%",
-            "训练完成率提升5%"
-          ],
-          "impact": 5,
-          "complexity": "medium",
-          "priority_score": 12.11,
-          "target_version": "V1.0",
-          "source_review_ids": [
-            "sample-004",
-            "sample-005"
-          ],
-          "assumptions": [
-            "问题可复现",
-            "现有计时器逻辑可修复"
-          ]
-        },
-        {
-          "requirement_id": "REQ-005",
-          "finding_ids": [
-            "F-006"
-          ],
-          "title": "增加每周训练摘要导出功能",
-          "user_problem": "用户希望导出每周训练摘要，但应用未提供该功能。",
-          "objective": "提供每周训练摘要导出功能，满足用户数据管理需求。",
-          "scope": [
-            "训练历史页面",
-            "导出功能"
-          ],
-          "non_goals": [
-            "导出其他类型数据",
-            "自动分享功能"
-          ],
-          "functional_rules": [
-            "在训练历史页面提供“导出本周摘要”按钮。",
-            "导出格式为CSV或PDF，包含训练日期、动作、时长、消耗卡路里等。",
-            "导出文件通过系统分享功能发送。"
-          ],
-          "edge_cases": [
-            "本周无训练数据时，导出文件为空或提示无数据。",
-            "导出过程中网络中断，提示失败。"
-          ],
-          "acceptance_criteria": [
-            "点击导出按钮，生成文件并弹出分享菜单。",
-            "文件内容与训练记录一致。"
-          ],
-          "success_metrics": [
-            "导出功能使用率超过10%",
-            "用户满意度提升5%"
-          ],
-          "impact": 3,
-          "complexity": "medium",
-          "priority_score": 7.26,
-          "target_version": "V1.1",
-          "source_review_ids": [
-            "sample-012",
-            "sample-013"
-          ],
-          "assumptions": [
-            "用户有导出需求",
-            "系统支持文件分享"
-          ]
-        },
-        {
-          "requirement_id": "REQ-006",
-          "finding_ids": [
-            "F-009"
-          ],
-          "title": "修复免打扰时段通知问题",
-          "user_problem": "用户设置了免打扰时段，但通知仍然发送，打扰用户。",
-          "objective": "确保免打扰时段内不发送任何通知。",
-          "scope": [
-            "通知设置",
-            "通知发送逻辑"
-          ],
-          "non_goals": [
-            "增加新的通知类型"
-          ],
-          "functional_rules": [
-            "用户设置免打扰时段后，该时段内不发送任何通知。",
-            "免打扰时段设置可自定义开始和结束时间。",
-            "紧急通知（如系统警告）除外，但需在设置中说明。"
-          ],
-          "edge_cases": [
-            "跨天时段（如22:00-06:00）正确处理。",
-            "用户修改时段后立即生效。"
-          ],
-          "acceptance_criteria": [
-            "在免打扰时段内，不收到任何通知。",
-            "设置界面显示当前免打扰时段。"
-          ],
-          "success_metrics": [
-            "免打扰功能使用率提升20%",
-            "通知相关投诉减少30%"
-          ],
-          "impact": 3,
-          "complexity": "low",
-          "priority_score": 4.58,
-          "target_version": "V1.0",
-          "source_review_ids": [
-            "sample-019"
-          ],
-          "assumptions": [
-            "现有通知系统可控制",
-            "用户需要免打扰功能"
-          ]
-        },
-        {
-          "requirement_id": "REQ-007",
-          "finding_ids": [
-            "F-005"
-          ],
-          "title": "修复修改周计划后崩溃问题",
-          "user_problem": "用户修改每周计划后应用崩溃，影响使用。",
-          "objective": "确保修改周计划功能稳定，不出现崩溃。",
-          "scope": [
-            "周计划编辑界面",
-            "数据保存逻辑"
-          ],
-          "non_goals": [
-            "重新设计周计划功能"
-          ],
-          "functional_rules": [
-            "用户修改周计划后，点击保存，应用应正常保存并返回。",
-            "修复已知的崩溃原因，如空指针、数据格式错误等。",
-            "增加错误处理，保存失败时提示用户。"
-          ],
-          "edge_cases": [
-            "修改计划时网络中断，保存失败不崩溃。",
-            "计划中包含特殊字符或空值，保存正常。"
-          ],
-          "acceptance_criteria": [
-            "在测试环境中，连续修改周计划100次，无崩溃发生。",
-            "保存失败时显示错误提示，应用不退出。"
-          ],
-          "success_metrics": [
-            "崩溃率降低至0.1%以下",
-            "相关投诉减少80%"
-          ],
-          "impact": 5,
-          "complexity": "medium",
-          "priority_score": 2.89,
-          "target_version": "V1.0",
-          "source_review_ids": [
-            "sample-010"
-          ],
-          "assumptions": [
-            "崩溃可复现",
-            "有崩溃日志可分析"
-          ]
-        },
-        {
-          "requirement_id": "REQ-008",
-          "finding_ids": [
-            "F-008"
-          ],
-          "title": "优化初学者难度曲线",
-          "user_problem": "初学者训练难度上升过快，导致用户难以适应。",
-          "objective": "调整初学者训练计划，使难度递增更平缓。",
-          "scope": [
-            "初学者训练计划",
-            "难度设置"
-          ],
-          "non_goals": [
-            "改变高级用户计划"
-          ],
-          "functional_rules": [
-            "重新设计初学者计划，前两周难度增加幅度降低。",
-            "提供难度自评功能，根据用户反馈调整计划。",
-            "在计划中增加更多基础动作和休息时间。"
-          ],
-          "edge_cases": [
-            "用户已有健身基础，可选择跳过初学者计划。",
-            "难度调整后，用户可手动修改计划。"
-          ],
-          "acceptance_criteria": [
-            "初学者计划前两周的难度评分低于现有计划。",
-            "用户可反馈难度，系统根据反馈调整后续计划。"
-          ],
-          "success_metrics": [
-            "初学者用户留存率提升15%",
-            "难度相关投诉减少50%"
+            "取消订阅相关投诉减少",
+            "客服响应时间缩短"
           ],
           "impact": 4,
           "complexity": "medium",
-          "priority_score": 2.32,
-          "target_version": "V1.1",
+          "priority_score": 7.5,
+          "target_version": "V1.0",
           "source_review_ids": [
-            "sample-018"
+            "14342854364",
+            "14291852699",
+            "14212862587",
+            "14157097193",
+            "14222226181"
           ],
           "assumptions": [
-            "现有难度曲线确实过陡",
-            "可调整计划内容"
-          ]
-        },
-        {
-          "requirement_id": "REQ-009",
-          "finding_ids": [
-            "F-003"
-          ],
-          "title": "优化语音指导音量",
-          "user_problem": "播放音乐时语音指导音量过小，用户难以听清。",
-          "objective": "确保语音指导在音乐播放时清晰可闻，提升训练指导效果。",
-          "scope": [
-            "音频设置",
-            "语音指导播放逻辑"
-          ],
-          "non_goals": [
-            "改变音乐音量",
-            "增加语音指导类型"
-          ],
-          "functional_rules": [
-            "提供语音指导音量独立调节选项，范围0-100%。",
-            "当音乐播放时，自动降低音乐音量或提高语音音量，确保语音清晰。",
-            "用户可手动调整语音音量，并保存设置。"
-          ],
-          "edge_cases": [
-            "用户未播放音乐时，语音音量保持正常。",
-            "蓝牙耳机连接时，音量调节正常。"
-          ],
-          "acceptance_criteria": [
-            "在音乐播放时，语音指导音量可调且清晰。",
-            "用户调整语音音量后，下次训练仍保持该设置。"
-          ],
-          "success_metrics": [
-            "语音指导相关投诉减少40%",
-            "用户满意度评分提升10%"
-          ],
-          "impact": 3,
-          "complexity": "medium",
-          "priority_score": 1.74,
-          "target_version": "V1.1",
-          "source_review_ids": [
-            "sample-006"
-          ],
-          "assumptions": [
-            "用户设备支持音量独立调节",
-            "音频系统可编程控制"
+            "应用商店允许应用内管理订阅"
           ]
         }
       ],
-      "quantity_notice": null
+      "quantity_notice": "可验证证据不足，因此本次输出少于 5 个核心需求。"
     },
     "generate_tests": {
       "test_cases": [
         {
           "test_case_id": "TC-001",
           "requirement_id": "REQ-001",
-          "title": "验证动作预览时长至少为10秒",
+          "title": "验证未订阅用户可完成至少3个免费基础训练",
           "preconditions": [
-            "用户已登录",
-            "网络连接正常",
-            "进入动作预览界面"
+            "用户未登录或未订阅",
+            "应用版本为V1.0"
           ],
           "steps": [
-            "打开应用并登录",
-            "选择一个动作进入预览界面",
-            "开始播放预览并计时"
+            "打开应用并进入训练列表",
+            "尝试开始第一个基础训练",
+            "完成该训练",
+            "重复步骤2-3完成第二个和第三个基础训练",
+            "尝试开始第四个基础训练"
           ],
-          "expected_result": "预览视频播放时长不少于10秒，且播放过程中无中断",
+          "expected_result": "前三个基础训练均可正常开始并完成，无付费墙提示；第四个训练出现付费墙提示，且提示中明确显示剩余免费次数为0。",
           "case_type": "normal",
           "source_review_ids": [
-            "sample-008",
-            "sample-009"
+            "14424309790",
+            "14423833481",
+            "14421357217",
+            "14408658475",
+            "14381025970",
+            "14367493057",
+            "14334995806",
+            "14314433809",
+            "14286721683",
+            "14279948531",
+            "14270786563",
+            "14243194565",
+            "14162328271",
+            "14160080073",
+            "14152184353"
           ]
         },
         {
           "test_case_id": "TC-002",
           "requirement_id": "REQ-001",
-          "title": "验证重播按钮功能",
+          "title": "验证付费墙出现前有明确提示剩余免费次数",
           "preconditions": [
-            "用户已登录",
-            "进入动作预览界面",
-            "预览视频已播放完毕或正在播放"
+            "用户未订阅",
+            "已完成2个免费训练"
           ],
           "steps": [
-            "在预览界面找到重播按钮",
-            "点击重播按钮",
-            "观察视频是否重新开始播放"
+            "打开应用并进入训练列表",
+            "尝试开始第三个基础训练",
+            "观察付费墙出现前的提示信息",
+            "尝试开始第四个基础训练",
+            "观察付费墙出现前的提示信息"
           ],
-          "expected_result": "点击重播按钮后，视频从开头重新播放，且可多次点击重播",
-          "case_type": "normal",
+          "expected_result": "在第三个训练开始前，提示剩余免费次数为1；在第四个训练开始前，提示剩余免费次数为0，并显示付费墙。",
+          "case_type": "boundary",
           "source_review_ids": [
-            "sample-008",
-            "sample-009"
+            "14424309790",
+            "14423833481",
+            "14421357217",
+            "14408658475",
+            "14381025970",
+            "14367493057",
+            "14334995806",
+            "14314433809",
+            "14286721683",
+            "14279948531",
+            "14270786563",
+            "14243194565",
+            "14162328271",
+            "14160080073",
+            "14152184353"
           ]
         },
         {
           "test_case_id": "TC-003",
           "requirement_id": "REQ-001",
-          "title": "验证预览界面显示动作名称和关键要点",
+          "title": "验证已订阅用户不显示付费墙",
           "preconditions": [
-            "用户已登录",
-            "进入动作预览界面"
+            "用户已订阅",
+            "应用版本为V1.0"
           ],
           "steps": [
-            "观察预览界面",
-            "检查是否显示动作名称",
-            "检查是否显示关键要点文字"
+            "使用已订阅账号登录应用",
+            "进入训练列表",
+            "尝试开始任意训练（包括基础训练和高级训练）",
+            "观察是否有付费墙出现"
           ],
-          "expected_result": "预览界面显示动作名称和关键要点，文字清晰可读",
-          "case_type": "normal",
+          "expected_result": "所有训练均可正常访问，无任何付费墙或付费提示出现。",
+          "case_type": "regression",
           "source_review_ids": [
-            "sample-008",
-            "sample-009"
+            "14424309790",
+            "14423833481",
+            "14421357217",
+            "14408658475",
+            "14381025970",
+            "14367493057",
+            "14334995806",
+            "14314433809",
+            "14286721683",
+            "14279948531",
+            "14270786563",
+            "14243194565",
+            "14162328271",
+            "14160080073",
+            "14152184353"
           ]
         },
         {
           "test_case_id": "TC-004",
           "requirement_id": "REQ-001",
-          "title": "验证网络慢时预览加载优化",
+          "title": "验证免费内容覆盖不同训练类型",
           "preconditions": [
-            "用户已登录",
-            "网络速度较慢（如3G网络）",
-            "进入动作预览界面"
+            "用户未订阅",
+            "应用版本为V1.0"
           ],
           "steps": [
-            "在慢速网络环境下打开动作预览",
-            "观察加载过程",
-            "记录加载完成所需时间"
+            "打开应用并进入训练列表",
+            "查看免费训练（无锁标记）的训练类型",
+            "记录免费训练的类型",
+            "检查是否至少包含三种不同的训练类型（如力量、有氧、柔韧）"
           ],
-          "expected_result": "预览视频在合理时间内加载完成（如不超过10秒），且加载过程中有进度提示，不出现长时间白屏",
-          "case_type": "boundary",
+          "expected_result": "免费训练至少覆盖三种不同的训练类型，且每个类型至少有一个免费训练。",
+          "case_type": "normal",
           "source_review_ids": [
-            "sample-008",
-            "sample-009"
+            "14424309790",
+            "14423833481",
+            "14421357217",
+            "14408658475",
+            "14381025970",
+            "14367493057",
+            "14334995806",
+            "14314433809",
+            "14286721683",
+            "14279948531",
+            "14270786563",
+            "14243194565",
+            "14162328271",
+            "14160080073",
+            "14152184353"
           ]
         },
         {
           "test_case_id": "TC-005",
           "requirement_id": "REQ-002",
-          "title": "正常设置自定义休息时间并生效",
+          "title": "验证试用期开始前展示扣费日期和金额",
           "preconditions": [
-            "用户已登录并进入训练设置页面"
+            "用户已登录",
+            "用户尚未订阅任何试用计划"
           ],
           "steps": [
-            "在训练设置中找到“休息时间”选项",
-            "将休息时间设置为2分钟",
-            "保存设置",
-            "开始一个训练并进入休息计时器"
+            "进入订阅页面",
+            "选择试用计划并点击订阅",
+            "观察页面显示的扣费信息"
           ],
-          "expected_result": "休息计时器显示2分钟倒计时，且按2分钟计时",
+          "expected_result": "页面在订阅前明确显示扣费日期和金额，例如'试用期结束后将于2024-01-01扣费99元'",
           "case_type": "normal",
           "source_review_ids": [
-            "sample-015",
-            "sample-016"
+            "14397715067",
+            "14297707993",
+            "14276064361",
+            "14204125134",
+            "14166078145",
+            "14165948645",
+            "14221168828"
           ]
         },
         {
           "test_case_id": "TC-006",
           "requirement_id": "REQ-002",
-          "title": "设置休息时间超出范围时提示并限制",
+          "title": "验证试用期结束前24小时发送提醒通知",
           "preconditions": [
-            "用户已登录并进入训练设置页面"
+            "用户已订阅试用计划",
+            "系统时间距离试用期结束不足24小时"
           ],
           "steps": [
-            "在训练设置中找到“休息时间”选项",
-            "尝试将休息时间设置为10分钟",
-            "观察系统响应"
+            "等待系统触发提醒",
+            "检查用户的通知渠道（如邮件、推送）"
           ],
-          "expected_result": "系统提示休息时间必须在30秒至5分钟之间，且无法保存超出范围的值",
-          "case_type": "exception",
+          "expected_result": "用户在试用期结束前24小时收到提醒通知，内容包含扣费日期和金额",
+          "case_type": "normal",
           "source_review_ids": [
-            "sample-015",
-            "sample-016"
+            "14397715067",
+            "14297707993",
+            "14276064361",
+            "14204125134",
+            "14166078145",
+            "14165948645",
+            "14221168828"
           ]
         },
         {
           "test_case_id": "TC-007",
           "requirement_id": "REQ-002",
-          "title": "设置休息时间边界值30秒和5分钟",
+          "title": "验证扣费前需用户确认",
           "preconditions": [
-            "用户已登录并进入训练设置页面"
+            "用户已订阅试用计划",
+            "试用期即将结束"
           ],
           "steps": [
-            "在训练设置中将休息时间设置为30秒并保存",
-            "开始训练并进入休息计时器，确认计时器显示30秒",
-            "返回设置将休息时间设置为5分钟并保存",
-            "开始训练并进入休息计时器，确认计时器显示5分钟"
+            "在试用期结束前触发扣费流程",
+            "观察是否出现确认弹窗",
+            "点击确认或取消"
           ],
-          "expected_result": "30秒和5分钟均被接受，且休息计时器正确显示对应时间",
-          "case_type": "boundary",
+          "expected_result": "扣费前出现弹窗要求用户确认，用户确认后才扣费，取消则不扣费",
+          "case_type": "normal",
           "source_review_ids": [
-            "sample-015",
-            "sample-016"
+            "14397715067",
+            "14297707993",
+            "14276064361",
+            "14204125134",
+            "14166078145",
+            "14165948645",
+            "14221168828"
           ]
         },
         {
           "test_case_id": "TC-008",
           "requirement_id": "REQ-002",
-          "title": "用户未设置休息时间时使用默认值",
+          "title": "验证用户取消试用后不收到扣费提醒",
           "preconditions": [
-            "用户已登录，且从未修改过休息时间设置"
+            "用户已订阅试用计划",
+            "用户已取消试用"
           ],
           "steps": [
-            "进入训练设置页面，查看休息时间选项",
-            "不修改任何设置，直接开始训练并进入休息计时器"
+            "取消试用",
+            "等待试用期结束前24小时",
+            "检查用户是否收到扣费提醒"
           ],
-          "expected_result": "休息计时器使用默认休息时间（如1分钟），且设置界面显示默认值",
-          "case_type": "regression",
+          "expected_result": "用户取消试用后不再收到任何扣费提醒",
+          "case_type": "exception",
           "source_review_ids": [
-            "sample-015",
-            "sample-016"
+            "14397715067",
+            "14297707993",
+            "14276064361",
+            "14204125134",
+            "14166078145",
+            "14165948645",
+            "14221168828"
           ]
         },
         {
           "test_case_id": "TC-009",
           "requirement_id": "REQ-003",
-          "title": "订阅页面显示试用续订和价格信息",
+          "title": "验证广告播放后显示关闭按钮并可正常继续使用",
           "preconditions": [
-            "用户已登录",
-            "用户访问订阅页面"
+            "应用已安装并登录",
+            "网络连接正常",
+            "存在可播放的广告"
           ],
           "steps": [
-            "打开订阅页面",
-            "查看页面上的试用时长、续订日期和月付价格信息"
+            "启动应用并进入训练页面",
+            "触发广告播放",
+            "等待广告播放完成",
+            "观察广告播放完成后界面是否出现关闭或继续按钮",
+            "点击关闭或继续按钮"
           ],
-          "expected_result": "订阅页面显著位置显示免费试用时长、续订日期和月付价格，且字体大小不小于14px。",
+          "expected_result": "广告播放完成后出现明确的关闭或继续按钮，点击后应用返回训练页面，可正常继续使用，无自动跳转外部网站。",
           "case_type": "normal",
           "source_review_ids": [
-            "sample-001",
-            "sample-002"
+            "14411802642",
+            "14277925854",
+            "14314433809",
+            "14210920635"
           ]
         },
         {
           "test_case_id": "TC-010",
           "requirement_id": "REQ-003",
-          "title": "确认弹窗显示扣费金额和日期",
+          "title": "验证广告时长不超过30秒",
           "preconditions": [
-            "用户已登录",
-            "用户已选择订阅计划"
+            "应用已安装并登录",
+            "网络连接正常",
+            "存在可播放的广告"
           ],
           "steps": [
-            "点击订阅按钮",
-            "观察弹出的确认框"
+            "启动应用并进入训练页面",
+            "触发广告播放",
+            "使用计时器记录广告从开始到结束的时长"
           ],
-          "expected_result": "确认弹窗出现，并明确提示试用结束后的扣费金额和日期。",
-          "case_type": "normal",
+          "expected_result": "广告时长不超过30秒，若超过则视为失败。",
+          "case_type": "boundary",
           "source_review_ids": [
-            "sample-001",
-            "sample-002"
+            "14411802642",
+            "14277925854",
+            "14314433809",
+            "14210920635"
           ]
         },
         {
           "test_case_id": "TC-011",
           "requirement_id": "REQ-003",
-          "title": "取消订阅后不显示续订信息",
+          "title": "验证广告加载失败时提供跳过选项",
           "preconditions": [
-            "用户已订阅",
-            "用户已取消订阅"
+            "应用已安装并登录",
+            "网络连接异常或广告服务器无响应"
           ],
           "steps": [
-            "取消订阅后重新访问订阅页面",
-            "检查页面是否显示续订信息"
+            "启动应用并进入训练页面",
+            "触发广告播放",
+            "模拟广告加载失败（如断开网络）",
+            "观察界面是否出现跳过选项"
           ],
-          "expected_result": "订阅页面不再显示续订信息。",
+          "expected_result": "广告加载失败时，界面出现跳过选项，点击后应用正常返回训练页面，无强制跳转。",
           "case_type": "exception",
           "source_review_ids": [
-            "sample-001",
-            "sample-002"
+            "14411802642",
+            "14277925854",
+            "14314433809",
+            "14210920635"
           ]
         },
         {
           "test_case_id": "TC-012",
           "requirement_id": "REQ-003",
-          "title": "价格变动后订阅页面和邮件同步更新",
+          "title": "验证广告频率限制（每训练最多1次）",
           "preconditions": [
-            "管理员已修改订阅价格"
+            "应用已安装并登录",
+            "网络连接正常",
+            "存在可播放的广告"
           ],
           "steps": [
-            "打开订阅页面",
-            "查看月付价格",
-            "触发欢迎邮件发送（如新订阅）",
-            "检查邮件中的价格信息"
+            "启动应用并进入训练页面",
+            "完成一次训练并触发广告",
+            "关闭广告后再次进行训练",
+            "观察第二次训练是否触发广告"
           ],
-          "expected_result": "订阅页面和欢迎邮件中的月付价格均为更新后的价格。",
+          "expected_result": "第二次训练不触发广告，广告频率符合每训练最多1次的限制。",
           "case_type": "regression",
           "source_review_ids": [
-            "sample-001",
-            "sample-002"
+            "14411802642",
+            "14277925854",
+            "14314433809",
+            "14210920635"
           ]
         },
         {
           "test_case_id": "TC-013",
           "requirement_id": "REQ-004",
-          "title": "验证暂停后点击继续，计时器从剩余时间恢复",
+          "title": "验证应用内取消订阅入口可见且流程不超过3步",
           "preconditions": [
-            "应用已启动并进入训练计时器界面",
-            "计时器正在运行"
+            "用户已登录应用",
+            "用户有有效的订阅"
           ],
           "steps": [
-            "1. 启动计时器，记录当前剩余时间T1",
-            "2. 点击暂停按钮",
-            "3. 等待5秒",
-            "4. 点击继续按钮",
-            "5. 观察计时器显示的时间"
+            "打开应用并进入设置页面",
+            "查找取消订阅选项",
+            "点击取消订阅并完成流程",
+            "记录完成流程所需的步骤数"
           ],
-          "expected_result": "计时器从T1开始继续倒计时，而不是从T1-5秒开始，且时间显示准确",
+          "expected_result": "设置页面中显示明显的取消订阅入口，且完成取消订阅流程不超过3步。",
           "case_type": "normal",
           "source_review_ids": [
-            "sample-004",
-            "sample-005"
+            "14342854364",
+            "14291852699",
+            "14212862587",
+            "14157097193",
+            "14222226181"
           ]
         },
         {
           "test_case_id": "TC-014",
           "requirement_id": "REQ-004",
-          "title": "验证暂停后锁屏再解锁，继续后计时器时间正确",
+          "title": "验证通过应用商店订阅的用户被引导至相应商店",
           "preconditions": [
-            "应用已启动并进入训练计时器界面",
-            "计时器正在运行"
+            "用户已登录应用",
+            "用户通过应用商店订阅"
           ],
           "steps": [
-            "1. 启动计时器，记录当前剩余时间T1",
-            "2. 点击暂停按钮",
-            "3. 锁屏",
-            "4. 等待10秒",
-            "5. 解锁屏幕",
-            "6. 点击继续按钮",
-            "7. 观察计时器显示的时间"
+            "打开应用并进入设置页面",
+            "点击取消订阅选项",
+            "观察应用是否提供引导至应用商店的提示或链接"
           ],
-          "expected_result": "计时器从T1开始继续倒计时，不受锁屏期间时间流逝影响",
-          "case_type": "regression",
+          "expected_result": "应用显示提示或链接，引导用户前往相应的应用商店管理订阅。",
+          "case_type": "boundary",
           "source_review_ids": [
-            "sample-004",
-            "sample-005"
+            "14342854364",
+            "14291852699",
+            "14212862587",
+            "14157097193",
+            "14222226181"
           ]
         },
         {
           "test_case_id": "TC-015",
           "requirement_id": "REQ-004",
-          "title": "验证多次暂停/继续操作后计时器时间准确",
+          "title": "验证客服请求在24小时内得到响应",
           "preconditions": [
-            "应用已启动并进入训练计时器界面",
-            "计时器正在运行"
+            "用户已登录应用",
+            "用户有有效的订阅",
+            "用户已提交客服请求"
           ],
           "steps": [
-            "1. 启动计时器，记录初始剩余时间T0",
-            "2. 重复以下操作10次：点击暂停，等待2秒，点击继续",
-            "3. 记录最终剩余时间T_final",
-            "4. 计算总暂停等待时间（10次*2秒=20秒）",
-            "5. 比较T_final与T0-20秒"
+            "通过应用内客服渠道提交取消订阅或退款请求",
+            "记录提交时间",
+            "等待24小时",
+            "检查是否收到客服响应"
           ],
-          "expected_result": "T_final等于T0-20秒，误差不超过1秒",
-          "case_type": "boundary",
+          "expected_result": "在24小时内收到客服的响应（邮件或应用内通知）。",
+          "case_type": "normal",
           "source_review_ids": [
-            "sample-004",
-            "sample-005"
+            "14342854364",
+            "14291852699",
+            "14212862587",
+            "14157097193",
+            "14222226181"
           ]
         },
         {
           "test_case_id": "TC-016",
           "requirement_id": "REQ-004",
-          "title": "验证暂停后应用被系统杀死，重新打开时提示恢复训练",
+          "title": "验证取消后仍被扣费时提供快速退款通道",
           "preconditions": [
-            "应用已启动并进入训练计时器界面",
-            "计时器正在运行"
+            "用户已取消订阅",
+            "用户被再次扣费"
           ],
           "steps": [
-            "1. 启动计时器，记录剩余时间T1",
-            "2. 点击暂停按钮",
-            "3. 通过系统任务管理器强制杀死应用",
-            "4. 重新打开应用",
-            "5. 观察是否有恢复训练的提示"
+            "在应用内联系客服并选择退款选项",
+            "提交退款请求",
+            "检查是否收到退款确认或处理进度"
           ],
-          "expected_result": "应用弹出提示询问是否恢复训练，选择恢复后计时器从T1继续，选择不恢复则计时器重置",
+          "expected_result": "应用提供快速退款通道，用户提交请求后能收到确认或处理进度。",
           "case_type": "exception",
           "source_review_ids": [
-            "sample-004",
-            "sample-005"
-          ]
-        },
-        {
-          "test_case_id": "TC-017",
-          "requirement_id": "REQ-005",
-          "title": "正常导出本周训练摘要为CSV",
-          "preconditions": [
-            "用户已登录",
-            "训练历史页面存在本周至少一条训练记录",
-            "系统支持文件分享功能"
-          ],
-          "steps": [
-            "打开训练历史页面",
-            "点击“导出本周摘要”按钮",
-            "在弹出菜单中选择CSV格式",
-            "确认生成文件并分享"
-          ],
-          "expected_result": "生成CSV文件，包含训练日期、动作、时长、消耗卡路里等字段，内容与训练记录一致，并弹出系统分享菜单。",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-012",
-            "sample-013"
-          ]
-        },
-        {
-          "test_case_id": "TC-018",
-          "requirement_id": "REQ-005",
-          "title": "本周无训练数据时导出提示无数据",
-          "preconditions": [
-            "用户已登录",
-            "训练历史页面本周无任何训练记录"
-          ],
-          "steps": [
-            "打开训练历史页面",
-            "点击“导出本周摘要”按钮"
-          ],
-          "expected_result": "系统提示“本周无训练数据”，不生成文件，不弹出分享菜单。",
-          "case_type": "exception",
-          "source_review_ids": [
-            "sample-012",
-            "sample-013"
-          ]
-        },
-        {
-          "test_case_id": "TC-019",
-          "requirement_id": "REQ-005",
-          "title": "导出过程中网络中断提示失败",
-          "preconditions": [
-            "用户已登录",
-            "训练历史页面存在本周训练记录",
-            "系统支持文件分享功能"
-          ],
-          "steps": [
-            "打开训练历史页面",
-            "点击“导出本周摘要”按钮",
-            "在导出过程中断开网络连接"
-          ],
-          "expected_result": "系统提示“导出失败，请检查网络连接”，不生成文件，不弹出分享菜单。",
-          "case_type": "exception",
-          "source_review_ids": [
-            "sample-012",
-            "sample-013"
-          ]
-        },
-        {
-          "test_case_id": "TC-020",
-          "requirement_id": "REQ-005",
-          "title": "导出PDF格式文件内容正确",
-          "preconditions": [
-            "用户已登录",
-            "训练历史页面存在本周至少一条训练记录",
-            "系统支持文件分享功能"
-          ],
-          "steps": [
-            "打开训练历史页面",
-            "点击“导出本周摘要”按钮",
-            "在弹出菜单中选择PDF格式",
-            "确认生成文件并分享"
-          ],
-          "expected_result": "生成PDF文件，包含训练日期、动作、时长、消耗卡路里等字段，内容与训练记录一致，并弹出系统分享菜单。",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-012",
-            "sample-013"
-          ]
-        },
-        {
-          "test_case_id": "TC-021",
-          "requirement_id": "REQ-006",
-          "title": "验证免打扰时段内不发送通知",
-          "preconditions": [
-            "用户已登录系统",
-            "用户已设置免打扰时段为 22:00-06:00",
-            "当前时间在免打扰时段内（例如 23:00）"
-          ],
-          "steps": [
-            "触发一个非紧急通知（如新消息通知）",
-            "检查通知发送记录或用户端是否收到通知"
-          ],
-          "expected_result": "在免打扰时段内，非紧急通知不被发送，用户未收到任何通知。",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-019"
-          ]
-        },
-        {
-          "test_case_id": "TC-022",
-          "requirement_id": "REQ-006",
-          "title": "验证跨天免打扰时段正确处理",
-          "preconditions": [
-            "用户已登录系统",
-            "用户已设置免打扰时段为 22:00-06:00",
-            "当前时间为 23:30（跨天时段内）"
-          ],
-          "steps": [
-            "触发一个非紧急通知",
-            "检查通知是否被阻止",
-            "将系统时间调整为次日 05:30，再次触发通知",
-            "检查通知是否仍被阻止"
-          ],
-          "expected_result": "在跨天时段内的所有时间点（22:00-06:00），非紧急通知均不被发送。",
-          "case_type": "boundary",
-          "source_review_ids": [
-            "sample-019"
-          ]
-        },
-        {
-          "test_case_id": "TC-023",
-          "requirement_id": "REQ-006",
-          "title": "验证紧急通知在免打扰时段内仍可发送",
-          "preconditions": [
-            "用户已登录系统",
-            "用户已设置免打扰时段为 22:00-06:00",
-            "当前时间在免打扰时段内（例如 23:00）"
-          ],
-          "steps": [
-            "触发一个紧急通知（如系统警告）",
-            "检查通知是否被发送"
-          ],
-          "expected_result": "紧急通知在免打扰时段内仍被发送，用户能收到该通知。",
-          "case_type": "exception",
-          "source_review_ids": [
-            "sample-019"
-          ]
-        },
-        {
-          "test_case_id": "TC-024",
-          "requirement_id": "REQ-006",
-          "title": "验证修改免打扰时段后立即生效",
-          "preconditions": [
-            "用户已登录系统",
-            "用户已设置免打扰时段为 22:00-06:00",
-            "当前时间为 21:00（不在原免打扰时段内）"
-          ],
-          "steps": [
-            "将免打扰时段修改为 20:00-23:00",
-            "立即触发一个非紧急通知",
-            "检查通知是否被阻止"
-          ],
-          "expected_result": "修改后立即生效，当前时间 21:00 在修改后的时段内，非紧急通知不被发送。",
-          "case_type": "regression",
-          "source_review_ids": [
-            "sample-019"
-          ]
-        },
-        {
-          "test_case_id": "TC-025",
-          "requirement_id": "REQ-007",
-          "title": "正常修改周计划并保存成功",
-          "preconditions": [
-            "应用已启动并登录",
-            "存在一个已创建的周计划"
-          ],
-          "steps": [
-            "打开周计划编辑界面",
-            "修改计划内容，如更改任务名称或日期",
-            "点击保存按钮",
-            "观察应用行为"
-          ],
-          "expected_result": "应用正常保存修改，返回周计划列表或显示成功提示，无崩溃发生。",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-010"
-          ]
-        },
-        {
-          "test_case_id": "TC-026",
-          "requirement_id": "REQ-007",
-          "title": "保存时网络中断不崩溃且提示错误",
-          "preconditions": [
-            "应用已启动并登录",
-            "存在一个已创建的周计划",
-            "网络连接可用"
-          ],
-          "steps": [
-            "打开周计划编辑界面",
-            "修改计划内容",
-            "在点击保存前断开网络连接",
-            "点击保存按钮",
-            "观察应用行为"
-          ],
-          "expected_result": "应用不崩溃，显示保存失败的错误提示，应用保持运行状态。",
-          "case_type": "exception",
-          "source_review_ids": [
-            "sample-010"
-          ]
-        },
-        {
-          "test_case_id": "TC-027",
-          "requirement_id": "REQ-007",
-          "title": "计划包含特殊字符或空值保存正常",
-          "preconditions": [
-            "应用已启动并登录",
-            "存在一个已创建的周计划"
-          ],
-          "steps": [
-            "打开周计划编辑界面",
-            "在计划内容中输入特殊字符如@#￥%……&*",
-            "清空某个必填字段使其为空",
-            "点击保存按钮",
-            "观察应用行为"
-          ],
-          "expected_result": "应用正常处理，不崩溃，保存成功或给出明确的字段校验提示。",
-          "case_type": "boundary",
-          "source_review_ids": [
-            "sample-010"
-          ]
-        },
-        {
-          "test_case_id": "TC-028",
-          "requirement_id": "REQ-007",
-          "title": "连续修改周计划100次无崩溃",
-          "preconditions": [
-            "应用已启动并登录",
-            "存在一个已创建的周计划"
-          ],
-          "steps": [
-            "打开周计划编辑界面",
-            "重复执行修改计划内容并保存的操作100次",
-            "每次保存后确认应用未崩溃",
-            "记录所有操作结果"
-          ],
-          "expected_result": "连续100次修改保存均成功，应用无崩溃发生。",
-          "case_type": "regression",
-          "source_review_ids": [
-            "sample-010"
-          ]
-        },
-        {
-          "test_case_id": "TC-029",
-          "requirement_id": "REQ-008",
-          "title": "验证初学者计划前两周难度评分低于现有计划",
-          "preconditions": [
-            "系统存在现有初学者计划数据",
-            "系统存在重新设计后的初学者计划数据"
-          ],
-          "steps": [
-            "1. 登录系统并进入初学者训练计划管理页面",
-            "2. 查看重新设计后的初学者计划前两周的难度评分",
-            "3. 查看现有初学者计划前两周的难度评分",
-            "4. 比较两者评分"
-          ],
-          "expected_result": "重新设计后的初学者计划前两周的难度评分低于现有计划的评分",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-018"
-          ]
-        },
-        {
-          "test_case_id": "TC-030",
-          "requirement_id": "REQ-008",
-          "title": "验证难度自评功能可调整后续计划",
-          "preconditions": [
-            "用户已登录系统",
-            "用户处于初学者计划中"
-          ],
-          "steps": [
-            "1. 进入当前训练计划页面",
-            "2. 点击“难度自评”按钮",
-            "3. 选择“难度过高”选项并提交",
-            "4. 查看系统生成的后续计划"
-          ],
-          "expected_result": "系统根据用户反馈调整后续计划，降低难度或增加休息时间",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-018"
-          ]
-        },
-        {
-          "test_case_id": "TC-031",
-          "requirement_id": "REQ-008",
-          "title": "验证有健身基础的用户可跳过初学者计划",
-          "preconditions": [
-            "用户已登录系统",
-            "用户有健身基础（如历史训练记录）"
-          ],
-          "steps": [
-            "1. 进入训练计划选择页面",
-            "2. 查看是否有“跳过初学者计划”选项",
-            "3. 点击该选项",
-            "4. 确认跳过后进入高级计划"
-          ],
-          "expected_result": "系统允许用户跳过初学者计划，并直接进入高级计划",
-          "case_type": "boundary",
-          "source_review_ids": [
-            "sample-018"
-          ]
-        },
-        {
-          "test_case_id": "TC-032",
-          "requirement_id": "REQ-008",
-          "title": "验证难度调整后用户可手动修改计划",
-          "preconditions": [
-            "用户已登录系统",
-            "用户处于初学者计划中",
-            "系统已根据难度自评调整计划"
-          ],
-          "steps": [
-            "1. 进入当前训练计划页面",
-            "2. 点击“编辑计划”按钮",
-            "3. 修改计划中的动作或休息时间",
-            "4. 保存修改"
-          ],
-          "expected_result": "系统保存用户手动修改的计划，并在后续训练中应用",
-          "case_type": "regression",
-          "source_review_ids": [
-            "sample-018"
-          ]
-        },
-        {
-          "test_case_id": "TC-033",
-          "requirement_id": "REQ-009",
-          "title": "验证音乐播放时语音指导音量可独立调节并清晰可闻",
-          "preconditions": [
-            "设备已安装最新版本应用",
-            "用户已登录",
-            "设备已连接网络",
-            "音乐播放功能正常",
-            "语音指导功能正常"
-          ],
-          "steps": [
-            "打开应用并进入训练页面",
-            "开始播放音乐",
-            "开始一次训练，触发语音指导",
-            "在音频设置中找到语音指导音量调节选项",
-            "将语音指导音量从默认值调至80%",
-            "播放语音指导并注意听清程度"
-          ],
-          "expected_result": "语音指导音量可独立调节，调节后语音清晰可闻，音乐音量自动降低或语音音量提高，用户能清楚听到指导内容。",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-006"
-          ]
-        },
-        {
-          "test_case_id": "TC-034",
-          "requirement_id": "REQ-009",
-          "title": "验证语音指导音量调节范围边界值0%和100%",
-          "preconditions": [
-            "设备已安装最新版本应用",
-            "用户已登录",
-            "音频设置页面可访问"
-          ],
-          "steps": [
-            "打开应用并进入音频设置",
-            "将语音指导音量调至0%",
-            "播放语音指导",
-            "将语音指导音量调至100%",
-            "播放语音指导"
-          ],
-          "expected_result": "音量调至0%时语音指导无声；调至100%时语音指导音量最大且无破音，调节范围正确。",
-          "case_type": "boundary",
-          "source_review_ids": [
-            "sample-006"
-          ]
-        },
-        {
-          "test_case_id": "TC-035",
-          "requirement_id": "REQ-009",
-          "title": "验证未播放音乐时语音指导音量保持正常",
-          "preconditions": [
-            "设备已安装最新版本应用",
-            "用户已登录",
-            "未播放音乐"
-          ],
-          "steps": [
-            "打开应用并进入训练页面",
-            "不播放音乐，直接开始训练",
-            "触发语音指导",
-            "观察语音指导音量"
-          ],
-          "expected_result": "语音指导音量正常，无异常增大或减小，与设置值一致。",
-          "case_type": "normal",
-          "source_review_ids": [
-            "sample-006"
-          ]
-        },
-        {
-          "test_case_id": "TC-036",
-          "requirement_id": "REQ-009",
-          "title": "验证蓝牙耳机连接时语音指导音量调节正常",
-          "preconditions": [
-            "设备已安装最新版本应用",
-            "用户已登录",
-            "蓝牙耳机已连接并配对成功"
-          ],
-          "steps": [
-            "连接蓝牙耳机",
-            "打开应用并进入音频设置",
-            "调节语音指导音量至60%",
-            "播放音乐并开始训练",
-            "触发语音指导，检查音量"
-          ],
-          "expected_result": "蓝牙耳机下语音指导音量调节正常，语音清晰，音乐音量自动调整，无异常。",
-          "case_type": "regression",
-          "source_review_ids": [
-            "sample-006"
+            "14342854364",
+            "14291852699",
+            "14212862587",
+            "14157097193",
+            "14222226181"
           ]
         }
       ]
