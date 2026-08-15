@@ -24,6 +24,7 @@ STAGE_LABELS = {
     "clean": "确定性清洗",
     "analyze_batches": "分批语义分析",
     "consolidate": "归并发现",
+    "audit_evidence": "证据语义复核",
     "validate_findings": "证据校验",
     "plan": "产品规划",
     "generate_tests": "生成测试",
@@ -48,6 +49,12 @@ TARGET_VERSION_LABELS = {
     "V1.0": "V1.0",
     "V1.1": "V1.1",
     "Future": "待规划",
+}
+
+EVIDENCE_ROLE_LABELS = {
+    "supporting": "支持",
+    "conflicting": "冲突",
+    "irrelevant": "无关",
 }
 
 TABLE_COLUMN_LABELS = {
@@ -121,6 +128,9 @@ _TABLE_VALUE_LABELS = {
         "review_reference_exists": "评论引用存在",
         "finding_has_support": "问题发现具有支持证据",
         "finding_support_threshold": "问题发现支持证据阈值",
+        "evidence_audit_complete": "证据语义复核完整",
+        "evidence_audit_reference_exists": "证据复核引用存在",
+        "evidence_audit_unique": "证据复核引用唯一",
         "review_to_finding": "评论到问题发现",
         "finding_to_requirement": "问题发现到产品需求",
         "requirement_uses_eligible_finding": "产品需求仅使用合格问题发现",
@@ -130,6 +140,9 @@ _TABLE_VALUE_LABELS = {
     },
     "revision_action": {
         "remove_invalid_references": "删除无效引用",
+        "remove_unknown_audit_references": "删除未知复核引用",
+        "deduplicate_audit_references": "去重证据复核引用",
+        "audit_missing_references": "补充缺失证据复核",
         "reject_finding": "拒绝问题发现",
     },
 }
@@ -155,6 +168,7 @@ _EVENT_MESSAGE_LABELS = {
     "Batch analysis completed": "一批评论分析完成",
     "All review batches analyzed": "全部评论批次分析完成",
     "Finding consolidation completed": "问题发现归并已完成",
+    "Finding evidence audit completed": "问题发现证据语义复核已完成",
     "Finding validation completed": "问题发现证据校验已完成",
     "Product planning completed": "产品规划已完成",
     "Test generation completed": "测试用例生成已完成",
@@ -209,7 +223,16 @@ def _display_records_frame(
     records: Iterable[dict[str, Any]],
     allowed_columns: Iterable[str],
 ) -> pd.DataFrame:
-    frame = _records_frame(records, allowed_columns)
+    columns = list(allowed_columns)
+    frame = _records_frame(records, columns)
+    if "content_summary_zh" in columns:
+        if "content_summary_zh" not in frame.columns:
+            frame["content_summary_zh"] = "待生成"
+        else:
+            frame["content_summary_zh"] = frame["content_summary_zh"].map(
+                lambda value: value if isinstance(value, str) and value.strip() else "待生成"
+            )
+        frame = frame[[column for column in columns if column in frame.columns]]
     for column, value_labels in _TABLE_VALUE_LABELS.items():
         if column not in frame.columns:
             continue
@@ -230,6 +253,77 @@ def _localize_validation_message(value: Any) -> Any:
     for original, localized in _VALIDATION_MESSAGE_REPLACEMENTS:
         value = value.replace(original, localized)
     return value
+
+
+def _finding_evidence_rows(
+    finding: Mapping[str, Any],
+    reviews: Iterable[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    review_index = {review.get("review_id"): review for review in reviews}
+    assessment_index = {
+        assessment.get("review_id"): assessment
+        for assessment in finding.get("evidence_assessments", [])
+    }
+    supporting_ids = finding.get("supporting_review_ids", [])
+    conflicting_ids = finding.get("conflicting_review_ids", [])
+    cited_ids = list(dict.fromkeys(supporting_ids + conflicting_ids))
+    rows = []
+    for review_id in cited_ids:
+        review = review_index.get(review_id, {})
+        assessment = assessment_index.get(review_id, {})
+        default_role = "supporting" if review_id in supporting_ids else "conflicting"
+        summary = review.get("content_summary_zh")
+        rows.append(
+            {
+                "评论 ID": review_id,
+                "证据角色": EVIDENCE_ROLE_LABELS.get(
+                    assessment.get("role", default_role),
+                    assessment.get("role", default_role),
+                ),
+                "评论原文": review.get(
+                    "content_original",
+                    "未找到原评论（引用存在性校验未通过）。",
+                ),
+                "中文摘要": (summary if isinstance(summary, str) and summary.strip() else "待生成"),
+                "复核理由": assessment.get(
+                    "rationale_zh",
+                    "尚未完成证据语义复核。",
+                ),
+            }
+        )
+    return rows
+
+
+def _finding_validation_states(
+    finding: Mapping[str, Any],
+) -> list[tuple[str, str, bool]]:
+    return [
+        (
+            "Schema 校验",
+            "已通过" if finding.get("schema_validated", False) else "未通过",
+            bool(finding.get("schema_validated", False)),
+        ),
+        (
+            "引用存在性",
+            "已通过" if finding.get("reference_validated", False) else "未通过",
+            bool(finding.get("reference_validated", False)),
+        ),
+        (
+            "证据语义",
+            "已复核" if finding.get("semantic_validated", False) else "待复核",
+            bool(finding.get("semantic_validated", False)),
+        ),
+    ]
+
+
+def _requirement_display_metadata(requirement: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "target_version": TARGET_VERSION_LABELS.get(
+            requirement.get("target_version", "Future"),
+            "待规划",
+        ),
+        "business_assumptions": requirement.get("assumptions", []),
+    }
 
 
 def format_event_message(message: str) -> str:
@@ -402,7 +496,10 @@ def _render_overview(
         st.metric("测试用例", len(test_output.get("test_cases", [])), border=True)
 
 
-def _render_findings(findings_output: dict[str, Any]) -> None:
+def _render_findings(
+    findings_output: dict[str, Any],
+    reviews: list[dict[str, Any]],
+) -> None:
     findings = findings_output.get("findings", [])
     if not findings:
         st.info("尚无问题发现。模型暂停时，已完成阶段的结果仍会保留。")
@@ -423,6 +520,9 @@ def _render_findings(findings_output: dict[str, Any]) -> None:
             with st.container(horizontal=True, gap="small"):
                 st.badge(PROVENANCE_LABELS["ai_generated"], color="orange")
                 st.badge(status_label, color=status_color)
+            with st.container(horizontal=True, gap="small"):
+                for label, state, _ in _finding_validation_states(finding):
+                    st.markdown(f"**{label}**：{state}")
             st.write(finding.get("problem_statement", ""))
             with st.container(horizontal=True):
                 st.metric("支持证据", finding.get("support_count", 0), border=True)
@@ -433,13 +533,19 @@ def _render_findings(findings_output: dict[str, Any]) -> None:
                     border=True,
                 )
             st.markdown(f"**主题标签**：{finding.get('topic_label', '—')}")
-            st.markdown("**支持评论 ID**：" + ", ".join(finding.get("supporting_review_ids", [])))
-            conflicts = finding.get("conflicting_review_ids", [])
-            st.markdown("**冲突评论 ID**：" + (", ".join(conflicts) or "无"))
             st.markdown(f"**模型归纳说明**：{finding.get('model_reasoning_summary', '—')}")
+            st.markdown("**证据详情**")
+            evidence_rows = _finding_evidence_rows(finding, reviews)
+            if evidence_rows:
+                st.dataframe(pd.DataFrame(evidence_rows), hide_index=True)
+            else:
+                st.warning("没有可展示的有效证据；该问题发现不应进入正式规划。")
             limitations = finding.get("limitations", [])
+            st.markdown("**局限说明**")
             if limitations:
                 st.warning("\n".join(f"- {item}" for item in limitations))
+            else:
+                st.caption("当前未记录额外局限。")
 
 
 def _render_requirements(plan_output: dict[str, Any]) -> None:
@@ -451,10 +557,8 @@ def _render_requirements(plan_output: dict[str, Any]) -> None:
         return
 
     for requirement in requirements:
-        target_version = TARGET_VERSION_LABELS.get(
-            requirement.get("target_version", "Future"),
-            "待规划",
-        )
+        metadata = _requirement_display_metadata(requirement)
+        target_version = metadata["target_version"]
         complexity = COMPLEXITY_LABELS.get(
             requirement.get("complexity", ""),
             requirement.get("complexity", "—"),
@@ -471,6 +575,7 @@ def _render_requirements(plan_output: dict[str, Any]) -> None:
                     st.badge(PROVENANCE_LABELS["assumption"], color="gray")
             st.markdown(f"**用户问题**：{requirement.get('user_problem', '—')}")
             st.markdown(f"**目标**：{requirement.get('objective', '—')}")
+            st.markdown(f"**目标版本**：{target_version}")
             st.markdown(
                 f"**优先级分**：{requirement.get('priority_score', 0)} · "
                 f"**影响**：{requirement.get('impact', '—')} · "
@@ -483,10 +588,14 @@ def _render_requirements(plan_output: dict[str, Any]) -> None:
                 ("边界情况", "edge_cases"),
                 ("验收标准", "acceptance_criteria"),
                 ("成功指标", "success_metrics"),
-                ("假设", "assumptions"),
+                ("业务假设", "assumptions"),
             )
             for label, field in fields:
-                values = requirement.get(field, [])
+                values = (
+                    metadata["business_assumptions"]
+                    if field == "assumptions"
+                    else requirement.get(field, [])
+                )
                 if values:
                     st.markdown(f"**{label}**")
                     st.markdown("\n".join(f"- {value}" for value in values))
@@ -578,7 +687,7 @@ def render_result_payloads(
             key=f"reviews-{result_key}",
         )
     with tabs[2]:
-        _render_findings(findings)
+        _render_findings(findings, clean.get("reviews", []))
     with tabs[3]:
         _render_requirements(plan)
     with tabs[4]:
