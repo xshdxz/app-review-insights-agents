@@ -31,6 +31,139 @@ STAGE_LABELS = {
     "complete": "完成",
 }
 
+PROVENANCE_LABELS = {
+    "deterministic": "程序计算",
+    "ai_generated": "模型生成",
+    "validated": "已校验",
+    "assumption": "假设/待确认",
+}
+
+COMPLEXITY_LABELS = {
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+}
+
+TARGET_VERSION_LABELS = {
+    "V1.0": "V1.0",
+    "V1.1": "V1.1",
+    "Future": "待规划",
+}
+
+TABLE_COLUMN_LABELS = {
+    "review_id": "评论 ID",
+    "rating": "评分",
+    "app_version": "App 版本",
+    "published_at": "发布时间",
+    "language": "语言",
+    "content_original": "评论原文",
+    "content_summary_zh": "中文摘要",
+    "source": "数据来源",
+    "test_case_id": "测试用例 ID",
+    "requirement_id": "需求 ID",
+    "title": "标题",
+    "case_type": "用例类型",
+    "preconditions": "前置条件",
+    "steps": "测试步骤",
+    "expected_result": "预期结果",
+    "source_review_ids": "来源评论 ID",
+    "severity": "严重程度",
+    "entity_type": "对象类型",
+    "entity_id": "对象 ID",
+    "rule": "校验规则",
+    "message": "说明",
+    "revision_action": "修正建议",
+    "finding_ids": "问题发现 ID",
+    "review_ids": "评论 ID",
+    "test_case_ids": "测试用例 ID",
+    "time": "时间",
+    "stage": "阶段",
+    "status": "状态",
+    "scope": "范围",
+    "limitation": "局限说明",
+}
+
+_TABLE_VALUE_LABELS = {
+    "stage": STAGE_LABELS,
+    "status": STATUS_LABELS,
+    "source": {
+        "apple-rss:us": "Apple RSS（美国区）",
+        "import:json": "JSON 导入",
+        "import:csv": "CSV 导入",
+        "json": "JSON 导入",
+        "csv": "CSV 导入",
+        "fixture": "样例数据",
+    },
+    "case_type": {
+        "normal": "常规",
+        "boundary": "边界",
+        "exception": "异常",
+        "regression": "回归",
+    },
+    "severity": {
+        "info": "提示",
+        "warning": "警告",
+        "error": "错误",
+        "critical": "严重",
+    },
+    "entity_type": {
+        "review": "评论",
+        "finding": "问题发现",
+        "requirement": "产品需求",
+        "test_case": "测试用例",
+    },
+    "scope": {
+        "run": "运行",
+        "finding": "问题发现",
+    },
+    "rule": {
+        "entity_id_unique": "对象 ID 唯一",
+        "review_reference_exists": "评论引用存在",
+        "finding_has_support": "问题发现具有支持证据",
+        "finding_support_threshold": "问题发现支持证据阈值",
+        "review_to_finding": "评论到问题发现",
+        "finding_to_requirement": "问题发现到产品需求",
+        "requirement_uses_eligible_finding": "产品需求仅使用合格问题发现",
+        "requirement_reviews_inherit_findings": "产品需求继承问题发现的评论来源",
+        "requirement_to_test_case": "产品需求到测试用例",
+        "test_case_count_per_requirement": "每项需求的测试用例数量",
+    },
+    "revision_action": {
+        "remove_invalid_references": "删除无效引用",
+        "reject_finding": "拒绝问题发现",
+    },
+}
+
+_VALIDATION_MESSAGE_REPLACEMENTS = (
+    ("Finding 标记为 Assumption", "问题发现标记为“假设/待确认”"),
+    ("TestCase", "测试用例"),
+    ("Requirement", "产品需求"),
+    ("Finding", "问题发现"),
+    ("test_case ID", "测试用例 ID"),
+    ("requirement ID", "产品需求 ID"),
+    ("finding ID", "问题发现 ID"),
+    ("Assumption", "假设/待确认"),
+)
+
+_EVENT_MESSAGE_LABELS = {
+    "Analysis run created": "分析任务已创建",
+    "Analysis run resumed": "分析任务已恢复",
+    "Review collection failed": "评论采集或导入失败",
+    "Review collection completed": "评论采集或导入已完成",
+    "Review cleaning completed": "评论清洗已完成",
+    "Batch analysis paused for retry": "分批分析暂停，等待重试",
+    "Batch analysis completed": "一批评论分析完成",
+    "All review batches analyzed": "全部评论批次分析完成",
+    "Finding consolidation completed": "问题发现归并已完成",
+    "Finding validation completed": "问题发现证据校验已完成",
+    "Product planning completed": "产品规划已完成",
+    "Test generation completed": "测试用例生成已完成",
+    "Traceability validation completed": "证据链校验已完成",
+    "Traceability validation found unresolved issues": "证据链校验发现未解决问题",
+    "Model stage paused for retry": "模型阶段暂停，等待重试",
+    "Analysis run completed": "分析任务已完成",
+}
+
 _REVIEW_COLUMNS = (
     "review_id",
     "rating",
@@ -72,28 +205,65 @@ def _records_frame(
     return pd.DataFrame(safe_records, columns=columns).dropna(axis=1, how="all")
 
 
+def _display_records_frame(
+    records: Iterable[dict[str, Any]],
+    allowed_columns: Iterable[str],
+) -> pd.DataFrame:
+    frame = _records_frame(records, allowed_columns)
+    for column, value_labels in _TABLE_VALUE_LABELS.items():
+        if column not in frame.columns:
+            continue
+        labels = value_labels
+        frame[column] = frame[column].map(
+            lambda value, labels=labels: labels.get(value, value)
+            if isinstance(value, str)
+            else value
+        )
+    if "message" in frame.columns:
+        frame["message"] = frame["message"].map(_localize_validation_message)
+    return frame.rename(columns=TABLE_COLUMN_LABELS)
+
+
+def _localize_validation_message(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    for original, localized in _VALIDATION_MESSAGE_REPLACEMENTS:
+        value = value.replace(original, localized)
+    return value
+
+
+def format_event_message(message: str) -> str:
+    """Translate persisted pipeline events for display without changing stored data."""
+    if message in _EVENT_MESSAGE_LABELS:
+        return _EVENT_MESSAGE_LABELS[message]
+    if message.startswith("Stage started: "):
+        stage = message.removeprefix("Stage started: ")
+        return f"开始阶段：{STAGE_LABELS.get(stage, stage)}"
+    return message
+
+
 def render_provenance_legend() -> None:
     with st.container(horizontal=True, gap="small"):
         st.badge(
-            "Deterministic",
+            PROVENANCE_LABELS["deterministic"],
             icon=":material/functions:",
             color="blue",
             help="由程序规则直接计算，不依赖语言模型。",
         )
         st.badge(
-            "AI-generated",
+            PROVENANCE_LABELS["ai_generated"],
             icon=":material/auto_awesome:",
             color="orange",
             help="由 DeepSeek 生成，必须结合证据与校验状态审阅。",
         )
         st.badge(
-            "Validated",
+            PROVENANCE_LABELS["validated"],
             icon=":material/verified:",
             color="green",
             help="已通过当前阶段的确定性校验。",
         )
         st.badge(
-            "Assumption",
+            PROVENANCE_LABELS["assumption"],
             icon=":material/help:",
             color="gray",
             help="证据不足或仍需人工确认，不能视为确定事实。",
@@ -132,12 +302,13 @@ def render_run_status(run: RunRecord, events: list[StageEvent]) -> None:
                 color="primary",
             )
 
-        st.caption(f"Run ID：`{run.run_id}`")
-        st.write(f"当前 stage：`{run.current_stage.value}`")
+        st.caption(f"运行 ID：`{run.run_id}`")
+        current_stage = STAGE_LABELS.get(run.current_stage.value, run.current_stage.value)
+        st.write(f"当前阶段：`{current_stage}`")
         if run.total_batches:
-            st.write(f"batch 检查点：`已完成 {run.current_batch} / {run.total_batches}`")
+            st.write(f"批次检查点：`已完成 {run.current_batch} / {run.total_batches}`")
         else:
-            st.write("当前 batch：`尚未分批`")
+            st.write("当前批次：`尚未分批`")
 
         if run.last_error:
             st.warning(run.last_error, icon=":material/report_problem:")
@@ -150,7 +321,7 @@ def render_run_status(run: RunRecord, events: list[StageEvent]) -> None:
                 st.caption(
                     f"{timestamp} · {STAGE_LABELS.get(event.stage.value, event.stage.value)}"
                 )
-                st.write(event.message)
+                st.write(format_event_message(event.message))
 
 
 def render_records(
@@ -164,7 +335,7 @@ def render_records(
         st.info(empty_message, icon=":material/inbox:")
         return
     st.dataframe(
-        _records_frame(records, allowed_columns),
+        _display_records_frame(records, allowed_columns),
         hide_index=True,
         key=key,
     )
@@ -190,7 +361,7 @@ def _render_overview(
     test_output: dict[str, Any],
     run_limitations: list[str],
 ) -> None:
-    st.badge("Deterministic", icon=":material/functions:", color="blue")
+    st.badge(PROVENANCE_LABELS["deterministic"], icon=":material/functions:", color="blue")
     stats = clean.get("stats", {})
     with st.container(horizontal=True):
         st.metric("输入评论", stats.get("input_count", 0), border=True)
@@ -204,29 +375,33 @@ def _render_overview(
     for limitation in run_limitations:
         st.warning(limitation, icon=":material/data_alert:")
 
-    st.badge("AI-generated", icon=":material/auto_awesome:", color="orange")
+    st.badge(PROVENANCE_LABELS["ai_generated"], icon=":material/auto_awesome:", color="orange")
     with st.container(horizontal=True):
-        st.metric("Findings", len(findings.get("findings", [])), border=True)
-        st.metric("PRD 需求", len(plan.get("requirements", [])), border=True)
+        st.metric("问题发现", len(findings.get("findings", [])), border=True)
+        st.metric("产品需求（PRD）", len(plan.get("requirements", [])), border=True)
         st.metric("测试用例", len(test_output.get("test_cases", [])), border=True)
 
 
 def _render_findings(findings_output: dict[str, Any]) -> None:
     findings = findings_output.get("findings", [])
     if not findings:
-        st.info("尚无 Findings。模型暂停时，已完成阶段的结果仍会保留。")
+        st.info("尚无问题发现。模型暂停时，已完成阶段的结果仍会保留。")
         return
 
     for finding in findings:
         status = finding.get("evidence_status", "assumption")
-        status_label = "Validated" if status == "validated" else "Assumption"
+        status_label = (
+            PROVENANCE_LABELS["validated"]
+            if status == "validated"
+            else PROVENANCE_LABELS["assumption"]
+        )
         status_color = "green" if status == "validated" else "gray"
         with st.expander(
-            f"{finding.get('finding_id', 'Finding')} · {finding.get('title', '未命名发现')}",
+            f"{finding.get('finding_id', '问题发现')} · {finding.get('title', '未命名发现')}",
             icon=":material/article:",
         ):
             with st.container(horizontal=True, gap="small"):
-                st.badge("AI-generated", color="orange")
+                st.badge(PROVENANCE_LABELS["ai_generated"], color="orange")
                 st.badge(status_label, color=status_color)
             st.write(finding.get("problem_statement", ""))
             with st.container(horizontal=True):
@@ -256,22 +431,30 @@ def _render_requirements(plan_output: dict[str, Any]) -> None:
         return
 
     for requirement in requirements:
+        target_version = TARGET_VERSION_LABELS.get(
+            requirement.get("target_version", "Future"),
+            "待规划",
+        )
+        complexity = COMPLEXITY_LABELS.get(
+            requirement.get("complexity", ""),
+            requirement.get("complexity", "—"),
+        )
         with st.expander(
             f"{requirement.get('requirement_id', 'REQ')} · "
-            f"{requirement.get('target_version', 'Future')} · "
+            f"{target_version} · "
             f"{requirement.get('title', '未命名需求')}",
             icon=":material/description:",
         ):
             with st.container(horizontal=True, gap="small"):
-                st.badge("AI-generated", color="orange")
+                st.badge(PROVENANCE_LABELS["ai_generated"], color="orange")
                 if requirement.get("assumptions"):
-                    st.badge("Assumption", color="gray")
+                    st.badge(PROVENANCE_LABELS["assumption"], color="gray")
             st.markdown(f"**用户问题**：{requirement.get('user_problem', '—')}")
             st.markdown(f"**目标**：{requirement.get('objective', '—')}")
             st.markdown(
                 f"**优先级分**：{requirement.get('priority_score', 0)} · "
                 f"**影响**：{requirement.get('impact', '—')} · "
-                f"**复杂度**：{requirement.get('complexity', '—')}"
+                f"**复杂度**：{complexity}"
             )
             fields = (
                 ("范围", "scope"),
@@ -288,9 +471,9 @@ def _render_requirements(plan_output: dict[str, Any]) -> None:
                     st.markdown(f"**{label}**")
                     st.markdown("\n".join(f"- {value}" for value in values))
             st.caption(
-                "Finding："
+                "问题发现："
                 + ", ".join(requirement.get("finding_ids", []))
-                + " · Review："
+                + " · 评论："
                 + ", ".join(requirement.get("source_review_ids", []))
             )
 
@@ -355,8 +538,8 @@ def render_result_payloads(
         [
             ":material/analytics: 总览",
             ":material/reviews: 评论证据",
-            ":material/lightbulb: Findings",
-            ":material/description: PRD",
+            ":material/lightbulb: 问题发现",
+            ":material/description: 产品需求（PRD）",
             ":material/checklist: 测试用例",
             ":material/account_tree: 证据链",
             ":material/receipt_long: 日志与限制",
@@ -365,7 +548,10 @@ def render_result_payloads(
     with tabs[0]:
         _render_overview(clean, findings, plan, test_output, run_limitations)
     with tabs[1]:
-        st.caption("Deterministic · 原始评论文本保留为证据，中文摘要不能替代原文。")
+        st.caption(
+            f"{PROVENANCE_LABELS['deterministic']} · "
+            "原始评论文本保留为证据，中文摘要不能替代原文。"
+        )
         render_records(
             clean.get("reviews", []),
             "尚无清洗评论。",
@@ -378,9 +564,9 @@ def render_result_payloads(
         _render_requirements(plan)
     with tabs[4]:
         with st.container(horizontal=True, gap="small"):
-            st.badge("AI-generated", color="orange")
+            st.badge(PROVENANCE_LABELS["ai_generated"], color="orange")
             if trace.get("valid"):
-                st.badge("Validated", color="green")
+                st.badge(PROVENANCE_LABELS["validated"], color="green")
         render_records(
             test_output.get("test_cases", []),
             "尚无测试用例。",
@@ -388,10 +574,10 @@ def render_result_payloads(
             key=f"test-cases-{result_key}",
         )
     with tabs[5]:
-        st.badge("Deterministic", color="blue")
+        st.badge(PROVENANCE_LABELS["deterministic"], color="blue")
         if trace.get("valid"):
             st.success(
-                "Review → Finding → Requirement → TestCase 追溯链已通过校验。",
+                "评论 → 问题发现 → 产品需求 → 测试用例追溯链已通过校验。",
                 icon=":material/verified:",
             )
         elif trace_output is None:
@@ -418,9 +604,9 @@ def render_result_payloads(
         event_rows = [
             {
                 "time": event.created_at.astimezone().strftime("%Y-%m-%d %H:%M:%S"),
-                "stage": event.stage.value,
-                "status": event.status.value,
-                "message": event.message,
+                "stage": STAGE_LABELS.get(event.stage.value, event.stage.value),
+                "status": STATUS_LABELS.get(event.status.value, event.status.value),
+                "message": format_event_message(event.message),
             }
             for event in reversed(events)
         ]
@@ -448,13 +634,13 @@ def render_result_payloads(
         ]
         render_records(
             limitation_rows,
-            "当前没有记录运行或 Finding 局限。",
+            "当前没有记录运行或问题发现局限。",
             ("scope", "entity_id", "limitation"),
             key=f"limitations-{result_key}",
         )
         render_records(
             findings.get("report", {}).get("issues", []),
-            "当前没有 Finding 校验问题。",
+            "当前没有问题发现校验问题。",
             _ISSUE_COLUMNS,
             key=f"finding-issues-{result_key}",
         )

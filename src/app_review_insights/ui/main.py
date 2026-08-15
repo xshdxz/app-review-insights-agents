@@ -33,6 +33,7 @@ from app_review_insights.storage.cache import (
     load_demo_run,
 )
 from app_review_insights.ui.components import (
+    format_event_message,
     render_model_status,
     render_provenance_legend,
     render_result_payloads,
@@ -168,7 +169,7 @@ def _render_input_form(settings: Settings, model_ready: bool):
             key="source-mode",
         )
         app_url = st.text_input(
-            "App URL",
+            "App 地址（URL）",
             placeholder="https://apps.apple.com/us/app/example/id123456789",
             help="在线采集仅支持美国区 App Store；文件导入时可留空。",
         )
@@ -182,7 +183,7 @@ def _render_input_form(settings: Settings, model_ready: bool):
             min_value=100,
             max_value=1000,
             value=settings.default_review_limit,
-            step=100,
+            step=1,
             help="Apple RSS 在线采集最多 500 条；文件导入可分析至 1000 条。",
         )
         upload = st.file_uploader(
@@ -213,7 +214,7 @@ def _render_downloads(downloads: dict[str, bytes], *, key_prefix: str) -> None:
             key=f"{key_prefix}-cleaned",
         )
         st.download_button(
-            "下载 PRD JSON",
+            "下载产品需求（PRD）JSON",
             downloads["prd"],
             "prd.json",
             mime="application/json",
@@ -269,9 +270,9 @@ def _render_demo_archive() -> None:
     with right:
         with st.container(border=True):
             st.subheader("演示状态", anchor=False)
-            st.badge("Historical cache", color="orange", icon=":material/history:")
-            st.badge("Non-live", color="gray", icon=":material/cloud_off:")
-            st.caption(f"Run ID：`{run.run_id}`")
+            st.badge("历史缓存", color="orange", icon=":material/history:")
+            st.badge("非实时", color="gray", icon=":material/cloud_off:")
+            st.caption(f"运行 ID：`{run.run_id}`")
             st.write("实时模型调用：`未执行`")
             st.write("缓存标签校验：`已通过`")
 
@@ -290,7 +291,10 @@ def main() -> None:
     _initialize_session_state(services.repository)
 
     st.title("证据审阅工作台", anchor=False)
-    st.caption("编辑部档案 · 将 App Store 评论整理为可核验的 Findings、PRD、测试用例与证据链")
+    st.caption(
+        "编辑部档案 · 将 App Store 评论整理为可核验的问题发现、产品需求（PRD）、"
+        "测试用例与证据链"
+    )
     render_provenance_legend()
     render_model_status(model_ready, settings.model_name)
     demo_mode = st.toggle(
@@ -337,7 +341,9 @@ def main() -> None:
                         services,
                         request,
                         imported_reviews,
-                        event_writer=lambda event: live_status.write(event.message),
+                        event_writer=lambda event: live_status.write(
+                            format_event_message(event.message)
+                        ),
                     )
                     st.session_state["run_id"] = run.run_id
                     _update_live_status(live_status, run)
@@ -372,13 +378,15 @@ def main() -> None:
                     width="stretch",
                 )
                 if not model_ready:
-                    st.caption("配置模型密钥后，可沿用同一 Run ID 从检查点继续。")
+                    st.caption("配置模型密钥后，可沿用同一运行 ID 从检查点继续。")
                 if resume:
                     resume_status = st.status("正在从检查点继续", expanded=True)
                     resumed = _resume_analysis(
                         services,
                         run.run_id,
-                        event_writer=lambda event: resume_status.write(event.message),
+                        event_writer=lambda event: resume_status.write(
+                            format_event_message(event.message)
+                        ),
                     )
                     st.session_state["run_id"] = resumed.run_id
                     _update_live_status(resume_status, resumed)
@@ -386,4 +394,4 @@ def main() -> None:
         else:
             with st.container(border=True):
                 st.subheader("运行状态", anchor=False)
-                st.caption("创建运行后，这里会显示覆盖率、stage、batch、事件和错误。")
+                st.caption("创建运行后，这里会显示覆盖率、阶段、批次、事件和错误。")

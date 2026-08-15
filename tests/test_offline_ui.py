@@ -20,12 +20,12 @@ def test_offline_demo_reuses_result_views_and_exposes_downloads(tmp_path, monkey
     assert "历史缓存演示" in warning_text
     assert "不是本次实时分析" in warning_text
     assert any("人工样例 JSON" in item.value for item in app.caption)
-    assert any(tab.label.endswith("Findings") for tab in app.tabs)
+    assert any(tab.label.endswith("问题发现") for tab in app.tabs)
     assert any(tab.label.endswith("证据链") for tab in app.tabs)
     labels = {button.label for button in app.get("download_button")}
     assert labels >= {
         "下载清洗评论 JSON",
-        "下载 PRD JSON",
+        "下载产品需求（PRD）JSON",
         "下载测试用例 CSV",
         "下载证据链 CSV",
     }

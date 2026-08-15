@@ -84,6 +84,10 @@ def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):
     assert any("证据审阅工作台" in title.value for title in app.title)
     start_button = next(button for button in app.button if button.label == "开始分析")
     assert start_button.disabled is True
+    review_limit = next(slider for slider in app.slider if slider.label == "评论数量")
+    assert review_limit.min == 100
+    assert review_limit.max == 1000
+    assert review_limit.step == 1
 
 
 def test_online_input_error_is_friendly_and_does_not_create_run(tmp_path, monkeypatch):
