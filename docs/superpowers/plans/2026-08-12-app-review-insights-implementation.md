@@ -3219,7 +3219,7 @@ def test_full_imported_pipeline_completes_with_traceability(tmp_path):
 - 核心模块 `cleaning`、`validate`、`traceability` 和 `repository` 的行覆盖率均至少为 90%。
 - 没有 Ruff 错误。
 
-- [ ] **步骤 5：执行两次真实输入泛化检查**
+- [x] **步骤 5：执行两次真实输入泛化检查**
 
 使用以下输入运行 Streamlit 应用：
 
