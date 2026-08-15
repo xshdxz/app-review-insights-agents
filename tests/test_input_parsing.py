@@ -54,15 +54,28 @@ def test_import_csv_accepts_documented_columns():
     assert reviews[0].source == "import:csv"
 
 
+def test_import_csv_accepts_chinese_export_columns():
+    payload = (
+        "评论 ID,评分,App 版本,发布时间,语言,评论原文,数据来源\n"
+        "r-zh-1,1,8.5.0,2026-08-13T21:59:17Z,en,"
+        "Paywall blocks workouts,Apple RSS（美国区）\n"
+    ).encode("utf-8-sig")
+
+    reviews = import_reviews(payload, "评论.csv", app_id="imported-app")
+
+    assert reviews[0].review_id == "r-zh-1"
+    assert reviews[0].content_original == "Paywall blocks workouts"
+    assert reviews[0].app_version == "8.5.0"
+    assert reviews[0].language == "en"
+
+
 def test_import_rejects_unsupported_file_type():
     with pytest.raises(InputDataError, match="仅支持"):
         import_reviews(b"content", "reviews.txt", app_id="imported-app")
 
 
 def test_import_reports_missing_content_with_row_number():
-    payload = json.dumps(
-        [{"id": "r-1", "rating": 2, "date": "2026-08-01T10:00:00Z"}]
-    ).encode()
+    payload = json.dumps([{"id": "r-1", "rating": 2, "date": "2026-08-01T10:00:00Z"}]).encode()
 
     with pytest.raises(InputDataError, match="第 1 条评论缺少 content"):
         import_reviews(payload, "reviews.json", app_id="imported-app")

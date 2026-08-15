@@ -102,25 +102,58 @@ def import_reviews(data: bytes, filename: str, app_id: str) -> list[Review]:
     reviews: list[Review] = []
     suffix = Path(filename).suffix.lower()
     for index, record in enumerate(_records_from_bytes(data, filename), start=1):
-        content = _require(record, index, "content", "content_original", "content", "review")
-        rating = _require(record, index, "rating", "rating")
-        published = _require(record, index, "published_at/date", "published_at", "date", "updated")
+        content = _require(
+            record,
+            index,
+            "content",
+            "content_original",
+            "content",
+            "review",
+            "评论原文",
+        )
+        rating = _require(record, index, "rating", "rating", "评分")
+        published = _require(
+            record,
+            index,
+            "published_at/date",
+            "published_at",
+            "date",
+            "updated",
+            "发布时间",
+        )
 
         try:
             reviews.append(
                 Review(
                     review_id=str(
-                        _first(record, "review_id", "id", default=f"import-{index}")
+                        _first(
+                            record,
+                            "review_id",
+                            "id",
+                            "评论 ID",
+                            default=f"import-{index}",
+                        )
                     ),
                     app_id=app_id,
                     storefront=str(_first(record, "storefront", default="us")),
                     title=str(_first(record, "title", default="")),
                     content_original=str(content),
                     rating=_parse_rating(rating, index),
-                    app_version=_first(record, "app_version", "version"),
-                    author=_first(record, "author", "userName", "username"),
+                    app_version=_first(
+                        record,
+                        "app_version",
+                        "version",
+                        "App 版本",
+                    ),
+                    author=_first(
+                        record,
+                        "author",
+                        "userName",
+                        "username",
+                        "作者",
+                    ),
                     published_at=_parse_datetime(published, index),
-                    language=_first(record, "language"),
+                    language=_first(record, "language", "语言"),
                     source=f"import:{suffix[1:]}",
                 )
             )
