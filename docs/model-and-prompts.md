@@ -33,12 +33,21 @@
 评分脚本：
 
 ```powershell
+# 推荐：从项目根目录直接运行，脚本会自动定位 .venv
+.\run_eval.ps1
+
+# 调用当前 DeepSeek 配置并保存详细结果
+.\run_eval.ps1 -Live -Output output\prompt-eval-2026-08-15.json
+
 # 只校验数据集，不调用模型
 .\.venv\Scripts\python scripts/run_eval.py
 
 # 调用当前 DeepSeek 配置并保存详细结果
 .\.venv\Scripts\python scripts/run_eval.py --live --output output/prompt-eval-2026-08-15.json
 ```
+
+根目录 PowerShell 入口只负责定位项目虚拟环境并转发参数，不读取或打印
+`DEEPSEEK_API_KEY`。缺少 `.venv` 或评测脚本时会给出中文错误提示。
 
 ## 实验记录
 
