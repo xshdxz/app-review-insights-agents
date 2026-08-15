@@ -1,9 +1,14 @@
+from xml.sax.saxutils import escape
+
 from app_review_insights.collectors.app_store import AppStoreCollector
 from app_review_insights.errors import CollectionError
 
 
-def rss_payload(*entries):
-    return {"feed": {"entry": list(entries)}}
+def rss_payload(*entries, next_url: str | None = None):
+    feed = {"entry": list(entries)}
+    if next_url:
+        feed["link"] = [{"attributes": {"rel": "next", "href": next_url}}]
+    return {"feed": feed}
 
 
 def rss_review(review_id: str, content: str, rating: str = "2"):
@@ -18,16 +23,51 @@ def rss_review(review_id: str, content: str, rating: str = "2"):
     }
 
 
+def atom_xml(*entries, next_url: str | None = None) -> bytes:
+    next_link = f'<link rel="next" href="{escape(next_url)}" />' if next_url else ""
+    rendered_entries = "".join(
+        (
+            "<entry>"
+            f"<id>{escape(entry['id']['label'])}</id>"
+            f"<title>{escape(entry['title']['label'])}</title>"
+            f"<content>{escape(entry['content']['label'])}</content>"
+            f"<im:rating>{escape(entry['im:rating']['label'])}</im:rating>"
+            f"<updated>{escape(entry['updated']['label'])}</updated>"
+            "<author>"
+            f"<name>{escape(entry['author']['name']['label'])}</name>"
+            "</author>"
+            f"<im:version>{escape(entry['im:version']['label'])}</im:version>"
+            "</entry>"
+        )
+        for entry in entries
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<feed xmlns="http://www.w3.org/2005/Atom" '
+        'xmlns:im="http://itunes.apple.com/rss">'
+        f"{next_link}{rendered_entries}</feed>"
+    ).encode()
+
+
 class FakeResponse:
-    def __init__(self, payload, status_code: int = 200):
+    def __init__(
+        self,
+        payload=None,
+        status_code: int = 200,
+        *,
+        content: bytes | None = None,
+    ):
         self.payload = payload
         self.status_code = status_code
+        self.content = content or b""
 
     def raise_for_status(self):
         if self.status_code >= 400:
             raise RuntimeError(f"HTTP {self.status_code}")
 
     def json(self):
+        if self.payload is None:
+            raise ValueError("response is not JSON")
         return self.payload
 
 
@@ -58,8 +98,8 @@ def test_collector_maps_rss_data_to_reviews():
     assert reviews[0].source == "apple-rss:us"
     assert reviews[0].source_page == 1
     assert client.requested_urls == [
-        "https://itunes.apple.com/us/rss/customerreviews/page=1/"
-        "id=839285684/sortby=mostrecent/json"
+        "https://itunes.apple.com/us/rss/customerreviews/id=839285684/json"
+        "?urlDesc=/customerreviews/id=839285684/json?retry=1"
     ]
 
 
@@ -72,8 +112,21 @@ def test_default_client_uses_apple_compatible_browser_user_agent():
 def test_collector_paginates_and_removes_duplicate_review_ids():
     page_one = [rss_review(f"r-{index}", f"Review {index}") for index in range(50)]
     page_two = [rss_review("r-49", "Duplicate across pages"), rss_review("r-50", "New review")]
+    feed_next_url = (
+        "https://itunes.apple.com/us/rss/customerreviews/page=2/"
+        "id=839285684/sortby=mostrecent/xml?urlDesc=/customerreviews/"
+        "id=839285684/json"
+    )
+    working_next_url = (
+        "https://itunes.apple.com/us/rss/customerreviews/page=2/"
+        "id=839285684/sortby=mostrecent/xml?urlDesc=/customerreviews/"
+        "page=1/id=839285684/sortby=mostrecent/xml"
+    )
     client = FakeHttpClient(
-        [FakeResponse(rss_payload(*page_one)), FakeResponse(rss_payload(*page_two))]
+        [
+            FakeResponse(rss_payload(*page_one, next_url=feed_next_url)),
+            FakeResponse(content=atom_xml(*page_two)),
+        ]
     )
 
     reviews = AppStoreCollector(client=client).collect(
@@ -85,6 +138,32 @@ def test_collector_paginates_and_removes_duplicate_review_ids():
     assert reviews[-1].review_id == "r-50"
     assert reviews[-1].source_page == 2
     assert len(client.requested_urls) == 2
+    assert client.requested_urls[-1] == working_next_url
+
+
+def test_collector_does_not_follow_non_apple_next_link():
+    page_one = [rss_review(f"r-{index}", f"Review {index}") for index in range(50)]
+    client = FakeHttpClient(
+        [
+            FakeResponse(
+                rss_payload(
+                    *page_one,
+                    next_url="https://example.com/untrusted-reviews.xml",
+                )
+            )
+        ]
+    )
+
+    reviews = AppStoreCollector(client=client).collect(
+        "https://apps.apple.com/us/app/example/id839285684",
+        limit=100,
+    )
+
+    assert len(reviews) == 50
+    assert client.requested_urls == [
+        "https://itunes.apple.com/us/rss/customerreviews/id=839285684/json"
+        "?urlDesc=/customerreviews/id=839285684/json?retry=1"
+    ]
 
 
 def test_collector_wraps_upstream_errors_with_fallback_guidance():
@@ -103,8 +182,14 @@ def test_collector_wraps_upstream_errors_with_fallback_guidance():
 
 def test_collector_returns_completed_pages_when_a_later_page_fails():
     page_one = [rss_review(f"r-{index}", f"Review {index}") for index in range(50)]
+    next_url = (
+        "https://itunes.apple.com/us/rss/customerreviews/page=2/id=839285684/sortby=mostrecent/xml"
+    )
     client = FakeHttpClient(
-        [FakeResponse(rss_payload(*page_one)), FakeResponse({}, status_code=503)]
+        [
+            FakeResponse(rss_payload(*page_one, next_url=next_url)),
+            FakeResponse({}, status_code=503),
+        ]
     )
 
     reviews = AppStoreCollector(client=client).collect(

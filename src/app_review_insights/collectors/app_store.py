@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
-from math import ceil
 from typing import Any
+from urllib.parse import urlparse
+from xml.etree import ElementTree
 
 import httpx
 
@@ -8,12 +9,19 @@ from app_review_insights.errors import CollectionError
 from app_review_insights.input_parsing import parse_app_store_url
 from app_review_insights.models import Review
 
-_RSS_URL = (
+_FIRST_PAGE_URL = (
+    "https://itunes.apple.com/us/rss/customerreviews/id={app_id}/json"
+    "?urlDesc=/customerreviews/id={app_id}/json?retry=1"
+)
+_PAGE_URL = (
     "https://itunes.apple.com/us/rss/customerreviews/page={page}/"
-    "id={app_id}/sortby=mostrecent/json"
+    "id={app_id}/sortby=mostrecent/xml?urlDesc=/customerreviews/"
+    "page={previous_page}/id={app_id}/sortby=mostrecent/xml"
 )
 _REVIEWS_PER_PAGE = 50
 _MAX_PAGES = 10
+_ATOM_NS = "http://www.w3.org/2005/Atom"
+_ITUNES_NS = "http://itunes.apple.com/rss"
 
 
 class AppStoreCollector:
@@ -39,17 +47,17 @@ class AppStoreCollector:
             )
 
         bounded_limit = max(1, limit)
-        page_count = ceil(bounded_limit / _REVIEWS_PER_PAGE)
         reviews: list[Review] = []
         seen_ids: set[str] = set()
+        next_url: str | None = _FIRST_PAGE_URL.format(app_id=parsed.app_id)
 
-        for page in range(1, page_count + 1):
+        for page in range(1, _MAX_PAGES + 1):
+            if next_url is None:
+                break
             try:
-                response = self.client.get(
-                    _RSS_URL.format(page=page, app_id=parsed.app_id)
-                )
+                response = self.client.get(next_url)
                 response.raise_for_status()
-                entries = response.json().get("feed", {}).get("entry", []) or []
+                entries, candidate_next_url = self._parse_page(response)
             except Exception as exc:
                 if reviews:
                     return reviews
@@ -73,9 +81,106 @@ class AppStoreCollector:
                 if len(reviews) >= bounded_limit:
                     return reviews
 
+            next_url = self._next_page_url(
+                candidate_next_url,
+                app_id=parsed.app_id,
+                current_page=page,
+            )
+
         if not reviews:
             raise CollectionError("评论源返回 0 条数据，请改用 JSON/CSV 导入或稍后重试")
         return reviews[:bounded_limit]
+
+    @classmethod
+    def _parse_page(cls, response: Any) -> tuple[list[dict[str, Any]], str | None]:
+        try:
+            payload = response.json()
+        except Exception:
+            return cls._parse_xml(response.content)
+
+        feed = payload.get("feed", {}) if isinstance(payload, dict) else {}
+        entries = feed.get("entry", []) or []
+        next_url = cls._next_link(feed.get("link", []))
+        return entries, next_url
+
+    @classmethod
+    def _parse_xml(cls, content: bytes) -> tuple[list[dict[str, Any]], str | None]:
+        root = ElementTree.fromstring(content)
+        entries: list[dict[str, Any]] = []
+        for element in root.findall(f"{{{_ATOM_NS}}}entry"):
+            entries.append(
+                {
+                    "id": {"label": cls._xml_text(element, "id")},
+                    "title": {"label": cls._xml_text(element, "title")},
+                    "content": {"label": cls._xml_text(element, "content")},
+                    "im:rating": {"label": cls._xml_text(element, "rating", _ITUNES_NS)},
+                    "updated": {"label": cls._xml_text(element, "updated")},
+                    "author": {
+                        "name": {
+                            "label": cls._xml_text(
+                                element.find(f"{{{_ATOM_NS}}}author"),
+                                "name",
+                            )
+                        }
+                    },
+                    "im:version": {"label": cls._xml_text(element, "version", _ITUNES_NS)},
+                }
+            )
+        next_url = cls._next_link(
+            [{"attributes": link.attrib} for link in root.findall(f"{{{_ATOM_NS}}}link")]
+        )
+        return entries, next_url
+
+    @staticmethod
+    def _xml_text(
+        element: ElementTree.Element | None,
+        tag: str,
+        namespace: str = _ATOM_NS,
+    ) -> str:
+        if element is None:
+            return ""
+        child = element.find(f"{{{namespace}}}{tag}")
+        return (child.text or "") if child is not None else ""
+
+    @staticmethod
+    def _next_link(links: Any) -> str | None:
+        if not isinstance(links, list):
+            return None
+        for link in links:
+            if not isinstance(link, dict):
+                continue
+            attributes = link.get("attributes", link)
+            if isinstance(attributes, dict) and attributes.get("rel") == "next":
+                return attributes.get("href") or None
+        return None
+
+    @staticmethod
+    def _safe_next_url(value: str | None) -> str | None:
+        if not value:
+            return None
+        parsed = urlparse(value)
+        if parsed.scheme != "https" or parsed.hostname != "itunes.apple.com":
+            return None
+        return value
+
+    @classmethod
+    def _next_page_url(
+        cls,
+        value: str | None,
+        *,
+        app_id: str,
+        current_page: int,
+    ) -> str | None:
+        safe_value = cls._safe_next_url(value)
+        if safe_value is None:
+            return None
+        if current_page == 1:
+            return _PAGE_URL.format(
+                page=2,
+                previous_page=1,
+                app_id=app_id,
+            )
+        return safe_value
 
     @staticmethod
     def _label(item: dict[str, Any], key: str, default: Any = None) -> Any:
@@ -83,9 +188,7 @@ class AppStoreCollector:
         return value.get("label", default) if isinstance(value, dict) else value
 
     @classmethod
-    def _map(
-        cls, item: dict[str, Any], app_id: str, page: int, index: int
-    ) -> Review:
+    def _map(cls, item: dict[str, Any], app_id: str, page: int, index: int) -> Review:
         published_value = cls._label(item, "updated")
         published = datetime.fromisoformat(str(published_value).replace("Z", "+00:00"))
         if published.tzinfo is None:
