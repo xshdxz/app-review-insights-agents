@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -78,3 +79,77 @@ def test_get_run_raises_key_error_for_unknown_run(tmp_path):
 
     with pytest.raises(KeyError, match="missing"):
         repo.get_run("missing")
+
+
+def test_repository_closes_connections_after_operations(tmp_path):
+    import os
+    import subprocess
+    import sys
+    import textwrap
+
+    code = textwrap.dedent(
+        """
+        import gc
+        import sys
+        from datetime import UTC, datetime
+        from pathlib import Path
+
+        from app_review_insights.models import (
+            AnalysisRequest,
+            RunRecord,
+            RunStatus,
+            SourceType,
+            Stage,
+            StageEvent,
+        )
+        from app_review_insights.storage.repository import RunRepository
+
+        database = Path(sys.argv[1])
+        repo = RunRepository(database)
+        now = datetime.now(UTC)
+        run = RunRecord(
+            run_id="run-1",
+            request=AnalysisRequest(source_type=SourceType.JSON, analysis_goal="分析目标"),
+            current_stage=Stage.ANALYZE_BATCHES,
+            status=RunStatus.RUNNING,
+            created_at=now,
+            updated_at=now,
+        )
+        repo.save_run(run)
+        repo.save_output("run-1", Stage.ANALYZE_BATCHES, {"findings": []}, batch_index=1)
+        repo.add_event(
+            "run-1",
+            StageEvent(
+                stage=Stage.ANALYZE_BATCHES,
+                status=RunStatus.RUNNING,
+                message="完成批次",
+                created_at=now,
+            ),
+        )
+        repo.get_run("run-1")
+        repo.get_output("run-1", Stage.ANALYZE_BATCHES, batch_index=1)
+        repo.list_events("run-1")
+        repo.list_runs()
+        gc.collect()
+        """
+    )
+
+    env = dict(os.environ)
+    env["PYTHONPATH"] = "src"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-W",
+            "error::ResourceWarning",
+            "-c",
+            code,
+            str(tmp_path / "runs.sqlite3"),
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=Path(__file__).parents[1],
+    )
+
+    assert "unclosed database" not in result.stderr, result.stderr
+    assert result.returncode == 0, result.stderr
