@@ -1,0 +1,23 @@
+[theme]
+base = "light"
+primaryColor = "#8A4B2A"
+backgroundColor = "#FBFAF6"
+secondaryBackgroundColor = "#F1EEE6"
+textColor = "#20262D"
+linkColor = "#315B72"
+borderColor = "#D8D2C5"
+blueColor = "#315B72"
+greenColor = "#2F6B4F"
+orangeColor = "#9A5B2E"
+redColor = "#A23B32"
+grayColor = "#6B706F"
+dataframeBorderColor = "#D8D2C5"
+dataframeHeaderBackgroundColor = "#E9E4D9"
+font = "sans-serif"
+headingFont = "serif"
+baseFontSize = 15
+headingFontSizes = ["34px", "25px", "20px", "17px", "15px", "13px"]
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+baseRadius = "small"
+buttonRadius = "small"
+showWidgetBorder = true
