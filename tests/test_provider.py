@@ -79,9 +79,7 @@ def fake_client(contents):
 
 
 def test_provider_validates_json_against_schema():
-    client, completions = fake_client(
-        ['{"findings": [], "batch_limitations": []}']
-    )
+    client, completions = fake_client(['{"findings": [], "batch_limitations": []}'])
     provider = DeepSeekProvider(
         client=client,
         model="deepseek-chat",

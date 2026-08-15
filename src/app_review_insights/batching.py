@@ -14,8 +14,7 @@ def make_review_batches(
     for review in reviews:
         review_characters = len(review.content_original)
         would_overflow = current and (
-            len(current) >= max_reviews
-            or current_characters + review_characters > max_characters
+            len(current) >= max_reviews or current_characters + review_characters > max_characters
         )
         if would_overflow:
             batches.append(current)

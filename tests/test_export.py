@@ -225,12 +225,11 @@ def test_build_downloads_restores_domain_models_for_traceability(tmp_path):
 
     downloads = build_downloads(repository, "run-1")
 
-    assert json.loads(downloads["cleaned_reviews"].decode("utf-8"))[0][
-        "review_id"
-    ] == "r-1"
-    assert json.loads(downloads["prd"].decode("utf-8"))["requirements"][0][
-        "requirement_id"
-    ] == "REQ-001"
+    assert json.loads(downloads["cleaned_reviews"].decode("utf-8"))[0]["review_id"] == "r-1"
+    assert (
+        json.loads(downloads["prd"].decode("utf-8"))["requirements"][0]["requirement_id"]
+        == "REQ-001"
+    )
     assert "TC-001" in downloads["test_cases"].decode("utf-8-sig")
     traceability = downloads["traceability"].decode("utf-8-sig")
     assert "r-1,r-2" in traceability

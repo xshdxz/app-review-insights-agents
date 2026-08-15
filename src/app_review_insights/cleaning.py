@@ -55,15 +55,10 @@ def _is_near_duplicate(
         return False
 
     length_ratio = min(len(previous_text), len(comparison_text)) / longest_length
-    return (
-        length_ratio >= 0.8
-        and partial_ratio(previous_text, comparison_text) >= threshold
-    )
+    return length_ratio >= 0.8 and partial_ratio(previous_text, comparison_text) >= threshold
 
 
-def clean_reviews(
-    reviews: list[Review], near_duplicate_threshold: int = 96
-) -> CleaningResult:
+def clean_reviews(reviews: list[Review], near_duplicate_threshold: int = 96) -> CleaningResult:
     kept: list[Review] = []
     hashes: set[str] = set()
     exact_duplicates = 0

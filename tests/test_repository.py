@@ -53,9 +53,7 @@ def test_repository_round_trips_run_output_and_events(tmp_path):
     )
 
     assert repo.get_run("run-1").coverage_ratio == 0.4
-    assert repo.get_output(
-        "run-1", Stage.ANALYZE_BATCHES, batch_index=1
-    )["findings"] == ["发现-1"]
+    assert repo.get_output("run-1", Stage.ANALYZE_BATCHES, batch_index=1)["findings"] == ["发现-1"]
     assert repo.list_events("run-1")[0].message == "完成第 2 批"
 
 
@@ -64,9 +62,7 @@ def test_save_output_replaces_the_same_stage_and_batch_checkpoint(tmp_path):
     repo.save_output("run-1", Stage.ANALYZE_BATCHES, {"version": 1}, batch_index=3)
     repo.save_output("run-1", Stage.ANALYZE_BATCHES, {"version": 2}, batch_index=3)
 
-    assert repo.get_output(
-        "run-1", Stage.ANALYZE_BATCHES, batch_index=3
-    ) == {"version": 2}
+    assert repo.get_output("run-1", Stage.ANALYZE_BATCHES, batch_index=3) == {"version": 2}
 
 
 def test_list_runs_orders_most_recent_update_first(tmp_path):

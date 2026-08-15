@@ -15,9 +15,7 @@ def build_requirements(
     total_reviews: int,
 ) -> list[Requirement]:
     eligible = [
-        finding
-        for finding in findings
-        if finding.evidence_status != EvidenceStatus.REJECTED
+        finding for finding in findings if finding.evidence_status != EvidenceStatus.REJECTED
     ]
     if not eligible:
         return []
@@ -39,9 +37,7 @@ def build_requirements(
     for draft in result.requirements:
         linked_ids = list(
             dict.fromkeys(
-                finding_id
-                for finding_id in draft.finding_ids
-                if finding_id in finding_index
+                finding_id for finding_id in draft.finding_ids if finding_id in finding_index
             )
         )
         linked = [finding_index[finding_id] for finding_id in linked_ids]
@@ -50,24 +46,17 @@ def build_requirements(
 
         source_review_ids = list(
             dict.fromkeys(
-                review_id
-                for finding in linked
-                for review_id in finding.supporting_review_ids
+                review_id for finding in linked for review_id in finding.supporting_review_ids
             )
         )
         confidence = sum(finding.confidence for finding in linked) / len(linked)
         frequency = len(source_review_ids) / max(total_reviews, 1)
         priority_score = round(
-            draft.impact
-            * frequency
-            * confidence
-            * 100
-            / _COMPLEXITY_COST[draft.complexity],
+            draft.impact * frequency * confidence * 100 / _COMPLEXITY_COST[draft.complexity],
             2,
         )
         has_assumption = any(
-            finding.evidence_status == EvidenceStatus.ASSUMPTION
-            for finding in linked
+            finding.evidence_status == EvidenceStatus.ASSUMPTION for finding in linked
         )
         requirements.append(
             Requirement(
@@ -85,9 +74,7 @@ def build_requirements(
                 impact=draft.impact,
                 complexity=draft.complexity,
                 priority_score=priority_score,
-                target_version=(
-                    "Future" if has_assumption else draft.proposed_version
-                ),
+                target_version=("Future" if has_assumption else draft.proposed_version),
                 source_review_ids=source_review_ids,
                 assumptions=draft.assumptions,
             )
@@ -95,8 +82,6 @@ def build_requirements(
 
     requirements.sort(key=lambda item: item.priority_score, reverse=True)
     return [
-        requirement.model_copy(
-            update={"requirement_id": f"REQ-{index:03d}"}
-        )
+        requirement.model_copy(update={"requirement_id": f"REQ-{index:03d}"})
         for index, requirement in enumerate(requirements[:10], start=1)
     ]

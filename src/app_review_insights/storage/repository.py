@@ -89,9 +89,7 @@ class RunRepository:
                 (run_id, stage.value, batch_index, payload_json),
             )
 
-    def get_output(
-        self, run_id: str, stage: Stage, batch_index: int = -1
-    ) -> dict[str, Any] | None:
+    def get_output(self, run_id: str, stage: Stage, batch_index: int = -1) -> dict[str, Any] | None:
         with self._connect() as connection:
             row = connection.execute(
                 """

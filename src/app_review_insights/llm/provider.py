@@ -92,6 +92,4 @@ class DeepSeekProvider:
                 if self.retry_delays[delay_index] > 0:
                     time.sleep(self.retry_delays[delay_index])
 
-        raise RecoverableModelError(
-            f"模型调用失败，可从检查点继续：{last_error}"
-        ) from last_error
+        raise RecoverableModelError(f"模型调用失败，可从检查点继续：{last_error}") from last_error

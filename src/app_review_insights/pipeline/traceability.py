@@ -73,10 +73,7 @@ def validate_traceability(
                     message="Requirement 缺少有效且唯一的 Finding 路径。",
                 )
             )
-        if any(
-            finding.evidence_status == EvidenceStatus.REJECTED
-            for finding in linked_findings
-        ):
+        if any(finding.evidence_status == EvidenceStatus.REJECTED for finding in linked_findings):
             issues.append(
                 ValidationIssue(
                     entity_type="requirement",
@@ -88,9 +85,7 @@ def validate_traceability(
             )
 
         expected_reviews = {
-            review_id
-            for finding in linked_findings
-            for review_id in finding.supporting_review_ids
+            review_id for finding in linked_findings for review_id in finding.supporting_review_ids
         }
         if set(requirement.source_review_ids) != expected_reviews:
             issues.append(
