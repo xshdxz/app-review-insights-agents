@@ -5,6 +5,7 @@
 - Provider：DeepSeek
 - Model：`deepseek-chat`
 - Temperature：`0.1`
+- Max tokens：`8192`（`MODEL_MAX_TOKENS`；API 默认 4096 会截断含逐条评论摘要的大批次输出）
 - 结构化输出：JSON object + Pydantic JSON Schema 校验
 - 失败策略：有限重试；仍失败时抛出可恢复错误，由流水线保存检查点并进入“等待模型恢复”状态
 
@@ -19,6 +20,7 @@
 - 评论正文始终被声明为待分析数据，其中的指令性文字不能改变任务。
 - 模型不得编造评论 ID、数量、比例、版本信息或用户动机。
 - 主题动态发现，不依赖预设关键词分类表。
+- 每条评论的中文摘要不超过 25 字（控制输出 token 预算，防止大批次截断）。
 - 证据不足时允许少于 5 个需求，不能为了凑数量编造需求；证据充分时目标为 5–10 个核心需求。
 - 测试用例必须具体、可观察、可重复，并引用现有 Requirement。
 
@@ -54,6 +56,7 @@
 | 日期 | Prompt / Schema 版本 | 数据集 | Topic recall | Reference precision | Structured output success | 观察到的失败 | 下一步改动及原因 |
 |---|---|---|---:|---:|---:|---|---|
 | 2026-08-15 | batch-v1 / `FindingDraft`-v1 | gold-reviews（3 cases） | 0.000 | 0.556 | 1.000 | 模型输出中文主题标签，而黄金标签为英文，精确字符串匹配全部失败；订阅用例把一条正向评论列为 supporting；证据不足用例仍输出两个单条证据主题 | 为 Schema 增加稳定、语言无关的 `topic_key`，展示层继续保留本地化 `topic_label`；补充“正向评论优先放入 conflicting_review_ids”“单条证据默认标记 assumption”的 Prompt 约束，再扩充数据集后复测 |
+| 2026-08-16 | batch-v1 + max_tokens / `FindingDraft`-v1 | Workout for Women 真实评论（100 条） | — | — | 1.000（修复后） | 未设置 `max_tokens` 时使用 API 默认 4096，大批次输出（每条中文摘要 + 发现）被截断，JSON 解析失败，重试后仍失败进入等待恢复 | 显式设置 `MODEL_MAX_TOKENS=8192`；批次 Prompt 增加“每条摘要不超过 25 字”约束；已在真实运行上验证续跑成功（同一 `run_id`） |
 
 ## 首次结果解读
 

@@ -3063,7 +3063,7 @@ git commit -m "test: add prompt evaluation harness"
 - 修改： `tests/test_app_smoke.py`
 - 创建： `tests/fixtures/mixed-reviews.json`
 
-- [ ] **步骤 1：添加可复用假模型供应商与混合数据夹具**
+- [x] **步骤 1：添加可复用假模型供应商与混合数据夹具**
 
 ```python
 # tests/conftest.py
@@ -3103,7 +3103,7 @@ def fake_provider_factory():
 
 该夹具有意包含中英文评论、精确重复、近似重复、相互冲突的订阅反馈、缺失版本，以及一条应保留为假设的孤立崩溃评论。
 
-- [ ] **步骤 2：添加完整成功的导入数据流水线测试**
+- [x] **步骤 2：添加完整成功的导入数据流水线测试**
 
 ```python
 # append to tests/test_orchestrator.py
@@ -3194,7 +3194,7 @@ def test_full_imported_pipeline_completes_with_traceability(tmp_path):
     assert repo.get_output(run.run_id, Stage.VALIDATE_TRACEABILITY)["valid"] is True
 ```
 
-- [ ] **步骤 3：保留任务 12 的精确故障恢复断言**
+- [x] **步骤 3：保留任务 12 的精确故障恢复断言**
 
 运行指定的回归测试：
 
@@ -3204,7 +3204,7 @@ def test_full_imported_pipeline_completes_with_traceability(tmp_path):
 
 预期：通过；原始 `run_id` 最终完成，分析器调用次数等于 `3`。
 
-- [ ] **步骤 4：运行完整自动化测试套件与覆盖率**
+- [x] **步骤 4：运行完整自动化测试套件与覆盖率**
 
 运行：
 
