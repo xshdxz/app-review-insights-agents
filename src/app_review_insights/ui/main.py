@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from app_review_insights.models import (
     RunRecord,
     RunStatus,
     SourceType,
+    Stage,
     StageEvent,
 )
 from app_review_insights.pipeline.analyze import analyze_batch, consolidate_findings
@@ -60,7 +62,7 @@ def build_services(use_fake_provider: bool = False) -> PipelineServices:
         "batch_size": settings.batch_review_limit,
         "batch_max_characters": settings.batch_max_characters,
     }
-    if use_fake_provider or not settings.deepseek_api_key:
+    if use_fake_provider or not settings.model_enabled or not settings.deepseek_api_key:
         return PipelineServices(batch_analyzer=None, **common)
 
     provider = DeepSeekProvider.from_settings(settings)
@@ -79,6 +81,29 @@ def _initialize_session_state(repository: RunRepository) -> None:
     if "run_id" not in st.session_state:
         runs = repository.list_runs()
         st.session_state["run_id"] = runs[0].run_id if runs else None
+
+
+def _model_state(settings: Settings) -> str:
+    if not settings.model_enabled:
+        return "disabled"
+    if not settings.deepseek_api_key:
+        return "missing"
+    if st.session_state.get("model_verified", False):
+        return "verified"
+    return "configured"
+
+
+def _model_key_source(settings: Settings) -> str | None:
+    if not settings.deepseek_api_key:
+        return None
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        return "进程环境变量"
+    return "项目 .env"
+
+
+def _record_model_success(repository: RunRepository, run_id: str) -> None:
+    if repository.get_output(run_id, Stage.ANALYZE_BATCHES, batch_index=0) is not None:
+        st.session_state["model_verified"] = True
 
 
 def _source_type(source_label: str, upload_name: str | None) -> SourceType:
@@ -158,7 +183,7 @@ def _update_live_status(status, run: RunRecord) -> None:
 
 
 def _render_input_form(settings: Settings, model_ready: bool):
-    with st.form("analysis-input", border=True, enter_to_submit=False):
+    with st.container(border=True):
         st.subheader("新建审阅档案", anchor=False)
         source_label = st.segmented_control(
             "数据来源",
@@ -168,36 +193,49 @@ def _render_input_form(settings: Settings, model_ready: bool):
             width="stretch",
             key="source-mode",
         )
-        app_url = st.text_input(
-            "App 地址（URL）",
-            placeholder="https://apps.apple.com/us/app/example/id123456789",
-            help="在线采集仅支持美国区 App Store；文件导入时可留空。",
-        )
-        analysis_goal = st.text_area(
-            "分析目标",
-            value="识别影响用户体验与产品增长的核心问题，并形成可追溯需求",
-            height=100,
-        )
-        review_limit = st.slider(
-            "评论数量",
-            min_value=100,
-            max_value=1000,
-            value=settings.default_review_limit,
-            step=1,
-            help="Apple RSS 在线采集最多 500 条；文件导入可分析至 1000 条。",
-        )
-        upload = st.file_uploader(
-            "评论文件",
-            type=["json", "csv"],
-            help="选择 JSON/CSV 导入时必填；字段格式沿用项目的数据格式约定。",
-        )
-        submitted = st.form_submit_button(
-            "开始分析",
-            type="primary",
-            icon=":material/play_arrow:",
-            disabled=not model_ready,
-            width="stretch",
-        )
+        with st.form("analysis-input", border=False, enter_to_submit=False):
+            app_url = ""
+            upload = None
+            if source_label == "在线采集":
+                app_url = st.text_input(
+                    "App 地址（URL）",
+                    placeholder="https://apps.apple.com/us/app/example/id123456789",
+                    help="在线采集仅支持美国区 App Store。",
+                )
+            analysis_goal = st.text_area(
+                "分析目标",
+                value="识别影响用户体验与产品增长的核心问题，并形成可追溯需求",
+                height=100,
+            )
+            maximum_limit = 500 if source_label == "在线采集" else 1000
+            review_limit = st.slider(
+                "评论数量",
+                min_value=100,
+                max_value=maximum_limit,
+                value=min(settings.default_review_limit, maximum_limit),
+                step=1,
+                help=(
+                    "Apple RSS 在线采集最多 500 条。"
+                    if source_label == "在线采集"
+                    else "文件导入可分析 100–1000 条评论。"
+                ),
+                key=f"review-limit-{source_label}",
+            )
+            if source_label in ("JSON 导入", "CSV 导入"):
+                suffix = "json" if source_label == "JSON 导入" else "csv"
+                upload = st.file_uploader(
+                    f"{suffix.upper()} 评论文件",
+                    type=[suffix],
+                    help="字段格式沿用项目的数据格式约定，并兼容页面导出的中文表头。",
+                    key=f"review-upload-{suffix}",
+                )
+            submitted = st.form_submit_button(
+                "开始分析",
+                type="primary",
+                icon=":material/play_arrow:",
+                disabled=not model_ready,
+                width="stretch",
+            )
     return submitted, source_label, app_url, analysis_goal, review_limit, upload
 
 
@@ -289,14 +327,18 @@ def main() -> None:
     services = build_services()
     model_ready = services.batch_analyzer is not None
     _initialize_session_state(services.repository)
+    model_state = _model_state(settings)
 
     st.title("证据审阅工作台", anchor=False)
     st.caption(
-        "编辑部档案 · 将 App Store 评论整理为可核验的问题发现、产品需求（PRD）、"
-        "测试用例与证据链"
+        "编辑部档案 · 将 App Store 评论整理为可核验的问题发现、产品需求（PRD）、测试用例与证据链"
     )
     render_provenance_legend()
-    render_model_status(model_ready, settings.model_name)
+    render_model_status(
+        model_state,
+        settings.model_name,
+        _model_key_source(settings),
+    )
     demo_mode = st.toggle(
         "查看历史缓存演示",
         help="无需模型密钥；始终明确标记为历史缓存和非实时结果。",
@@ -346,6 +388,7 @@ def main() -> None:
                         ),
                     )
                     st.session_state["run_id"] = run.run_id
+                    _record_model_success(services.repository, run.run_id)
                     _update_live_status(live_status, run)
 
         run_id = st.session_state.get("run_id")
@@ -389,6 +432,7 @@ def main() -> None:
                         ),
                     )
                     st.session_state["run_id"] = resumed.run_id
+                    _record_model_success(services.repository, resumed.run_id)
                     _update_live_status(resume_status, resumed)
                     st.rerun()
         else:

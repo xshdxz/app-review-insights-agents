@@ -86,8 +86,50 @@ def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):
     assert start_button.disabled is True
     review_limit = next(slider for slider in app.slider if slider.label == "评论数量")
     assert review_limit.min == 100
-    assert review_limit.max == 1000
+    assert review_limit.max == 500
     assert review_limit.step == 1
+
+
+def test_input_mode_switches_to_mode_specific_fields(tmp_path, monkeypatch):
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+
+    online = AppTest.from_file(str(app_path)).run(timeout=10)
+    source = next(item for item in online.segmented_control if item.label == "数据来源")
+    online_limit = next(item for item in online.slider if item.label == "评论数量")
+
+    assert [item.label for item in online.text_input] == ["App 地址（URL）"]
+    assert [item.label for item in online.file_uploader] == []
+    assert online_limit.max == 500
+    assert online_limit.step == 1
+
+    json_mode = source.set_value("JSON 导入").run(timeout=10)
+    json_limit = next(item for item in json_mode.slider if item.label == "评论数量")
+
+    assert [item.label for item in json_mode.text_input] == []
+    assert [item.label for item in json_mode.file_uploader] == ["JSON 评论文件"]
+    assert json_limit.max == 1000
+    assert json_limit.step == 1
+
+    csv_source = next(item for item in json_mode.segmented_control if item.label == "数据来源")
+    csv_mode = csv_source.set_value("CSV 导入").run(timeout=10)
+
+    assert [item.label for item in csv_mode.text_input] == []
+    assert [item.label for item in csv_mode.file_uploader] == ["CSV 评论文件"]
+
+
+def test_explicit_model_disable_overrides_configured_key(tmp_path, monkeypatch):
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("MODEL_ENABLED", "false")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "configured-but-disabled")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    start_button = next(button for button in app.button if button.label == "开始分析")
+
+    assert start_button.disabled is True
+    assert any("已显式禁用" in item.value for item in app.warning)
 
 
 def test_online_input_error_is_friendly_and_does_not_create_run(tmp_path, monkeypatch):

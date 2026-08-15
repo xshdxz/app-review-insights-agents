@@ -215,9 +215,9 @@ def _display_records_frame(
             continue
         labels = value_labels
         frame[column] = frame[column].map(
-            lambda value, labels=labels: labels.get(value, value)
-            if isinstance(value, str)
-            else value
+            lambda value, labels=labels: (
+                labels.get(value, value) if isinstance(value, str) else value
+            )
         )
     if "message" in frame.columns:
         frame["message"] = frame["message"].map(_localize_validation_message)
@@ -270,16 +270,36 @@ def render_provenance_legend() -> None:
         )
 
 
-def render_model_status(model_ready: bool, model_name: str) -> None:
-    if model_ready:
+def render_model_status(
+    model_state: str,
+    model_name: str,
+    key_source: str | None = None,
+) -> None:
+    if model_state == "verified":
         st.success(
-            f"模型状态：{model_name} 已配置，可开始实时语义分析。",
+            f"模型状态：{model_name} 已验证可调用。",
             icon=":material/cloud_done:",
+        )
+    elif model_state == "configured":
+        st.info(
+            f"模型状态：{model_name} 密钥已填写，首次调用时验证可用性。",
+            icon=":material/cloud_queue:",
+        )
+    elif model_state == "disabled":
+        st.warning(
+            "模型状态：已显式禁用（MODEL_ENABLED=false）。"
+            "档案库和历史结果仍可读取，实时开始与继续分析暂不可用。",
+            icon=":material/toggle_off:",
         )
     else:
         st.warning(
             "模型状态：未配置 DEEPSEEK_API_KEY。档案库仍可读取，但实时开始与继续分析暂不可用。",
             icon=":material/key_off:",
+        )
+    if key_source:
+        st.caption(
+            f"密钥配置来源：{key_source}。PowerShell 中设置空环境变量不会屏蔽项目 `.env`；"
+            "如需无模型演示，请设置 `MODEL_ENABLED=false`。"
         )
 
 
@@ -549,8 +569,7 @@ def render_result_payloads(
         _render_overview(clean, findings, plan, test_output, run_limitations)
     with tabs[1]:
         st.caption(
-            f"{PROVENANCE_LABELS['deterministic']} · "
-            "原始评论文本保留为证据，中文摘要不能替代原文。"
+            f"{PROVENANCE_LABELS['deterministic']} · 原始评论文本保留为证据，中文摘要不能替代原文。"
         )
         render_records(
             clean.get("reviews", []),
