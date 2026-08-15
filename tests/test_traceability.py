@@ -113,3 +113,94 @@ def test_traceability_rejects_duplicate_entity_ids():
 
     assert report.valid is False
     assert any(issue.rule == "entity_id_unique" for issue in report.issues)
+
+
+def test_traceability_rejects_finding_that_cites_unknown_review():
+    ghost_finding = finding()
+    ghost_finding.supporting_review_ids = ["ghost-review"]
+    ghost_requirement = requirement()
+    ghost_requirement.source_review_ids = ["ghost-review"]
+
+    report = validate_traceability(
+        {"r-1"},
+        [ghost_finding],
+        [ghost_requirement],
+        [
+            DomainTestCase(
+                test_case_id="TC-001",
+                requirement_id="REQ-001",
+                title="Case",
+                preconditions=[],
+                steps=["Act"],
+                expected_result="Result",
+                case_type="normal",
+                source_review_ids=["ghost-review"],
+            ),
+            DomainTestCase(
+                test_case_id="TC-002",
+                requirement_id="REQ-001",
+                title="Case",
+                preconditions=[],
+                steps=["Act"],
+                expected_result="Result",
+                case_type="normal",
+                source_review_ids=["ghost-review"],
+            ),
+        ],
+    )
+
+    assert report.valid is False
+    assert any(issue.rule == "review_to_finding" for issue in report.issues)
+
+
+def test_traceability_rejects_requirement_without_valid_finding_path():
+    orphan_requirement = requirement()
+    orphan_requirement.finding_ids = ["F-GHOST"]
+
+    report = validate_traceability(
+        {"r-1"},
+        [finding()],
+        [orphan_requirement],
+        [case("TC-001"), case("TC-002")],
+    )
+
+    assert report.valid is False
+    assert any(issue.rule == "finding_to_requirement" for issue in report.issues)
+
+
+def test_traceability_rejects_requirement_based_on_rejected_finding():
+    rejected_finding = finding()
+    rejected_finding.evidence_status = EvidenceStatus.REJECTED
+
+    report = validate_traceability(
+        {"r-1"},
+        [rejected_finding],
+        [requirement()],
+        [case("TC-001"), case("TC-002")],
+    )
+
+    assert report.valid is False
+    assert any(issue.rule == "requirement_uses_eligible_finding" for issue in report.issues)
+
+
+def test_traceability_rejects_test_case_linked_to_missing_requirement():
+    orphan_case = DomainTestCase(
+        test_case_id="TC-ORPHAN",
+        requirement_id="REQ-GHOST",
+        title="Case",
+        preconditions=[],
+        steps=["Act"],
+        expected_result="Result",
+        case_type="normal",
+        source_review_ids=["r-1"],
+    )
+
+    report = validate_traceability(
+        {"r-1"},
+        [finding()],
+        [requirement()],
+        [case("TC-001"), case("TC-002"), orphan_case],
+    )
+
+    assert report.valid is False
+    assert any(issue.rule == "requirement_to_test_case" for issue in report.issues)

@@ -142,6 +142,36 @@ def test_semantic_audit_validates_only_complete_threshold_evidence():
     assert report.valid is True
 
 
+def test_semantic_audit_downgrades_when_finding_entry_is_missing():
+    findings, report = validate_finding_drafts(
+        [draft(["r-1"])],
+        [review("r-1")],
+        EvidenceAuditResult(findings=[]),
+    )
+
+    assert findings == []
+    assert report.valid is False
+    assert any(issue.rule == "evidence_audit_complete" for issue in report.issues)
+    assert any(issue.rule == "finding_has_support" for issue in report.issues)
+
+
+def test_semantic_audit_rejects_duplicate_assessment_references():
+    findings, report = validate_finding_drafts(
+        [draft(["r-1"])],
+        [review("r-1")],
+        audit(
+            assessment("r-1", "supporting"),
+            assessment("r-1", "supporting"),
+        ),
+    )
+
+    assert findings[0].supporting_review_ids == ["r-1"]
+    assert findings[0].semantic_validated is False
+    assert findings[0].evidence_status == EvidenceStatus.ASSUMPTION
+    assert any(issue.rule == "evidence_audit_unique" for issue in report.issues)
+    assert report.valid is True
+
+
 def test_validation_removes_invented_ids_and_recomputes_counts():
     reviews = [review("r-1", 2), review("r-2", 5)]
 

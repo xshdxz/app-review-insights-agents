@@ -1,0 +1,14 @@
+{
+  "reviews": [
+    {"review_id":"mix-001","content":"The renewal date was not shown clearly before I started the free trial.","rating":2,"published_at":"2026-07-01T10:00:00Z","app_version":"8.4.0","language":"en"},
+    {"review_id":"mix-002","content":"I could not find the subscription price until the final confirmation.","rating":1,"published_at":"2026-07-02T10:00:00Z","app_version":"8.4.0","language":"en"},
+    {"review_id":"mix-003","content":"The subscription terms were clear and easy to understand.","rating":5,"published_at":"2026-07-03T10:00:00Z","app_version":"8.4.0","language":"en"},
+    {"review_id":"mix-004","content":"暂停训练后计时器有时无法继续，需要重新开始整个训练。","rating":2,"published_at":"2026-07-04T10:00:00Z","app_version":"8.4.1","language":"zh-cn"},
+    {"review_id":"mix-005","content":"暂停训练后计时器有时无法继续，需要重新开始整个训练！","rating":2,"published_at":"2026-07-05T10:00:00Z","app_version":"8.4.1","language":"zh-cn"},
+    {"review_id":"mix-006","content":"The renewal date was not shown clearly before I started the free trial.","rating":2,"published_at":"2026-07-06T10:00:00Z","app_version":"8.4.0","language":"en"},
+    {"review_id":"mix-007","content":"Voice instructions are too quiet when music is playing.","rating":3,"published_at":"2026-07-07T10:00:00Z","app_version":null,"language":"en"},
+    {"review_id":"mix-008","content":"希望可以导出每周训练记录。","rating":4,"published_at":"2026-07-08T10:00:00Z","app_version":null,"language":"zh-cn"},
+    {"review_id":"mix-009","content":"Great workouts and clear instructions.","rating":5,"published_at":"2026-07-09T10:00:00Z","app_version":"8.4.1","language":"en"},
+    {"review_id":"mix-010","content":"The app crashed once after I changed the workout plan.","rating":3,"published_at":"2026-07-10T10:00:00Z","app_version":"8.4.1","language":"en"}
+  ]
+}

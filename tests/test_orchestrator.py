@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 from app_review_insights.errors import CollectionError, RecoverableModelError
+from app_review_insights.input_parsing import import_reviews
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
     ConsolidationResult,
@@ -27,6 +29,7 @@ from app_review_insights.pipeline.orchestrator import (
     PipelineServices,
 )
 from app_review_insights.pipeline.traceability import validate_traceability
+from app_review_insights.pipeline.validate import validate_finding_drafts
 from app_review_insights.storage.repository import RunRepository
 
 
@@ -514,3 +517,94 @@ def test_orchestrator_records_online_collection_failure(tmp_path):
     assert result.status == RunStatus.FAILED
     assert result.current_stage == Stage.COLLECT
     assert "upstream unavailable" in result.last_error
+
+
+def test_full_imported_pipeline_completes_with_traceability(tmp_path):
+    fixture = Path("tests/fixtures/mixed-reviews.json").read_bytes()
+    reviews = import_reviews(fixture, "mixed-reviews.json", app_id="mixed-app")
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+
+    finding_draft = FindingDraft(
+        title="Subscription terms are unclear",
+        problem_statement="Some users cannot see price and renewal timing before subscribing.",
+        topic_label="subscription transparency",
+        supporting_review_ids=["mix-001", "mix-002"],
+        conflicting_review_ids=["mix-003"],
+        reasoning_summary="Two complaints and one explicit opposing review are present.",
+    )
+
+    def requirement_builder(findings, goal, total_reviews):
+        finding = findings[0]
+        assert finding.evidence_status == EvidenceStatus.VALIDATED
+        return [
+            Requirement(
+                requirement_id="REQ-001",
+                finding_ids=[finding.finding_id],
+                title="Show price and renewal terms before confirmation",
+                user_problem=finding.problem_statement,
+                objective="Make subscription terms understandable before purchase.",
+                scope=["Show price, trial duration, and renewal date"],
+                non_goals=["Redesign account settings"],
+                functional_rules=["Display terms before the confirmation action"],
+                edge_cases=["Store price lookup is temporarily unavailable"],
+                acceptance_criteria=["Terms are visible without opening another page"],
+                success_metrics=["Reduce related low-rating complaints"],
+                impact=5,
+                complexity="low",
+                priority_score=8.0,
+                target_version="V1.0",
+                source_review_ids=finding.supporting_review_ids,
+            )
+        ]
+
+    def test_case_builder(requirements):
+        requirement = requirements[0]
+        return [
+            DomainTestCase(
+                test_case_id=f"TC-{index:03d}",
+                requirement_id=requirement.requirement_id,
+                title=title,
+                preconditions=["A free trial is available"],
+                steps=["Open the subscription offer"],
+                expected_result="Price, trial duration, and renewal date are visible.",
+                case_type=case_type,
+                source_review_ids=requirement.source_review_ids,
+            )
+            for index, (title, case_type) in enumerate(
+                [
+                    ("Subscription terms are visible before confirmation", "normal"),
+                    ("Store price lookup fails during confirmation", "exception"),
+                ],
+                start=1,
+            )
+        ]
+
+    services = PipelineServices(
+        repository=repo,
+        batch_analyzer=lambda batch, goal: BatchAnalysisResult(
+            findings=[finding_draft], batch_limitations=[]
+        ),
+        consolidator=lambda results, goal: ConsolidationResult(findings=[finding_draft]),
+        finding_validator=validate_finding_drafts,
+        requirement_builder=requirement_builder,
+        test_case_builder=test_case_builder,
+        traceability_validator=validate_traceability,
+        batch_size=100,
+    )
+
+    run = AnalysisOrchestrator(services).start(
+        AnalysisRequest(
+            source_type=SourceType.JSON,
+            analysis_goal="重点分析订阅转化",
+        ),
+        imported_reviews=reviews,
+    )
+
+    assert run.status == RunStatus.COMPLETED
+    clean_output = repo.get_output(run.run_id, Stage.CLEAN)
+    assert clean_output["stats"]["exact_duplicates"] == 1
+    assert clean_output["stats"]["near_duplicates"] == 1
+    test_payload = repo.get_output(run.run_id, Stage.GENERATE_TESTS)
+    source_ids = {review.review_id for review in reviews}
+    assert set(test_payload["test_cases"][0]["source_review_ids"]).issubset(source_ids)
+    assert repo.get_output(run.run_id, Stage.VALIDATE_TRACEABILITY)["valid"] is True
