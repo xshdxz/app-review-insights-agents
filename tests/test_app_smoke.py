@@ -290,6 +290,25 @@ def test_online_collection_shortfall_is_disclosed_as_run_limitation():
     assert limitations == ["在线采集目标 500 条，实际获得 50 条；样本短缺会降低证据覆盖度。"]
 
 
+def test_review_id_collision_is_disclosed_as_run_limitation():
+    from app_review_insights.models import AnalysisRequest, SourceType
+    from app_review_insights.ui.components import _run_limitations
+
+    run = AnalysisRequest(
+        source_type=SourceType.CSV,
+        analysis_goal="审阅导入评论问题",
+    )
+
+    limitations = _run_limitations(
+        type("Run", (), {"request": run})(),
+        {"stats": {"input_count": 2, "review_id_collisions": 1}},
+    )
+
+    assert limitations == [
+        "发现 1 个重复评论 ID 对应不同正文；已稳定重命名，后续证据链使用重命名后的唯一 ID。"
+    ]
+
+
 def test_completed_run_displays_evidence_validation_and_prd_metadata(
     tmp_path,
     monkeypatch,

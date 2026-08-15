@@ -16,6 +16,7 @@ class CleaningStats(BaseModel):
     exact_duplicates: int = Field(ge=0)
     near_duplicates: int = Field(ge=0)
     empty_removed: int = Field(ge=0)
+    review_id_collisions: int = Field(default=0, ge=0)
 
 
 class CleaningResult(BaseModel):
@@ -61,9 +62,12 @@ def _is_near_duplicate(
 def clean_reviews(reviews: list[Review], near_duplicate_threshold: int = 96) -> CleaningResult:
     kept: list[Review] = []
     hashes: set[str] = set()
+    used_review_ids: set[str] = set()
+    review_id_contents: dict[str, set[str]] = {}
     exact_duplicates = 0
     near_duplicates = 0
     empty_removed = 0
+    review_id_collisions = 0
 
     for incoming in reviews:
         normalized = normalize_text(incoming.content_original)
@@ -76,6 +80,10 @@ def clean_reviews(reviews: list[Review], near_duplicate_threshold: int = 96) -> 
         content_hash = hashlib.sha256(
             f"{incoming.rating}|{normalized_folded}".encode()
         ).hexdigest()[:20]
+
+        if normalized_folded in review_id_contents.get(incoming.review_id, set()):
+            exact_duplicates += 1
+            continue
 
         if content_hash in hashes:
             exact_duplicates += 1
@@ -93,10 +101,23 @@ def clean_reviews(reviews: list[Review], near_duplicate_threshold: int = 96) -> 
             near_duplicates += 1
             continue
 
+        review_id = incoming.review_id
+        if review_id in used_review_ids:
+            review_id_collisions += 1
+            base_review_id = f"{review_id}--{content_hash[:8]}"
+            review_id = base_review_id
+            suffix = 2
+            while review_id in used_review_ids:
+                review_id = f"{base_review_id}-{suffix}"
+                suffix += 1
+
         hashes.add(content_hash)
+        used_review_ids.add(review_id)
+        review_id_contents.setdefault(incoming.review_id, set()).add(normalized_folded)
         kept.append(
             incoming.model_copy(
                 update={
+                    "review_id": review_id,
                     "content_original": normalized,
                     "content_hash": content_hash,
                     "language": incoming.language or _detect_language(normalized),
@@ -112,5 +133,6 @@ def clean_reviews(reviews: list[Review], near_duplicate_threshold: int = 96) -> 
             exact_duplicates=exact_duplicates,
             near_duplicates=near_duplicates,
             empty_removed=empty_removed,
+            review_id_collisions=review_id_collisions,
         ),
     )

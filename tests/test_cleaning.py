@@ -34,6 +34,23 @@ def test_clean_reviews_removes_exact_and_near_duplicates():
     assert all(item.content_hash for item in result.reviews)
 
 
+def test_clean_reviews_keeps_conflicting_duplicate_ids_traceable():
+    result = clean_reviews(
+        [
+            review("same-id", "The timer freezes after pause."),
+            review("same-id", "The timer freezes after pause."),
+            review("same-id", "The subscription price is unclear."),
+        ]
+    )
+
+    ids = [item.review_id for item in result.reviews]
+    assert ids[0] == "same-id"
+    assert ids[1].startswith("same-id--")
+    assert len(ids) == len(set(ids)) == 2
+    assert result.stats.exact_duplicates == 1
+    assert result.stats.review_id_collisions == 1
+
+
 def test_clean_reviews_removes_whitespace_only_content():
     result = clean_reviews([review("r-empty", "   \n\t  ")])
 

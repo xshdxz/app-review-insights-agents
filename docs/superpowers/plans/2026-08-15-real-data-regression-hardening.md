@@ -525,13 +525,13 @@ git commit -m "fix: harden real-data evidence workflow"
 - Test: `tests/test_cleaning.py`
 - Test: `tests/test_app_smoke.py`
 
-- [ ] **Step 1: 写重复 ID 的失败测试**
+- [x] **Step 1: 写重复 ID 的失败测试**
 
 在 `tests/test_cleaning.py` 新增测试：输入三条相同 `review_id`，其中两条规范化正文相同、第三条正文不同。断言相同正文只保留一条，不同正文保留且得到以 `原 ID--内容哈希短后缀` 开头的唯一 ID；`review_id_collisions == 1`，清洗后所有 ID 唯一。
 
 在 `tests/test_app_smoke.py` 新增 `_run_limitations` 测试，断言 `review_id_collisions > 0` 时返回中文披露，说明冲突记录已重命名且证据链使用新 ID。
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run:
 
@@ -541,13 +541,13 @@ Run:
 
 Expected: `CleaningStats` 尚无 `review_id_collisions`，且冲突 ID 尚未重命名，因此新测试失败。
 
-- [ ] **Step 3: 实现最小清洗修复**
+- [x] **Step 3: 实现最小清洗修复**
 
 在 `CleaningStats` 增加默认值为 `0` 的 `review_id_collisions`。`clean_reviews` 为每个原始 ID 维护已见规范化正文集合：相同 ID + 相同正文计入精确重复并跳过；相同 ID + 不同正文计入冲突，并用当前内容哈希构造稳定短后缀，必要时增加数字后缀避免极小概率碰撞。写入 `kept` 前保证最终 ID 未被使用。
 
 `_run_limitations` 在保留在线采集短缺说明的同时，为任意数据源追加重复 ID 冲突说明。
 
-- [ ] **Step 4: 验证 GREEN 并提交**
+- [x] **Step 4: 验证 GREEN 并提交**
 
 Run:
 

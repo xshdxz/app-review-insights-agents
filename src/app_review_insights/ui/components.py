@@ -457,15 +457,22 @@ def render_records(
 
 def _run_limitations(run: RunRecord, clean: dict[str, Any]) -> list[str]:
     stats = clean.get("stats", {})
-    if run.request.source_type != SourceType.ONLINE or "input_count" not in stats:
-        return []
-    actual_count = int(stats["input_count"])
-    if actual_count >= run.request.review_limit:
-        return []
-    return [
-        f"在线采集目标 {run.request.review_limit} 条，实际获得 {actual_count} 条；"
-        "样本短缺会降低证据覆盖度。"
-    ]
+    limitations = []
+    if run.request.source_type == SourceType.ONLINE and "input_count" in stats:
+        actual_count = int(stats["input_count"])
+        if actual_count < run.request.review_limit:
+            limitations.append(
+                f"在线采集目标 {run.request.review_limit} 条，实际获得 {actual_count} 条；"
+                "样本短缺会降低证据覆盖度。"
+            )
+
+    collision_count = int(stats.get("review_id_collisions", 0))
+    if collision_count:
+        limitations.append(
+            f"发现 {collision_count} 个重复评论 ID 对应不同正文；已稳定重命名，"
+            "后续证据链使用重命名后的唯一 ID。"
+        )
+    return limitations
 
 
 def _render_overview(
