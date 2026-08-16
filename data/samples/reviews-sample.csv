@@ -1,0 +1,21 @@
+﻿review_id,content,rating,published_at,app_version,language
+sample-001,The free trial renewal date was not clear before I subscribed.,2,2026-07-01T10:00:00Z,8.4.0,en
+sample-002,I did not see the monthly price until the final confirmation.,1,2026-07-02T10:00:00Z,8.4.0,en
+sample-003,The subscription terms were clear and easy to understand.,5,2026-07-03T10:00:00Z,8.4.0,en
+sample-004,暂停训练以后计时器不会继续。,2,2026-07-04T10:00:00Z,8.4.1,zh-cn
+sample-005,暂停训练后计时器有时无法继续。,2,2026-07-05T10:00:00Z,8.4.1,zh-cn
+sample-006,Voice instructions are too quiet while music is playing.,3,2026-07-06T10:00:00Z,8.4.1,en
+sample-007,I love the voice guidance and workout pacing.,5,2026-07-07T10:00:00Z,8.4.1,en
+sample-008,The exercise preview is too short for unfamiliar movements.,3,2026-07-08T10:00:00Z,8.4.1,en
+sample-009,希望动作开始前能有更长的示范时间。,3,2026-07-09T10:00:00Z,8.4.1,zh-cn
+sample-010,The app crashed after I changed my weekly plan.,1,2026-07-10T10:00:00Z,8.4.2,en
+sample-011,Changing my weekly plan worked perfectly.,5,2026-07-11T10:00:00Z,8.4.2,en
+sample-012,Please let me export a weekly workout summary.,4,2026-07-12T10:00:00Z,,en
+sample-013,希望可以导出每周训练记录。,4,2026-07-13T10:00:00Z,,zh-cn
+sample-014,The free trial renewal date was not clear before I subscribed.,2,2026-07-14T10:00:00Z,8.4.0,en
+sample-015,Workouts are effective but the rest timer feels too short.,3,2026-07-15T10:00:00Z,8.4.2,en
+sample-016,休息时间太短，希望可以自己调整。,3,2026-07-16T10:00:00Z,8.4.2,zh-cn
+sample-017,The adjustable difficulty is excellent.,5,2026-07-17T10:00:00Z,8.4.2,en
+sample-018,Beginner workouts become difficult too quickly.,2,2026-07-18T10:00:00Z,8.4.2,en
+sample-019,Notifications arrive during my configured quiet hours.,2,2026-07-19T10:00:00Z,8.4.2,en
+sample-020,Great workouts and a clean interface.,5,2026-07-20T10:00:00Z,8.4.2,en
