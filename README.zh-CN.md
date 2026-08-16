@@ -78,6 +78,7 @@ Copy-Item .env.example .env
 
 - Apple RSS：`https://itunes.apple.com/us/rss/customerreviews/page={n}/id={appId}/sortby=mostrecent/json` —— 每页最多 50 条、最多 10 页，**上限 500 条**。
 - 在线采集只接受美国区链接；其他地区请使用 JSON/CSV 导入。
+- Apple 会不定期调整该公开接口。采集器先请求当前主 URL，为空时自动回退旧式第一页 URL；两者都为空时给出明确提示并引导改用 JSON/CSV 导入或稍后重试。接口调整期间部分 App 可能返回较少甚至 0 条评论，短缺量会在运行局限说明中如实披露。
 - 评论源实际返回少于请求数量时，会在运行局限说明中如实披露。
 - 如果本机配置了未运行的 HTTP 代理（`HTTP_PROXY`/`HTTPS_PROXY`），采集与模型调用会报连接错误——请启动代理，或临时移除这两个环境变量。
 

@@ -13,6 +13,9 @@ _FIRST_PAGE_URL = (
     "https://itunes.apple.com/us/rss/customerreviews/id={app_id}/json"
     "?urlDesc=/customerreviews/id={app_id}/json?retry=1"
 )
+_LEGACY_FIRST_PAGE_URL = (
+    "https://itunes.apple.com/us/rss/customerreviews/page=1/id={app_id}/sortby=mostrecent/json"
+)
 _PAGE_URL = (
     "https://itunes.apple.com/us/rss/customerreviews/page={page}/"
     "id={app_id}/sortby=mostrecent/xml?urlDesc=/customerreviews/"
@@ -50,6 +53,8 @@ class AppStoreCollector:
         reviews: list[Review] = []
         seen_ids: set[str] = set()
         next_url: str | None = _FIRST_PAGE_URL.format(app_id=parsed.app_id)
+        legacy_fallback_url = _LEGACY_FIRST_PAGE_URL.format(app_id=parsed.app_id)
+        used_fallback = False
 
         for page in range(1, _MAX_PAGES + 1):
             if next_url is None:
@@ -66,6 +71,17 @@ class AppStoreCollector:
                 ) from exc
 
             page_reviews = [entry for entry in entries if "im:rating" in entry]
+            if not page_reviews and not used_fallback and not reviews:
+                # Apple 曾多次调整公开评论接口；主 URL 返回空时回退到旧式第一页，
+                # 两者都为空才判定为源端无数据。
+                used_fallback = True
+                try:
+                    response = self.client.get(legacy_fallback_url)
+                    response.raise_for_status()
+                    entries, candidate_next_url = self._parse_page(response)
+                except Exception:
+                    entries, candidate_next_url = [], None
+                page_reviews = [entry for entry in entries if "im:rating" in entry]
             if not page_reviews:
                 break
 

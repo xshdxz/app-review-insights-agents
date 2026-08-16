@@ -8,6 +8,7 @@
 | # | 严重程度 | 状态 | 问题 | 证据 | 修复 |
 |---|---|---|---|---|---|
 | D-01 | 高 | fixed | DeepSeek 输出未设置 `max_tokens`，使用默认 4096；大评论批次（如 200 条、每条需中文摘要）输出被截断，JSON 解析失败，重试后仍失败并进入 `waiting_for_model`。 | 真实运行 `2391b909` 的 `last_error`："Invalid JSON: EOF while parsing a value at line 1166 column 7"。 | 新增 `MODEL_MAX_TOKENS=8192`（deepseek-chat 上限），provider 显式传入；批次 Prompt 增加"每条摘要不超过 25 字"约束。已在真实运行上验证续跑成功。 |
+| D-06 | 高 | fixed | Apple 公开评论 RSS 接口再次变化（2026-08-16 起）：主 URL（`urlDesc` 分页方案，8/17 时有效）对全部 App 返回空 feed；旧式 URL 仅部分 App 第一页可用（如 Notion 50 条），Workout/Todoist 等返回空。在线采集模式受影响。 | 实测：Notion 主 URL 空/旧式 48238 字节有数据；Workout 两种 URL 均空；Notion 旧式连续 5 次探测稳定。 | 采集器增加 fallback：主 URL 返回空时回退旧式第一页 URL，两者皆空才报"评论源返回 0 条"并引导改用 JSON/CSV 导入。已在真实运行验证 Notion 在线采集 50 条完成全流程。第三方数据可用性仍以 Apple 为准。 |
 
 ## 中
 

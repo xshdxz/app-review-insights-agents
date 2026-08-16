@@ -78,6 +78,7 @@ Program responsibilities: collection/import, cleaning, counting, ID validation, 
 
 - Apple RSS: `https://itunes.apple.com/us/rss/customerreviews/page={n}/id={appId}/sortby=mostrecent/json` — up to 50 reviews per page, 10 pages, **500 reviews max**.
 - Online collection only accepts US storefront links; other regions must use JSON/CSV import.
+- Apple occasionally changes this public feed. The collector tries the current feed URL first and falls back to the legacy first-page URL; if both return no data, a clear message directs you to JSON/CSV import or retry later. During such upstream changes some apps may return fewer or no reviews; the shortfall is disclosed in the run's limitation list.
 - If the feed returns fewer reviews than requested, the shortfall is disclosed in the run's limitation list.
 - If your machine has an HTTP proxy configured (`HTTP_PROXY`/`HTTPS_PROXY`) that is not running, collection and model calls fail with a connection error — start the proxy or temporarily remove those environment variables.
 

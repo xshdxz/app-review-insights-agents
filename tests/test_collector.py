@@ -251,3 +251,27 @@ def test_collector_rejects_empty_feed():
         assert "0 条" in str(exc)
     else:
         raise AssertionError("expected CollectionError")
+
+
+def test_collector_falls_back_to_legacy_url_when_primary_feed_is_empty():
+    legacy_url = (
+        "https://itunes.apple.com/us/rss/customerreviews/page=1/id=839285684/sortby=mostrecent/json"
+    )
+    client = FakeHttpClient(
+        [
+            FakeResponse(rss_payload()),
+            FakeResponse(rss_payload(rss_review("123", "Fallback review"))),
+        ]
+    )
+
+    reviews = AppStoreCollector(client=client).collect(
+        "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684",
+        limit=20,
+    )
+
+    assert reviews[0].review_id == "123"
+    assert client.requested_urls == [
+        "https://itunes.apple.com/us/rss/customerreviews/id=839285684/json"
+        "?urlDesc=/customerreviews/id=839285684/json?retry=1",
+        legacy_url,
+    ]
