@@ -447,30 +447,41 @@ def main() -> None:
         if run_id:
             run = services.repository.get_run(run_id)
             events = services.repository.list_events(run_id)
-            render_run_status(run, events)
-            if run.status == RunStatus.WAITING:
-                resume = st.button(
-                    "继续分析",
-                    type="primary",
-                    icon=":material/resume:",
-                    disabled=not model_ready,
-                    width="stretch",
+            pending = st.session_state.get("pending_resume")
+            if pending == run.run_id and run.status == RunStatus.WAITING:
+                # 模型问题已解决并开始恢复：不展示旧的失败状态与错误文本。
+                resume_status = st.status(
+                    "模型已恢复，正在从检查点继续…",
+                    expanded=True,
                 )
-                if not model_ready:
-                    st.caption("配置模型密钥后，可沿用同一运行 ID 从检查点继续。")
-                if resume:
-                    resume_status = st.status("正在从检查点继续", expanded=True)
-                    resumed = _resume_analysis(
-                        services,
-                        run.run_id,
-                        event_writer=lambda event: resume_status.write(
-                            format_event_message(event.message)
-                        ),
+                st.caption(f"运行 ID：`{run.run_id}`")
+                resumed = _resume_analysis(
+                    services,
+                    run.run_id,
+                    event_writer=lambda event: resume_status.write(
+                        format_event_message(event.message)
+                    ),
+                )
+                st.session_state.pop("pending_resume", None)
+                st.session_state["run_id"] = resumed.run_id
+                _record_model_success(services.repository, resumed.run_id, settings)
+                _update_live_status(resume_status, resumed)
+                st.rerun()
+            else:
+                render_run_status(run, events)
+                if run.status == RunStatus.WAITING:
+                    resume = st.button(
+                        "继续分析",
+                        type="primary",
+                        icon=":material/resume:",
+                        disabled=not model_ready,
+                        width="stretch",
                     )
-                    st.session_state["run_id"] = resumed.run_id
-                    _record_model_success(services.repository, resumed.run_id, settings)
-                    _update_live_status(resume_status, resumed)
-                    st.rerun()
+                    if not model_ready:
+                        st.caption("配置模型密钥后，可沿用同一运行 ID 从检查点继续。")
+                    if resume:
+                        st.session_state["pending_resume"] = run.run_id
+                        st.rerun()
         else:
             with st.container(border=True):
                 st.subheader("运行状态", anchor=False)

@@ -560,3 +560,71 @@ def test_root_entrypoint_still_exposes_callable_main():
     spec.loader.exec_module(module)
 
     assert callable(module.main)
+
+
+def test_resume_hides_old_error_and_shows_recovery_state(tmp_path, monkeypatch):
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.models import (
+        AnalysisRequest,
+        RunRecord,
+        RunStatus,
+        SourceType,
+        Stage,
+    )
+    from app_review_insights.storage import RunRepository
+
+    app_path = Path(__file__).parents[1] / "app.py"
+    database_path = tmp_path / "runs.sqlite3"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("DATABASE_PATH", str(database_path))
+    repository = RunRepository(database_path)
+    now = datetime.now(UTC)
+    waiting = RunRecord(
+        run_id="waiting-run",
+        request=AnalysisRequest(
+            source_type=SourceType.JSON,
+            analysis_goal="测试目标",
+        ),
+        current_stage=Stage.ANALYZE_BATCHES,
+        status=RunStatus.WAITING,
+        current_batch=0,
+        total_batches=1,
+        coverage_ratio=0.0,
+        last_error="模型调用失败，可从检查点继续：401 [REDACTED]",
+        created_at=now,
+        updated_at=now,
+    )
+    repository.save_run(waiting)
+    repository.save_output(
+        waiting.run_id,
+        Stage.CLEAN,
+        {"reviews": [], "stats": {"input_count": 1, "output_count": 1}},
+    )
+    completed = waiting.model_copy(
+        update={
+            "status": RunStatus.COMPLETED,
+            "current_stage": Stage.COMPLETE,
+            "coverage_ratio": 1,
+            "last_error": None,
+        }
+    )
+
+    def fake_resume(services, run_id, event_writer=None):
+        services.repository.save_run(completed)
+        return completed
+
+    monkeypatch.setattr(ui_main, "_resume_analysis", fake_resume)
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+
+    assert any("模型调用失败" in item.value for item in app.warning)
+    resume_btn = next(button for button in app.button if button.label == "继续分析")
+    assert resume_btn.disabled is False
+
+    # Simulate clicking 继续分析: pending resume state hides the old error.
+    app.session_state["pending_resume"] = "waiting-run"
+    app = app.run(timeout=10)
+
+    assert not any("模型调用失败" in item.value for item in app.warning)
+    assert not any("等待模型恢复" in item.value for item in app.warning)
+    assert not any(button.label == "继续分析" for button in app.button)
