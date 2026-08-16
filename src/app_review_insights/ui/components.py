@@ -366,20 +366,12 @@ def render_provenance_legend() -> None:
 
 def render_model_status(
     model_state: str,
-    model_name: str,
     key_source: str | None = None,
 ) -> None:
-    if model_state == "verified":
-        st.success(
-            f"模型状态：{model_name} 已验证可调用。",
-            icon=":material/cloud_done:",
-        )
-    elif model_state == "configured":
-        st.info(
-            f"模型状态：{model_name} 密钥已填写，首次调用时验证可用性。",
-            icon=":material/cloud_queue:",
-        )
-    elif model_state == "disabled":
+    # 正常状态（已配置或已验证）不打扰用户：横幅只在模型不可用时才出现。
+    if model_state in ("verified", "configured"):
+        return
+    if model_state == "disabled":
         st.warning(
             "模型状态：已显式禁用（MODEL_ENABLED=false）。"
             "档案库和历史结果仍可读取，实时开始与继续分析暂不可用。",
@@ -387,7 +379,7 @@ def render_model_status(
         )
     else:
         st.warning(
-            "模型状态：未配置 DEEPSEEK_API_KEY。档案库仍可读取，但实时开始与继续分析暂不可用。",
+            "模型状态：未配置 MODEL_API_KEY。档案库仍可读取，但实时开始与继续分析暂不可用。",
             icon=":material/key_off:",
         )
     if key_source:

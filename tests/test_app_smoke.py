@@ -136,6 +136,44 @@ def test_explicit_model_disable_overrides_configured_key(tmp_path, monkeypatch):
     assert any("已显式禁用" in item.value for item in app.warning)
 
 
+def test_model_status_banner_hidden_when_configured(tmp_path, monkeypatch):
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+
+    assert not any("模型状态" in item.value for item in app.success)
+    assert not any("模型状态" in item.value for item in app.info)
+
+
+def test_model_status_banner_hidden_when_verified(tmp_path, monkeypatch):
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.config import Settings
+
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    settings = Settings(deepseek_api_key="test-key")
+    app.session_state["model_verified_fingerprint"] = ui_main._model_config_fingerprint(settings)
+    app = app.run(timeout=10)
+
+    assert not any("模型状态" in item.value for item in app.success)
+    assert not any("模型状态" in item.value for item in app.info)
+
+
+def test_model_status_banner_warns_when_key_missing(tmp_path, monkeypatch):
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+
+    assert any("未配置" in item.value for item in app.warning)
+
+
 def test_model_verification_is_bound_to_current_config():
     import app_review_insights.ui.main as ui_main
     from app_review_insights.config import Settings

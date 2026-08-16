@@ -376,7 +376,6 @@ def main() -> None:
     render_provenance_legend()
     render_model_status(
         model_state,
-        settings.model_name,
         _model_key_source(settings),
     )
     demo_mode = st.toggle(
@@ -404,7 +403,7 @@ def main() -> None:
         )
         if submitted:
             if not model_ready:
-                st.error("实时模型不可用，请先配置 DEEPSEEK_API_KEY。")
+                st.error("实时模型不可用，请先配置 MODEL_API_KEY。")
             else:
                 try:
                     request = _build_request(
