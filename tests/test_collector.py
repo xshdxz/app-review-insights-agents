@@ -224,19 +224,19 @@ def test_collector_skips_a_malformed_entry_without_losing_valid_reviews():
     assert [review.review_id for review in reviews] == ["good-1", "good-2"]
 
 
-def test_collector_rejects_limits_above_apple_rss_capacity():
-    collector = AppStoreCollector(client=FakeHttpClient([]))
+def test_collector_caps_limit_at_apple_rss_capacity():
+    page_one = [rss_review(f"r-{index}", f"Review {index}") for index in range(50)]
+    client = FakeHttpClient([FakeResponse(rss_payload(*page_one))])
 
-    try:
-        collector.collect(
-            "https://apps.apple.com/us/app/example/id839285684",
-            limit=501,
-        )
-    except CollectionError as exc:
-        assert "最多 500" in str(exc)
-        assert "JSON/CSV" in str(exc)
-    else:
-        raise AssertionError("expected CollectionError")
+    reviews = AppStoreCollector(client=client).collect(
+        "https://apps.apple.com/us/app/example/id839285684",
+        limit=1000,
+    )
+
+    assert len(reviews) == 50  # one feed page available; no error for limit > 500
+    assert client.requested_urls[0].startswith(
+        "https://itunes.apple.com/us/rss/customerreviews/id=839285684/json"
+    )
 
 
 def test_collector_rejects_empty_feed():

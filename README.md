@@ -11,7 +11,7 @@ This repository is an engineering project. It deliberately keeps every claim ver
 ## What it does
 
 1. **Input**
-   - **Online collection** from the US App Store via Apple's public RSS feed (up to 500 reviews, most recent first). Only US storefront links are accepted.
+   - **Online collection** from the US App Store via Apple's public RSS feed (up to 500 reviews in practice, most recent first). Only US storefront links are accepted.
    - **JSON/CSV import** of your own review files (see `docs/data-format.md`).
    - **Offline demo archive**: a bundled, clearly labeled *historical cache* (never presented as a live result) so the UI can be demonstrated without an API key.
 
@@ -58,7 +58,7 @@ Open http://localhost:8501. Without a DeepSeek key you can still explore the off
 | `MODEL_MAX_RETRIES` | `2` | Bounded retry budget (application-level; SDK retries are disabled). |
 | `MODEL_MAX_TOKENS` | `8192` | Max completion tokens. Must be high enough for per-review summaries; 4096 (API default) truncates large batches. |
 | `DATABASE_PATH` | `data/runs/runs.sqlite3` | Checkpoint database. |
-| `DEFAULT_REVIEW_LIMIT` | `500` | Default slider value (online mode caps at 500; import allows up to 1000). |
+| `DEFAULT_REVIEW_LIMIT` | `500` | Default slider value; both modes allow 100–1000 (online collection returns whatever Apple's feed provides, disclosed in run limitations). |
 | `BATCH_REVIEW_LIMIT` / `BATCH_MAX_CHARACTERS` | `100` / `60000` | Batching limits per model call. |
 
 Key handling: the key is only read into the provider at runtime; it is never logged, exported, or included in downloads; error messages redact key-like strings, review texts, and `.env` references.

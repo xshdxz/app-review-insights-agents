@@ -11,7 +11,7 @@
 ## 功能
 
 1. **输入**
-   - **在线采集**：通过 Apple 公开 RSS 接口采集美国区 App Store 评论（最多 500 条，按最新排序），只接受美国区链接。
+   - **在线采集**：通过 Apple 公开 RSS 接口采集美国区 App Store 评论（实际最多约 500 条，按最新排序），只接受美国区链接。
    - **JSON/CSV 导入**：导入自有评论文件（格式见 `docs/data-format.md`）。
    - **离线演示档案**：随仓库附带的、明确标记为"历史缓存"的结果（绝不被伪装成实时结果），没有 API Key 也能演示界面。
 
@@ -58,7 +58,7 @@ Copy-Item .env.example .env
 | `MODEL_MAX_RETRIES` | `2` | 有限重试预算（应用层控制；SDK 内层重试已关闭）。 |
 | `MODEL_MAX_TOKENS` | `8192` | 最大输出 token。必须足够容纳每条评论的摘要；API 默认 4096 会截断大批次输出。 |
 | `DATABASE_PATH` | `data/runs/runs.sqlite3` | 检查点数据库。 |
-| `DEFAULT_REVIEW_LIMIT` | `500` | 默认评论数量（在线模式上限 500；导入模式上限 1000）。 |
+| `DEFAULT_REVIEW_LIMIT` | `500` | 默认评论数量；两种模式统一支持 100–1000（在线采集以 Apple 接口实际返回为准，不足部分在运行局限中披露）。 |
 | `BATCH_REVIEW_LIMIT` / `BATCH_MAX_CHARACTERS` | `100` / `60000` | 每次模型调用的分批上限。 |
 
 密钥处理：Key 只在运行时读入 provider；从不写入日志、导出文件或下载内容；错误信息会脱敏 Key 样式字符串、评论原文和 `.env` 引用。

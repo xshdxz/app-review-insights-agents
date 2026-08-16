@@ -172,8 +172,6 @@ def _build_request(
         if not normalized_url:
             raise InputDataError("在线采集需要填写美国区 App Store URL。")
         parse_app_store_url(normalized_url)
-        if review_limit > 500:
-            raise InputDataError("在线采集最多支持 500 条评论，请降低数量或改用文件导入。")
     return AnalysisRequest(
         source_type=source_type,
         app_url=normalized_url or None,
@@ -247,7 +245,7 @@ def _render_input_form(settings: Settings, model_ready: bool):
                 value="识别影响用户体验与产品增长的核心问题，并形成可追溯需求",
                 height=100,
             )
-            maximum_limit = 500 if source_label == "在线采集" else 1000
+            maximum_limit = 1000
             review_limit = st.slider(
                 "评论数量",
                 min_value=100,
@@ -255,9 +253,8 @@ def _render_input_form(settings: Settings, model_ready: bool):
                 value=min(settings.default_review_limit, maximum_limit),
                 step=1,
                 help=(
-                    "Apple RSS 在线采集最多 500 条。"
-                    if source_label == "在线采集"
-                    else "文件导入可分析 100–1000 条评论。"
+                    "在线采集与文件导入统一支持 100–1000 条；"
+                    "在线采集实际条数以 Apple 接口为准，不足部分会在运行局限中披露。"
                 ),
                 key=f"review-limit-{source_label}",
             )

@@ -90,7 +90,7 @@ def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):
     assert start_button.disabled is True
     review_limit = next(slider for slider in app.slider if slider.label == "评论数量")
     assert review_limit.min == 100
-    assert review_limit.max == 500
+    assert review_limit.max == 1000
     assert review_limit.step == 1
 
 
@@ -105,7 +105,7 @@ def test_input_mode_switches_to_mode_specific_fields(tmp_path, monkeypatch):
 
     assert [item.label for item in online.text_input] == ["App 地址（URL）"]
     assert [item.label for item in online.file_uploader] == []
-    assert online_limit.max == 500
+    assert online_limit.max == 1000
     assert online_limit.step == 1
 
     json_mode = source.set_value("JSON 导入").run(timeout=10)

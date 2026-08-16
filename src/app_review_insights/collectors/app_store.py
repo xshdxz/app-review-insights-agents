@@ -43,13 +43,9 @@ class AppStoreCollector:
     def collect(self, app_url: str, limit: int) -> list[Review]:
         parsed = parse_app_store_url(app_url)
         maximum_limit = _REVIEWS_PER_PAGE * _MAX_PAGES
-        if limit > maximum_limit:
-            raise CollectionError(
-                "Apple RSS 在线采集最多 500 条评论，请将数量调至 500 以内，"
-                "或改用 JSON/CSV 导入更多评论"
-            )
-
-        bounded_limit = max(1, limit)
+        # Apple RSS caps at 500 reviews; larger targets are bounded silently and
+        # the shortfall is disclosed by the run limitations in the UI.
+        bounded_limit = max(1, min(limit, maximum_limit))
         reviews: list[Review] = []
         seen_ids: set[str] = set()
         next_url: str | None = _FIRST_PAGE_URL.format(app_id=parsed.app_id)
