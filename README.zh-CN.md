@@ -128,3 +128,4 @@ git grep -n -I -E "(sk-[A-Za-z0-9_-]{12,}|DEEPSEEK_API_KEY=.+)" -- . ':!.env.exa
 - `docs/data-format.md` — JSON/CSV 导入格式。
 - `docs/model-and-prompts.md` — 模型/Prompt 设计与评测记录。
 - `docs/defect-list.md` — 按严重程度记录的已知问题（开发过程中持续更新）。
+- `docs/manual-testing.md` — 模型失败与离线场景的手动测试指南。
