@@ -137,6 +137,27 @@ def test_input_mode_switches_to_mode_specific_fields(tmp_path, monkeypatch):
     assert [item.label for item in csv_mode.file_uploader] == ["CSV 评论文件"]
 
 
+def test_input_form_keeps_values_across_reruns(tmp_path, monkeypatch):
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    url_input = next(item for item in app.text_input if item.label == "App 地址（URL）")
+    url_input.set_value("https://apps.apple.com/us/app/example/id123456789")
+    goal = next(item for item in app.text_area if item.label == "分析目标")
+    goal.set_value("自定义分析目标")
+    app = app.run(timeout=10)
+
+    assert (
+        next(item for item in app.text_input if item.label == "App 地址（URL）").value
+        == "https://apps.apple.com/us/app/example/id123456789"
+    )
+    assert (
+        next(item for item in app.text_area if item.label == "分析目标").value == "自定义分析目标"
+    )
+
+
 def test_explicit_model_disable_overrides_configured_key(tmp_path, monkeypatch):
     app_path = Path(__file__).parents[1] / "app.py"
     monkeypatch.setenv("MODEL_ENABLED", "false")

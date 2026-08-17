@@ -55,6 +55,76 @@ _SOURCE_OPTIONS = ("在线采集", "JSON 导入", "CSV 导入")
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _SAMPLE_PATH = _PROJECT_ROOT / "data" / "samples" / "reviews-sample.json"
 _DEMO_PATH = _PROJECT_ROOT / "data" / "cache" / "demo-run.json"
+_UPLOAD_DIR = _PROJECT_ROOT / "data" / "uploads"
+
+
+class _RecoveredUpload:
+    """Upload-like object restored from a saved file after a page reload."""
+
+    def __init__(self, path: Path):
+        self._path = path
+        self.name = path.name
+
+    def getvalue(self) -> bytes:
+        return self._path.read_bytes()
+
+
+def _restore_inputs_from_query_params() -> None:
+    """Restore input widgets from URL query params after a browser reload.
+
+    Only applies when the session state is fresh (a reload clears it);
+    same-session reruns keep the user's current input untouched.
+    """
+    params = st.query_params
+    if "url" in params and "input-app-url" not in st.session_state:
+        st.session_state["input-app-url"] = params["url"]
+    if "goal" in params and "input-goal" not in st.session_state:
+        st.session_state["input-goal"] = params["goal"]
+    if "mode" in params and "source-mode" not in st.session_state:
+        if params["mode"] in _SOURCE_OPTIONS:
+            st.session_state["source-mode"] = params["mode"]
+    if "limit" in params and params["limit"].isdigit():
+        mode = st.session_state.get("source-mode", "在线采集")
+        if f"review-limit-{mode}" not in st.session_state:
+            st.session_state[f"review-limit-{mode}"] = int(params["limit"])
+    if "upload" in params and "restored-upload" not in st.session_state:
+        saved = _UPLOAD_DIR / str(params["upload"])
+        if saved.exists():
+            st.session_state["restored-upload"] = str(saved)
+
+
+def _sync_inputs_to_query_params(
+    source_label: str,
+    app_url: str,
+    goal: str,
+    review_limit: int,
+    upload,
+) -> None:
+    """Persist current input values into URL query params for reload survival."""
+    params = st.query_params
+    params["mode"] = source_label
+    if source_label == "在线采集":
+        params["url"] = app_url or ""
+    params["goal"] = goal
+    params["limit"] = str(review_limit)
+    restored = st.session_state.get("restored-upload")
+    if restored:
+        params["upload"] = Path(restored).name
+    elif upload is not None and upload.name:
+        params["upload"] = upload.name
+
+
+def _persist_upload(upload) -> None:
+    """Save an uploaded file so it survives a browser reload."""
+    if upload is None or not getattr(upload, "name", ""):
+        return
+    if st.session_state.get("restored-upload"):
+        return
+    _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    target = _UPLOAD_DIR / f"{upload.name}"
+    if not target.exists():
+        target.write_bytes(upload.getvalue())
+    st.session_state["restored-upload"] = str(target)
 
 
 def build_services(use_fake_provider: bool = False) -> PipelineServices:
@@ -273,48 +343,57 @@ def _render_input_form(settings: Settings, model_ready: bool):
             width="stretch",
             key="source-mode",
         )
-        with st.form("analysis-input", border=False, enter_to_submit=False):
-            app_url = ""
-            upload = None
-            if source_label == "在线采集":
-                app_url = st.text_input(
-                    "App 地址（URL）",
-                    placeholder="https://apps.apple.com/us/app/example/id123456789",
-                    help="在线采集仅支持美国区 App Store。",
-                )
-            analysis_goal = st.text_area(
-                "分析目标",
-                value="识别影响用户体验与产品增长的核心问题，并形成可追溯需求",
-                height=100,
+        # 控件直接渲染（带 key 即时写入 session_state），
+        # 页面刷新后输入保持，避免回到默认表单。
+        app_url = ""
+        upload = None
+        if source_label == "在线采集":
+            app_url = st.text_input(
+                "App 地址（URL）",
+                placeholder="https://apps.apple.com/us/app/example/id123456789",
+                help="在线采集仅支持美国区 App Store。",
+                key="input-app-url",
             )
-            maximum_limit = 1000
-            review_limit = st.slider(
-                "评论数量",
-                min_value=100,
-                max_value=maximum_limit,
-                value=min(settings.default_review_limit, maximum_limit),
-                step=1,
-                help=(
-                    "在线采集与文件导入统一支持 100–1000 条；"
-                    "在线采集实际条数以 Apple 接口为准，不足部分会在运行局限中披露。"
-                ),
-                key=f"review-limit-{source_label}",
+        analysis_goal = st.text_area(
+            "分析目标",
+            value="识别影响用户体验与产品增长的核心问题，并形成可追溯需求",
+            height=100,
+            key="input-goal",
+        )
+        maximum_limit = 1000
+        review_limit = st.slider(
+            "评论数量",
+            min_value=100,
+            max_value=maximum_limit,
+            value=min(settings.default_review_limit, maximum_limit),
+            step=1,
+            help=(
+                "在线采集与文件导入统一支持 100–1000 条；"
+                "在线采集实际条数以 Apple 接口为准，不足部分会在运行局限中披露。"
+            ),
+            key=f"review-limit-{source_label}",
+        )
+        if source_label in ("JSON 导入", "CSV 导入"):
+            suffix = "json" if source_label == "JSON 导入" else "csv"
+            upload = st.file_uploader(
+                f"{suffix.upper()} 评论文件",
+                type=[suffix],
+                help="字段格式沿用项目的数据格式约定，并兼容页面导出的中文表头。",
+                key=f"review-upload-{suffix}",
             )
-            if source_label in ("JSON 导入", "CSV 导入"):
-                suffix = "json" if source_label == "JSON 导入" else "csv"
-                upload = st.file_uploader(
-                    f"{suffix.upper()} 评论文件",
-                    type=[suffix],
-                    help="字段格式沿用项目的数据格式约定，并兼容页面导出的中文表头。",
-                    key=f"review-upload-{suffix}",
-                )
-            submitted = st.form_submit_button(
-                "开始分析",
-                type="primary",
-                icon=":material/play_arrow:",
-                disabled=not model_ready,
-                width="stretch",
-            )
+            _persist_upload(upload)
+            if upload is None and st.session_state.get("restored-upload"):
+                restored = Path(st.session_state["restored-upload"])
+                st.info(f"已恢复上传文件：{restored.name}")
+                upload = _RecoveredUpload(restored)
+        submitted = st.button(
+            "开始分析",
+            type="primary",
+            icon=":material/play_arrow:",
+            disabled=not model_ready,
+            width="stretch",
+        )
+    _sync_inputs_to_query_params(source_label, app_url, analysis_goal, review_limit, upload)
     return submitted, source_label, app_url, analysis_goal, review_limit, upload
 
 
@@ -409,6 +488,8 @@ def main() -> None:
     # 保留检查点，换回有效密钥后同一 run_id 续跑。
     model_ready = settings.model_enabled and bool(settings.deepseek_api_key)
     _initialize_session_state(services.repository)
+    # 浏览器刷新会清空 session_state：从 URL 参数恢复输入，保持中断前的页面。
+    _restore_inputs_from_query_params()
     model_state = _model_state(settings)
 
     st.title("证据审阅工作台", anchor=False)
@@ -505,7 +586,7 @@ def main() -> None:
         else:
             with st.container(border=True):
                 st.subheader("当前档案", anchor=False)
-                st.caption("尚未创建分析运行。提交表单后，各阶段输出会保存在档案库中。")
+                st.caption("尚未创建分析运行。点击“开始分析”后，各阶段输出会保存在档案库中。")
 
     with right:
         run_id = st.session_state.get("run_id")
