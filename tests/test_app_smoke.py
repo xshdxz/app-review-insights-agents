@@ -100,7 +100,8 @@ def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):
     assert not app.exception
     assert any("证据审阅工作台" in title.value for title in app.title)
     start_button = next(button for button in app.button if button.label == "开始分析")
-    assert start_button.disabled is True
+    # 未配置密钥时仍可开始分析：流程在模型环节暂停，配置密钥后可续跑。
+    assert start_button.disabled is False
     review_limit = next(slider for slider in app.slider if slider.label == "评论数量")
     assert review_limit.min == 100
     assert review_limit.max == 1000
@@ -321,7 +322,8 @@ def test_waiting_run_keeps_saved_output_visible_without_model_key(tmp_path, monk
     assert not app.exception
     assert any(metric.label == "输入评论" and metric.value == "4" for metric in app.metric)
     resume_button = next(button for button in app.button if button.label == "继续分析")
-    assert resume_button.disabled is True
+    # 未配置密钥时仍可点击继续分析：流程会再次在模型环节暂停并保留进度。
+    assert resume_button.disabled is False
 
 
 def test_safe_record_table_drops_private_unapproved_fields():
@@ -643,7 +645,7 @@ def test_resume_hides_old_error_and_shows_recovery_state(tmp_path, monkeypatch):
     assert not any(button.label == "继续分析" for button in app.button)
 
 
-def test_invalid_key_shows_warning_and_disables_start(tmp_path, monkeypatch):
+def test_invalid_key_shows_warning_but_keeps_start_clickable(tmp_path, monkeypatch):
     import app_review_insights.ui.main as ui_main
 
     app_path = Path(__file__).parents[1] / "app.py"
@@ -659,7 +661,8 @@ def test_invalid_key_shows_warning_and_disables_start(tmp_path, monkeypatch):
 
     assert any("密钥无效" in item.value for item in app.warning)
     start_button = next(button for button in app.button if button.label == "开始分析")
-    assert start_button.disabled is True
+    # 密钥无效时仍可开始分析，流程会在模型环节暂停并保留检查点。
+    assert start_button.disabled is False
 
 
 def test_unavailable_model_shows_warning_but_keeps_start_clickable(tmp_path, monkeypatch):

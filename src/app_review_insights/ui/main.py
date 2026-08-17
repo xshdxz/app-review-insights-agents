@@ -404,7 +404,9 @@ def main() -> None:
 
     settings = load_settings()
     services = build_services()
-    model_ready = services.batch_analyzer is not None
+    # 只有显式禁用（MODEL_ENABLED=false）才阻止开始分析；
+    # 未配置或密钥无效仍可开始，流程会在模型环节暂停并保留检查点，修复后可续跑。
+    model_ready = settings.model_enabled
     _initialize_session_state(services.repository)
     model_state = _model_state(settings)
 
@@ -435,10 +437,10 @@ def main() -> None:
         elif key_check == "invalid":
             st.warning(
                 "模型状态：DeepSeek 密钥无效（认证失败）。"
-                "请检查 .env 中的 DEEPSEEK_API_KEY，修正后刷新页面。",
+                "仍可开始分析：流程会在模型环节暂停并保留进度，"
+                "修正 .env 中的 DEEPSEEK_API_KEY 后点击“继续分析”。",
                 icon=":material/key_off:",
             )
-            model_ready = False
         elif key_check == "unavailable":
             st.warning(
                 "模型状态：暂时无法连接模型服务。仍可尝试分析，失败后可从检查点继续。",

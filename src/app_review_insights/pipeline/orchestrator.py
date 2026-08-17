@@ -412,6 +412,10 @@ class AnalysisOrchestrator:
 
             run = self._update_run(run, current_batch=index)
             try:
+                if self.services.batch_analyzer is None:
+                    raise RecoverableModelError(
+                        "模型未配置：请先配置 DEEPSEEK_API_KEY 后从检查点继续"
+                    )
                 result = BatchAnalysisResult.model_validate(
                     self.services.batch_analyzer(
                         batch,

@@ -519,6 +519,25 @@ def test_orchestrator_records_online_collection_failure(tmp_path):
     assert "upstream unavailable" in result.last_error
 
 
+def test_orchestrator_pauses_when_model_is_not_configured(tmp_path):
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    services = make_services(repo, None)  # batch_analyzer is None
+
+    result = AnalysisOrchestrator(services).start(
+        AnalysisRequest(
+            source_type=SourceType.JSON,
+            analysis_goal="查找产品问题",
+        ),
+        imported_reviews=make_reviews(2),
+    )
+
+    assert result.status == RunStatus.WAITING
+    assert result.current_stage == Stage.ANALYZE_BATCHES
+    assert "模型未配置" in result.last_error
+    assert repo.get_output(result.run_id, Stage.COLLECT) is not None
+    assert repo.get_output(result.run_id, Stage.CLEAN) is not None
+
+
 def test_full_imported_pipeline_completes_with_traceability(tmp_path):
     fixture = Path("tests/fixtures/mixed-reviews.json").read_bytes()
     reviews = import_reviews(fixture, "mixed-reviews.json", app_id="mixed-app")
