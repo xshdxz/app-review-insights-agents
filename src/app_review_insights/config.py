@@ -26,5 +26,23 @@ class Settings(BaseSettings):
     batch_max_characters: int = Field(default=60000, alias="BATCH_MAX_CHARACTERS")
 
 
+_ENV_FILE = Path(".env")
+_UTF8_BOM = b"\xef\xbb\xbf"
+
+
+def _strip_env_bom() -> None:
+    """Windows Notepad saves UTF-8 with a BOM, which breaks dotenv parsing.
+
+    Silently strip the BOM from .env before loading so the first key
+    (DEEPSEEK_API_KEY) is parsed correctly.
+    """
+    if not _ENV_FILE.exists():
+        return
+    raw = _ENV_FILE.read_bytes()
+    if raw.startswith(_UTF8_BOM):
+        _ENV_FILE.write_bytes(raw[len(_UTF8_BOM) :])
+
+
 def load_settings() -> Settings:
+    _strip_env_bom()
     return Settings()

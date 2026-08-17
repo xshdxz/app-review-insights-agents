@@ -25,3 +25,19 @@ def test_settings_can_explicitly_disable_the_model(tmp_path, monkeypatch):
 
     assert settings.model_enabled is False
     assert settings.deepseek_api_key == "configured-but-disabled"
+
+
+def test_load_settings_strips_notepad_bom_from_env_file(tmp_path, monkeypatch):
+    from app_review_insights.config import load_settings
+
+    env_file = tmp_path / ".env"
+    env_file.write_bytes(
+        b"\xef\xbb\xbfDEEPSEEK_API_KEY=sk-bom-key-1234567890\nMODEL_PROVIDER=deepseek\n"
+    )
+    monkeypatch.chdir(tmp_path)
+
+    settings = load_settings()
+
+    assert settings.deepseek_api_key == "sk-bom-key-1234567890"
+    # The BOM is stripped from the file so dotenv parsing is stable.
+    assert env_file.read_bytes()[:3] != b"\xef\xbb\xbf"

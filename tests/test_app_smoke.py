@@ -100,8 +100,8 @@ def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):
     assert not app.exception
     assert any("证据审阅工作台" in title.value for title in app.title)
     start_button = next(button for button in app.button if button.label == "开始分析")
-    # 未配置密钥时仍可开始分析：流程在模型环节暂停，配置密钥后可续跑。
-    assert start_button.disabled is False
+    # 计划书规定：未配置密钥时按钮禁用（所有模式）。
+    assert start_button.disabled is True
     review_limit = next(slider for slider in app.slider if slider.label == "评论数量")
     assert review_limit.min == 100
     assert review_limit.max == 1000
@@ -322,8 +322,8 @@ def test_waiting_run_keeps_saved_output_visible_without_model_key(tmp_path, monk
     assert not app.exception
     assert any(metric.label == "输入评论" and metric.value == "4" for metric in app.metric)
     resume_button = next(button for button in app.button if button.label == "继续分析")
-    # 未配置密钥时仍可点击继续分析：流程会再次在模型环节暂停并保留进度。
-    assert resume_button.disabled is False
+    # 计划书规定：未配置密钥时按钮禁用，配置密钥后同一 run_id 续跑。
+    assert resume_button.disabled is True
 
 
 def test_safe_record_table_drops_private_unapproved_fields():

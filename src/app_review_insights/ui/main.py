@@ -404,9 +404,10 @@ def main() -> None:
 
     settings = load_settings()
     services = build_services()
-    # 只有显式禁用（MODEL_ENABLED=false）才阻止开始分析；
-    # 未配置或密钥无效仍可开始，流程会在模型环节暂停并保留检查点，修复后可续跑。
-    model_ready = settings.model_enabled
+    # 计划书规定：按钮禁用条件 = 显式禁用 或 未配置密钥；
+    # 密钥已填写（无论有效无效）即可开始，无效密钥在模型环节失败后
+    # 保留检查点，换回有效密钥后同一 run_id 续跑。
+    model_ready = settings.model_enabled and bool(settings.deepseek_api_key)
     _initialize_session_state(services.repository)
     model_state = _model_state(settings)
 
@@ -429,7 +430,8 @@ def main() -> None:
         return
 
     # 已配置密钥但未验证时，做一次轻量连通性验证：
-    # 无效密钥立即提示，而不是等到分析时才暴露。
+    # 无效密钥立即提示，而不是等到分析时才暴露；按钮保持可点
+    # （计划书：无效密钥进入等待恢复后可续跑）。
     if model_state == "configured":
         key_check = _validate_model_key(settings)
         if key_check == "valid":
@@ -437,8 +439,8 @@ def main() -> None:
         elif key_check == "invalid":
             st.warning(
                 "模型状态：DeepSeek 密钥无效（认证失败）。"
-                "仍可开始分析：流程会在模型环节暂停并保留进度，"
-                "修正 .env 中的 DEEPSEEK_API_KEY 后点击“继续分析”。",
+                "开始分析后流程会在模型环节暂停并保留进度；"
+                "修正 .env 中的 DEEPSEEK_API_KEY 后，点击“继续分析”完成运行。",
                 icon=":material/key_off:",
             )
         elif key_check == "unavailable":
