@@ -4,7 +4,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
 from streamlit.testing.v1 import AppTest
+
+
+@pytest.fixture(autouse=True)
+def _no_live_key_validation(monkeypatch):
+    """Keep AppTest runs offline: fake the one-shot key validation as valid."""
+    import app_review_insights.ui.main as ui_main
+
+    monkeypatch.setattr(
+        ui_main,
+        "_validate_model_key",
+        lambda settings, session_state=None: "valid",
+    )
 
 
 def test_build_services_uses_configured_database_and_fake_provider(tmp_path, monkeypatch):
@@ -628,3 +641,41 @@ def test_resume_hides_old_error_and_shows_recovery_state(tmp_path, monkeypatch):
     assert not any("模型调用失败" in item.value for item in app.warning)
     assert not any("等待模型恢复" in item.value for item in app.warning)
     assert not any(button.label == "继续分析" for button in app.button)
+
+
+def test_invalid_key_shows_warning_and_disables_start(tmp_path, monkeypatch):
+    import app_review_insights.ui.main as ui_main
+
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-invalid-key")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    monkeypatch.setattr(
+        ui_main,
+        "_validate_model_key",
+        lambda settings, session_state=None: "invalid",
+    )
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+
+    assert any("密钥无效" in item.value for item in app.warning)
+    start_button = next(button for button in app.button if button.label == "开始分析")
+    assert start_button.disabled is True
+
+
+def test_unavailable_model_shows_warning_but_keeps_start_clickable(tmp_path, monkeypatch):
+    import app_review_insights.ui.main as ui_main
+
+    app_path = Path(__file__).parents[1] / "app.py"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-some-key")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    monkeypatch.setattr(
+        ui_main,
+        "_validate_model_key",
+        lambda settings, session_state=None: "unavailable",
+    )
+
+    app = AppTest.from_file(str(app_path)).run(timeout=10)
+
+    assert any("无法连接模型服务" in item.value for item in app.warning)
+    start_button = next(button for button in app.button if button.label == "开始分析")
+    assert start_button.disabled is False

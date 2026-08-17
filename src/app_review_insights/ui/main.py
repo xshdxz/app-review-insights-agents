@@ -146,6 +146,48 @@ def _record_model_success(
         state["model_verified_fingerprint"] = _model_config_fingerprint(settings)
 
 
+_MODEL_KEY_CHECK = "model_key_check"
+
+
+def _validate_model_key(settings: Settings, session_state=None) -> str | None:
+    """One-shot lightweight key validation (cached per session).
+
+    Returns "valid", "invalid" (authentication failure) or "unavailable"
+    (network/service issue), or None when no validation is needed.
+    """
+    from app_review_insights.errors import RecoverableModelError
+    from app_review_insights.llm.provider import DeepSeekProvider
+    from app_review_insights.llm.schemas import BatchAnalysisResult
+
+    state = st.session_state if session_state is None else session_state
+    cached = state.get(_MODEL_KEY_CHECK)
+    if cached:
+        return cached
+    if not settings.model_enabled or not settings.deepseek_api_key:
+        return None
+
+    try:
+        provider = DeepSeekProvider.from_settings(settings)
+        provider.max_retries = 0
+        provider.retry_delays = ()
+        provider.generate(
+            "你是连通性测试助手。只输出空结果，不解释。",
+            "返回空结果。",
+            BatchAnalysisResult,
+        )
+        result = "valid"
+    except RecoverableModelError as exc:
+        message = str(exc)
+        if "401" in message or "Authentication" in message or "invalid" in message.lower():
+            result = "invalid"
+        else:
+            result = "unavailable"
+    except Exception:
+        result = "unavailable"
+    state[_MODEL_KEY_CHECK] = result
+    return result
+
+
 def _source_type(source_label: str, upload_name: str | None) -> SourceType:
     if source_label == "在线采集":
         return SourceType.ONLINE
@@ -383,6 +425,25 @@ def main() -> None:
     if demo_mode:
         _render_demo_archive()
         return
+
+    # 已配置密钥但未验证时，做一次轻量连通性验证：
+    # 无效密钥立即提示，而不是等到分析时才暴露。
+    if model_state == "configured":
+        key_check = _validate_model_key(settings)
+        if key_check == "valid":
+            st.session_state["model_verified_fingerprint"] = _model_config_fingerprint(settings)
+        elif key_check == "invalid":
+            st.warning(
+                "模型状态：DeepSeek 密钥无效（认证失败）。"
+                "请检查 .env 中的 DEEPSEEK_API_KEY，修正后刷新页面。",
+                icon=":material/key_off:",
+            )
+            model_ready = False
+        elif key_check == "unavailable":
+            st.warning(
+                "模型状态：暂时无法连接模型服务。仍可尝试分析，失败后可从检查点继续。",
+                icon=":material/cloud_off:",
+            )
 
     left, right = st.columns([3, 1], gap="large", vertical_alignment="top")
     with left:
