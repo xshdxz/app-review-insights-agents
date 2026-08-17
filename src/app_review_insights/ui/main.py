@@ -69,25 +69,31 @@ class _RecoveredUpload:
         return self._path.read_bytes()
 
 
+_RESTORED_MARK = "_restored_from_params"
+
+
 def _restore_inputs_from_query_params() -> None:
     """Restore input widgets from URL query params after a browser reload.
 
-    Only applies when the session state is fresh (a reload clears it);
-    same-session reruns keep the user's current input untouched.
+    Runs exactly once per session (a reload creates a fresh session); later
+    reruns keep the user's current input untouched. Using a marker instead of
+    per-key checks guarantees the mode is forced back even if some stale
+    session values survive a reload.
     """
+    if st.session_state.get(_RESTORED_MARK):
+        return
+    st.session_state[_RESTORED_MARK] = True
     params = st.query_params
-    if "url" in params and "input-app-url" not in st.session_state:
+    if "url" in params:
         st.session_state["input-app-url"] = params["url"]
-    if "goal" in params and "input-goal" not in st.session_state:
+    if "goal" in params:
         st.session_state["input-goal"] = params["goal"]
-    if "mode" in params and "source-mode" not in st.session_state:
-        if params["mode"] in _SOURCE_OPTIONS:
-            st.session_state["source-mode"] = params["mode"]
+    if "mode" in params and params["mode"] in _SOURCE_OPTIONS:
+        st.session_state["source-mode"] = params["mode"]
     if "limit" in params and params["limit"].isdigit():
         mode = st.session_state.get("source-mode", "在线采集")
-        if f"review-limit-{mode}" not in st.session_state:
-            st.session_state[f"review-limit-{mode}"] = int(params["limit"])
-    if "upload" in params and "restored-upload" not in st.session_state:
+        st.session_state[f"review-limit-{mode}"] = int(params["limit"])
+    if "upload" in params:
         saved = _UPLOAD_DIR / str(params["upload"])
         if saved.exists():
             st.session_state["restored-upload"] = str(saved)
@@ -118,7 +124,8 @@ def _persist_upload(upload) -> None:
     """Save an uploaded file so it survives a browser reload."""
     if upload is None or not getattr(upload, "name", ""):
         return
-    if st.session_state.get("restored-upload"):
+    restored = st.session_state.get("restored-upload")
+    if restored and Path(restored).name == upload.name:
         return
     _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     target = _UPLOAD_DIR / f"{upload.name}"
