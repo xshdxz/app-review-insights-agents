@@ -1,3 +1,4 @@
+import json
 import re
 import sqlite3
 from contextlib import contextmanager
@@ -131,6 +132,10 @@ class AgentRepository:
                     app_id UNINDEXED,
                     content,
                     tokenize='unicode61'
+                );
+                CREATE TABLE IF NOT EXISTS embeddings (
+                    review_id TEXT PRIMARY KEY,
+                    vector_json TEXT NOT NULL
                 );
                 """
             )
@@ -310,3 +315,56 @@ class AgentRepository:
             cursor = connection.execute("DELETE FROM corpus WHERE app_id = ?", (app_id,))
             connection.execute("DELETE FROM corpus_fts WHERE app_id = ?", (app_id,))
         return cursor.rowcount
+
+    # ---- embeddings ----
+    def upsert_embedding(self, review_id: str, vector: list[float]) -> None:
+        with self._session() as connection:
+            connection.execute(
+                """
+                INSERT OR REPLACE INTO embeddings(review_id, vector_json)
+                VALUES (?, ?)
+                """,
+                (review_id, json.dumps(vector)),
+            )
+
+    def search_embeddings(
+        self,
+        query_vector: list[float],
+        app_ids: list[str] | None = None,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        from app_review_insights.rag.embeddings import cosine_similarity
+
+        with self._session() as connection:
+            if app_ids:
+                placeholders = ",".join("?" for _ in app_ids)
+                rows = connection.execute(
+                    f"""
+                    SELECT e.review_id, e.vector_json, c.app_id, c.content,
+                           c.platform, c.source, c.region AS storefront
+                    FROM embeddings e
+                    JOIN corpus c ON c.review_id = e.review_id
+                    WHERE c.app_id IN ({placeholders})
+                    """,
+                    app_ids,
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT e.review_id, e.vector_json, c.app_id, c.content,
+                           c.platform, c.source, c.region AS storefront
+                    FROM embeddings e
+                    JOIN corpus c ON c.review_id = e.review_id
+                    """
+                ).fetchall()
+        scored = []
+        for row in rows:
+            vector = json.loads(row["vector_json"])
+            score = cosine_similarity(query_vector, vector)
+            if score > 0:
+                item = dict(row)
+                item["score"] = score
+                item.pop("vector_json", None)
+                scored.append(item)
+        scored.sort(key=lambda item: item["score"], reverse=True)
+        return scored[:limit]
