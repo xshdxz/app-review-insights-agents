@@ -10,14 +10,15 @@ from app_review_insights.input_parsing import parse_app_store_url
 from app_review_insights.models import Review
 
 _FIRST_PAGE_URL = (
-    "https://itunes.apple.com/us/rss/customerreviews/id={app_id}/json"
+    "https://itunes.apple.com/{storefront}/rss/customerreviews/id={app_id}/json"
     "?urlDesc=/customerreviews/id={app_id}/json?retry=1"
 )
 _LEGACY_FIRST_PAGE_URL = (
-    "https://itunes.apple.com/us/rss/customerreviews/page=1/id={app_id}/sortby=mostrecent/json"
+    "https://itunes.apple.com/{storefront}/rss/customerreviews/page=1/"
+    "id={app_id}/sortby=mostrecent/json"
 )
 _PAGE_URL = (
-    "https://itunes.apple.com/us/rss/customerreviews/page={page}/"
+    "https://itunes.apple.com/{storefront}/rss/customerreviews/page={page}/"
     "id={app_id}/sortby=mostrecent/xml?urlDesc=/customerreviews/"
     "page={previous_page}/id={app_id}/sortby=mostrecent/xml"
 )
@@ -42,14 +43,19 @@ class AppStoreCollector:
 
     def collect(self, app_url: str, limit: int) -> list[Review]:
         parsed = parse_app_store_url(app_url)
+        storefront = parsed.country
         maximum_limit = _REVIEWS_PER_PAGE * _MAX_PAGES
         # Apple RSS caps at 500 reviews; larger targets are bounded silently and
         # the shortfall is disclosed by the run limitations in the UI.
         bounded_limit = max(1, min(limit, maximum_limit))
         reviews: list[Review] = []
         seen_ids: set[str] = set()
-        next_url: str | None = _FIRST_PAGE_URL.format(app_id=parsed.app_id)
-        legacy_fallback_url = _LEGACY_FIRST_PAGE_URL.format(app_id=parsed.app_id)
+        next_url: str | None = _FIRST_PAGE_URL.format(
+            app_id=parsed.app_id, storefront=storefront
+        )
+        legacy_fallback_url = _LEGACY_FIRST_PAGE_URL.format(
+            app_id=parsed.app_id, storefront=storefront
+        )
         used_fallback = False
 
         for page in range(1, _MAX_PAGES + 1):
@@ -63,7 +69,7 @@ class AppStoreCollector:
                 if reviews:
                     return reviews
                 raise CollectionError(
-                    f"美国区评论采集失败，请稍后重试或改用 JSON/CSV 导入：{exc}"
+                    f"评论采集失败，请稍后重试或改用 JSON/CSV 导入：{exc}"
                 ) from exc
 
             page_reviews = [entry for entry in entries if "im:rating" in entry]
@@ -83,7 +89,7 @@ class AppStoreCollector:
 
             for index, item in enumerate(page_reviews):
                 try:
-                    review = self._map(item, parsed.app_id, page, index)
+                    review = self._map(item, parsed.app_id, page, index, storefront)
                 except Exception:
                     continue
                 if review.review_id in seen_ids:
@@ -97,6 +103,7 @@ class AppStoreCollector:
                 candidate_next_url,
                 app_id=parsed.app_id,
                 current_page=page,
+                storefront=storefront,
             )
 
         if not reviews:
@@ -182,6 +189,7 @@ class AppStoreCollector:
         *,
         app_id: str,
         current_page: int,
+        storefront: str,
     ) -> str | None:
         safe_value = cls._safe_next_url(value)
         if safe_value is None:
@@ -191,6 +199,7 @@ class AppStoreCollector:
                 page=2,
                 previous_page=1,
                 app_id=app_id,
+                storefront=storefront,
             )
         return safe_value
 
@@ -200,7 +209,14 @@ class AppStoreCollector:
         return value.get("label", default) if isinstance(value, dict) else value
 
     @classmethod
-    def _map(cls, item: dict[str, Any], app_id: str, page: int, index: int) -> Review:
+    def _map(
+        cls,
+        item: dict[str, Any],
+        app_id: str,
+        page: int,
+        index: int,
+        storefront: str,
+    ) -> Review:
         published_value = cls._label(item, "updated")
         published = datetime.fromisoformat(str(published_value).replace("Z", "+00:00"))
         if published.tzinfo is None:
@@ -211,13 +227,13 @@ class AppStoreCollector:
         return Review(
             review_id=str(cls._label(item, "id", f"apple-{page}-{index}")),
             app_id=app_id,
-            storefront="us",
+            storefront=storefront,
             title=str(cls._label(item, "title", "")),
             content_original=str(cls._label(item, "content", "")),
             rating=int(cls._label(item, "im:rating")),
             app_version=cls._label(item, "im:version"),
             author=author_name,
             published_at=published.astimezone(UTC),
-            source="apple-rss:us",
+            source=f"apple-rss:{storefront}",
             source_page=page,
         )

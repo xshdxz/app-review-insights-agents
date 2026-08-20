@@ -33,8 +33,6 @@ def parse_app_store_url(url: str) -> ParsedAppUrl:
         raise InputDataError("请输入有效的 App Store 应用链接")
 
     parsed = ParsedAppUrl(**match.groupdict())
-    if parsed.country.lower() != "us":
-        raise InputDataError("在线评论分析仅接受美国区 App Store 链接")
     return parsed.model_copy(update={"country": parsed.country.lower()})
 
 

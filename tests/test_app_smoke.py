@@ -278,7 +278,7 @@ def test_online_input_error_is_friendly_and_does_not_create_run(tmp_path, monkey
     app = start_button.click().run(timeout=10)
 
     assert not app.exception
-    assert any("在线采集需要填写美国区 App Store URL" in error.value for error in app.error)
+    assert any("在线采集需要填写 App Store URL" in error.value for error in app.error)
     assert RunRepository(database_path).list_runs() == []
 
 

@@ -248,7 +248,7 @@ def _build_request(
     normalized_url = app_url.strip()
     if source_type == SourceType.ONLINE:
         if not normalized_url:
-            raise InputDataError("在线采集需要填写美国区 App Store URL。")
+            raise InputDataError("在线采集需要填写 App Store URL。")
         parse_app_store_url(normalized_url)
     return AnalysisRequest(
         source_type=source_type,
@@ -317,7 +317,7 @@ def _render_input_form(settings: Settings, model_ready: bool):
             app_url = st.text_input(
                 "App 地址（URL）",
                 placeholder="https://apps.apple.com/us/app/example/id123456789",
-                help="在线采集仅支持美国区 App Store。",
+                help="在线采集支持任意区 App Store（区域取自链接中的区号，如 /us/、/gb/）。",
                 key="input-app-url",
             )
         analysis_goal = st.text_area(

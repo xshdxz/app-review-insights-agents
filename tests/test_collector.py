@@ -275,3 +275,22 @@ def test_collector_falls_back_to_legacy_url_when_primary_feed_is_empty():
         "?urlDesc=/customerreviews/id=839285684/json?retry=1",
         legacy_url,
     ]
+
+
+def test_collector_uses_storefront_from_url():
+    client = FakeHttpClient(
+        [FakeResponse(rss_payload(rss_review("123", "Hello from gb")))],
+    )
+    collector = AppStoreCollector(client=client)
+
+    reviews = collector.collect(
+        "https://apps.apple.com/gb/app/workout-for-women-home-gym/id839285684",
+        limit=20,
+    )
+
+    assert reviews[0].storefront == "gb"
+    assert reviews[0].source == "apple-rss:gb"
+    assert client.requested_urls == [
+        "https://itunes.apple.com/gb/rss/customerreviews/id=839285684/json"
+        "?urlDesc=/customerreviews/id=839285684/json?retry=1"
+    ]

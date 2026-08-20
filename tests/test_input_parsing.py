@@ -16,9 +16,12 @@ def test_parse_us_app_store_url():
     assert parsed.slug == "workout-for-women-home-gym"
 
 
-def test_parse_app_store_url_rejects_non_us_storefront():
-    with pytest.raises(InputDataError, match="美国区"):
-        parse_app_store_url("https://apps.apple.com/cn/app/example/id123456789")
+def test_parse_app_store_url_accepts_any_region():
+    parsed = parse_app_store_url(
+        "https://apps.apple.com/gb/app/todoist-to-do-list/id572688855"
+    )
+    assert parsed.country == "gb"
+    assert parsed.app_id == "572688855"
 
 
 def test_import_json_normalizes_aliases():
