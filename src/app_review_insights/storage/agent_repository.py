@@ -40,33 +40,39 @@ def build_fts_query(text: str) -> str:
     """把用户查询转成 FTS5 MATCH 表达式：原始词按空白切分，词内 CJK 短语相邻匹配。
 
     - 原始词「订阅」→ 短语 "订 阅"（要求相邻，避免误命中分散的订/阅）
-    - 原始词「订阅 价格」→ "订 阅" AND "价 格"（词边界保留，避免过度收紧）
-    - 英文词独立加引号。
+    - 原始词「订阅 价格」→ "订 阅" AND "价 格"（词边界保留）
+    - 「太贵了，续费」→ "太 贵 了" AND "续 费"（全角标点作为 run 边界，CJK run 同样分段）
+    - 「订阅App」→ "订 阅" AND "app"（拉丁 run 独立加引号）
     """
     raw_terms = [term.strip().lower() for term in re.split(r"\s+", text) if term.strip()]
-    if not raw_terms:
-        return '"__no_match__"'
     fts_terms: list[str] = []
     for term in raw_terms:
-        if re.fullmatch(r"[\u4e00-\u9fff]+", term):
-            # 词内 CJK 字符用空格分隔成短语（与索引侧 _cjk_segment 对称）
-            fts_terms.append(f'"{ _cjk_segment(term) }"')
-        else:
-            # 英文/混合词：分词后独立加引号
-            tokens = re.findall(r"[\w]+", term)
-            fts_terms.extend(f'"{token}"' for token in tokens if token)
+        # CJK run 与拉丁/数字 run 分开切（\w 会匹配 CJK，需显式区分，CJK 与拉丁相邻处也是边界）
+        runs = re.findall(r"[\u4e00-\u9fff]+|[a-z0-9_]+", term)
+        for run in runs:
+            if re.fullmatch(r"[\u4e00-\u9fff]+", run):
+                fts_terms.append(f'"{ _cjk_segment(run) }"')
+            else:
+                fts_terms.append(f'"{run}"')
     if not fts_terms:
         return '"__no_match__"'
     return " AND ".join(fts_terms)
 
 
 def _cjk_segment(text: str) -> str:
-    """在相邻 CJK 字符之间插入空格（不拆分英文单词）。
+    """在 CJK 字符之间及 CJK 与拉丁/数字边界之间插入空格。
 
-    FTS5 unicode61 对连续 CJK 的切分行为依赖 SQLite 版本；显式切分后
-    索引与查询两侧行为一致，中文检索结果可复现。
+    FTS5 unicode61 会把相邻的 CJK 与拉丁字符合并成单个 token（如「阅App」→
+    「阅app」），导致索引与查询两侧不对称；显式切分后两侧 token 一致，
+    中文检索结果可复现（英文单词不被拆分）。
     """
-    return re.sub(r"(?<=[\u4e00-\u9fff])(?=[\u4e00-\u9fff])", " ", text)
+    return re.sub(
+        r"(?<=[\u4e00-\u9fff])(?=[\u4e00-\u9fff])"
+        r"|(?<=[\u4e00-\u9fff])(?=[^\u4e00-\u9fff\s])"
+        r"|(?<=[^\u4e00-\u9fff\s])(?=[\u4e00-\u9fff])",
+        " ",
+        text,
+    )
 
 
 class AgentRepository:

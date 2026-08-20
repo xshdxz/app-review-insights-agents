@@ -139,6 +139,27 @@ def test_corpus_punctuation_only_query_no_match(repo):
     assert hits == []
 
 
+def test_corpus_cjk_query_with_fullwidth_punctuation(repo):
+    # 全角标点作为 run 边界：CJK 片段仍分段匹配
+    repo.upsert_corpus(_review("v1", "app-a", "太贵了，续费不划算"))
+    hits = repo.search_corpus("太贵了，续费", app_ids=["app-a"], limit=10)
+    assert {h["review_id"] for h in hits} == {"v1"}
+
+
+def test_corpus_mixed_cjk_latin_query(repo):
+    # 中英粘连：CJK 段短语化 + 拉丁段独立匹配
+    repo.upsert_corpus(_review("v1", "app-a", "订阅App 后闪退"))
+    hits = repo.search_corpus("订阅App", app_ids=["app-a"], limit=10)
+    assert {h["review_id"] for h in hits} == {"v1"}
+
+
+def test_corpus_mixed_latin_cjk_query(repo):
+    # 拉丁在前、CJK 在后同样成立（索引侧拉丁-CJK 边界分段）
+    repo.upsert_corpus(_review("v1", "app-a", "App闪退，广告太多"))
+    hits = repo.search_corpus("App闪退", app_ids=["app-a"], limit=10)
+    assert {h["review_id"] for h in hits} == {"v1"}
+
+
 def test_fts5_available():
     from app_review_insights.storage.agent_repository import fts5_available
 
