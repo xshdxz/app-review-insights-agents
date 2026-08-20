@@ -39,7 +39,7 @@ class DeepSeekProvider:
     def from_settings(cls, settings):
         return cls(
             client=OpenAI(
-                api_key=settings.deepseek_api_key,
+                api_key=settings.effective_model_api_key,
                 base_url=settings.model_base_url,
                 timeout=settings.model_timeout_seconds,
                 max_retries=0,

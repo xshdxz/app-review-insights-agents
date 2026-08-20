@@ -8,11 +8,12 @@ from pathlib import Path
 
 import streamlit as st
 
-from app_review_insights.collectors import AppStoreCollector
 from app_review_insights.config import Settings, load_settings
 from app_review_insights.errors import InputDataError
+from app_review_insights.factory import (
+    build_pipeline_services as _build_pipeline_services,
+)
 from app_review_insights.input_parsing import import_reviews, parse_app_store_url
-from app_review_insights.llm import DeepSeekProvider
 from app_review_insights.models import (
     AnalysisRequest,
     RunRecord,
@@ -21,19 +22,10 @@ from app_review_insights.models import (
     Stage,
     StageEvent,
 )
-from app_review_insights.pipeline.analyze import (
-    analyze_batch,
-    audit_finding_evidence,
-    consolidate_findings,
-)
 from app_review_insights.pipeline.orchestrator import (
     AnalysisOrchestrator,
     PipelineServices,
 )
-from app_review_insights.pipeline.planning import build_requirements
-from app_review_insights.pipeline.test_generation import generate_test_cases
-from app_review_insights.pipeline.traceability import validate_traceability
-from app_review_insights.pipeline.validate import validate_finding_drafts
 from app_review_insights.storage import RunRepository
 from app_review_insights.storage.cache import (
     build_demo_downloads,
@@ -135,40 +127,7 @@ def _persist_upload(upload) -> None:
 
 
 def build_services(use_fake_provider: bool = False) -> PipelineServices:
-    settings = load_settings()
-    repository = RunRepository(settings.database_path)
-    common = {
-        "repository": repository,
-        "collector": AppStoreCollector(),
-        "finding_validator": validate_finding_drafts,
-        "traceability_validator": validate_traceability,
-        "batch_size": settings.batch_review_limit,
-        "batch_max_characters": settings.batch_max_characters,
-    }
-    if use_fake_provider or not settings.model_enabled or not settings.deepseek_api_key:
-        return PipelineServices(batch_analyzer=None, **common)
-
-    provider = DeepSeekProvider.from_settings(settings)
-    return PipelineServices(
-        batch_analyzer=lambda reviews, goal: analyze_batch(provider, reviews, goal),
-        consolidator=lambda results, goal, reviews: consolidate_findings(
-            provider,
-            results,
-            goal,
-            reviews,
-        ),
-        evidence_auditor=lambda findings, reviews, goal: audit_finding_evidence(
-            provider,
-            findings,
-            reviews,
-            goal,
-        ),
-        requirement_builder=lambda findings, goal, total: build_requirements(
-            provider, findings, goal, total
-        ),
-        test_case_builder=lambda requirements: generate_test_cases(provider, requirements),
-        **common,
-    )
+    return _build_pipeline_services(load_settings(), use_fake_provider=use_fake_provider)
 
 
 def _initialize_session_state(repository: RunRepository) -> None:

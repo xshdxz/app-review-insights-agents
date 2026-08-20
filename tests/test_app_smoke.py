@@ -49,6 +49,7 @@ def test_build_services_without_key_keeps_repository_available(tmp_path, monkeyp
 
 
 def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monkeypatch):
+    import app_review_insights.factory as factory
     import app_review_insights.ui.main as ui_main
     from app_review_insights.collectors import AppStoreCollector
 
@@ -62,21 +63,21 @@ def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monk
     plan = Mock(return_value="requirements")
     generate_tests = Mock(return_value="test-cases")
     monkeypatch.setattr(
-        ui_main.DeepSeekProvider,
+        factory.DeepSeekProvider,
         "from_settings",
         staticmethod(provider_factory),
     )
-    monkeypatch.setattr(ui_main, "analyze_batch", analyze)
-    monkeypatch.setattr(ui_main, "consolidate_findings", consolidate)
-    monkeypatch.setattr(ui_main, "audit_finding_evidence", audit)
-    monkeypatch.setattr(ui_main, "build_requirements", plan)
-    monkeypatch.setattr(ui_main, "generate_test_cases", generate_tests)
+    monkeypatch.setattr(factory, "analyze_batch", analyze)
+    monkeypatch.setattr(factory, "consolidate_findings", consolidate)
+    monkeypatch.setattr(factory, "audit_finding_evidence", audit)
+    monkeypatch.setattr(factory, "build_requirements", plan)
+    monkeypatch.setattr(factory, "generate_test_cases", generate_tests)
 
     services = ui_main.build_services()
 
     assert isinstance(services.collector, AppStoreCollector)
-    assert services.finding_validator is ui_main.validate_finding_drafts
-    assert services.traceability_validator is ui_main.validate_traceability
+    assert services.finding_validator is factory.validate_finding_drafts
+    assert services.traceability_validator is factory.validate_traceability
     assert services.batch_analyzer(["review"], "goal") == "batch-result"
     assert services.consolidator(["batch-result"], "goal", ["review"]) == "consolidated-result"
     assert services.evidence_auditor(["finding"], ["review"], "goal") == "audit-result"
