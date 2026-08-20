@@ -124,6 +124,21 @@ def test_corpus_cjk_phrase_precision(repo):
     assert {h["review_id"] for h in hits} == {"v1"}
 
 
+def test_corpus_cjk_multiword_phrase_boundaries(repo):
+    # 「订阅 价格」是两个词：不应要求四字连续，应命中词分散的评论
+    repo.upsert_corpus(_review("v1", "app-a", "订阅太贵了，价格不透明"))
+    repo.upsert_corpus(_review("v2", "app-a", "价格划算，订阅体验也好"))
+    hits = repo.search_corpus("订阅 价格", app_ids=["app-a"], limit=10)
+    assert {h["review_id"] for h in hits} == {"v1", "v2"}
+
+
+def test_corpus_punctuation_only_query_no_match(repo):
+    # 纯标点查询不应崩溃，也不应命中任何评论（与 "空则匹配不到任何行" 契约一致）
+    repo.upsert_corpus(_review("v1", "app-a", "订阅太贵了"))
+    hits = repo.search_corpus("，。！", app_ids=["app-a"], limit=10)
+    assert hits == []
+
+
 def test_fts5_available():
     from app_review_insights.storage.agent_repository import fts5_available
 

@@ -37,29 +37,27 @@ def fts5_available(path: Path | None = None) -> bool:
 
 
 def build_fts_query(text: str) -> str:
-    """把用户查询转成 FTS5 MATCH 表达式：CJK 短语按字符相邻匹配、英文单词独立匹配。
+    """把用户查询转成 FTS5 MATCH 表达式：原始词按空白切分，词内 CJK 短语相邻匹配。
 
-    CJK 字符之间插入空格（与索引侧 _cjk_segment 对称），连续 CJK 字符组成
-    一个带引号的短语（如 "订 阅"），保证「订阅」不误命中「我订了酒店，阅读体验不错」。
+    - 原始词「订阅」→ 短语 "订 阅"（要求相邻，避免误命中分散的订/阅）
+    - 原始词「订阅 价格」→ "订 阅" AND "价 格"（词边界保留，避免过度收紧）
+    - 英文词独立加引号。
     """
-    segmented = _cjk_segment(text)
-    tokens = re.findall(r"[\w\u4e00-\u9fff]+", segmented.lower())
-    if not tokens:
+    raw_terms = [term.strip().lower() for term in re.split(r"\s+", text) if term.strip()]
+    if not raw_terms:
         return '"__no_match__"'
-    terms: list[str] = []
-    cjk_run: list[str] = []
-    for token in tokens:
-        if re.fullmatch(r"[\u4e00-\u9fff]+", token):
-            # _cjk_segment 已把 CJK 拆成单字符 token；相邻 CJK 收进同一短语
-            cjk_run.append(" ".join(token))
+    fts_terms: list[str] = []
+    for term in raw_terms:
+        if re.fullmatch(r"[\u4e00-\u9fff]+", term):
+            # 词内 CJK 字符用空格分隔成短语（与索引侧 _cjk_segment 对称）
+            fts_terms.append(f'"{ _cjk_segment(term) }"')
         else:
-            if cjk_run:
-                terms.append(f'"{ " ".join(cjk_run) }"')
-                cjk_run = []
-            terms.append(f'"{token}"')
-    if cjk_run:
-        terms.append(f'"{ " ".join(cjk_run) }"')
-    return " AND ".join(terms)
+            # 英文/混合词：分词后独立加引号
+            tokens = re.findall(r"[\w]+", term)
+            fts_terms.extend(f'"{token}"' for token in tokens if token)
+    if not fts_terms:
+        return '"__no_match__"'
+    return " AND ".join(fts_terms)
 
 
 def _cjk_segment(text: str) -> str:
