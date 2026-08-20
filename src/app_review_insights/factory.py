@@ -82,6 +82,7 @@ class AgentStack:
     rag: Any = None
     indexer: Any = None
     retriever: Any = None
+    embedding_store: Any = None
 
 
 def build_agent_stack(
@@ -141,6 +142,7 @@ def build_agent_stack(
         rag=rag,
         indexer=indexer,
         retriever=retriever,
+        embedding_store=embedding_store,
     )
 
 
@@ -152,6 +154,7 @@ def index_run_cleaned(
     """把一次已完成分析的清洗后评论写入语料库（供 RAG 检索）。
 
     读取的是流水线检查点库（DATABASE_PATH）中的 CLEAN 阶段输出。
+    embedding 启用时同步为每条评论生成向量（批量、失败不影响语料本身）。
     """
     settings = settings or load_settings()
     run_repository = RunRepository(settings.database_path)
@@ -159,7 +162,17 @@ def index_run_cleaned(
     if not cleaned:
         return 0
     reviews = [Review.model_validate(item) for item in cleaned.get("reviews", [])]
-    return stack.indexer.index_reviews(reviews)
+    count = stack.indexer.index_reviews(reviews)
+    if stack.embedding_store is not None and reviews:
+        try:
+            vectors = stack.embedding_store.embed_texts(
+                [review.content_original for review in reviews]
+            )
+            for review, vector in zip(reviews, vectors, strict=False):
+                stack.agent_repository.upsert_embedding(review.review_id, vector)
+        except Exception:  # noqa: BLE001 - 向量生成失败不影响 FTS 语料
+            pass
+    return count
 
 
 class _PlaceholderWebhook:

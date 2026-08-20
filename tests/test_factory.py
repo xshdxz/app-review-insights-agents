@@ -99,3 +99,64 @@ def test_index_run_cleaned(tmp_path, monkeypatch):
     count = index_run_cleaned(stack, "r1")
     assert count == 1
     assert stack.agent_repository.app_ids() == ["x"]
+
+
+def test_index_run_cleaned_no_output_returns_zero(tmp_path, monkeypatch):
+    from app_review_insights.factory import index_run_cleaned
+
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    monkeypatch.setenv("AGENT_DB_PATH", str(tmp_path / "agent.sqlite3"))
+    stack = build_agent_stack(use_fake_provider=True)
+    assert index_run_cleaned(stack, "no-such-run") == 0
+
+
+def test_index_run_cleaned_with_embeddings(tmp_path, monkeypatch):
+    from app_review_insights.factory import index_run_cleaned
+    from app_review_insights.models import AnalysisRequest, RunRecord, RunStatus, SourceType, Stage
+    from app_review_insights.storage.repository import RunRepository
+
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    monkeypatch.setenv("AGENT_DB_PATH", str(tmp_path / "agent.sqlite3"))
+    stack = build_agent_stack(use_fake_provider=True)
+    # 注入 fake embedding store（不真正调用 API）
+    class _FakeEmbeddingStore:
+        def embed_texts(self, texts):
+            return [[1.0, 0.0, 0.0] for _ in texts]
+
+    stack.embedding_store = _FakeEmbeddingStore()
+    run_repo = RunRepository(load_settings().database_path)
+    run_repo.save_run(
+        RunRecord(
+            run_id="r1",
+            request=AnalysisRequest(
+                source_type=SourceType.ONLINE,
+                analysis_goal="goal",
+                app_url="https://apps.apple.com/us/app/x/id1",
+            ),
+            current_stage=Stage.COMPLETE,
+            status=RunStatus.COMPLETED,
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+    )
+    run_repo.save_output(
+        "r1",
+        Stage.CLEAN,
+        {
+            "reviews": [
+                Review(
+                    review_id="v1",
+                    app_id="x",
+                    content_original="订阅太贵",
+                    rating=1,
+                    published_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    source="fixture",
+                ).model_dump(mode="json")
+            ],
+            "stats": {},
+        },
+    )
+    count = index_run_cleaned(stack, "r1")
+    assert count == 1
+    hits = stack.agent_repository.search_embeddings([1.0, 0.0, 0.0], app_ids=None, limit=10)
+    assert hits and hits[0]["review_id"] == "v1"
