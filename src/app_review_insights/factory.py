@@ -19,6 +19,7 @@ from app_review_insights.agent.tools import (
 from app_review_insights.collectors import AppStoreCollector
 from app_review_insights.config import Settings, load_settings
 from app_review_insights.llm import DeepSeekProvider
+from app_review_insights.models import Review, Stage
 from app_review_insights.pipeline.analyze import (
     analyze_batch,
     audit_finding_evidence,
@@ -29,6 +30,10 @@ from app_review_insights.pipeline.planning import build_requirements
 from app_review_insights.pipeline.test_generation import generate_test_cases
 from app_review_insights.pipeline.traceability import validate_traceability
 from app_review_insights.pipeline.validate import validate_finding_drafts
+from app_review_insights.rag.answer import RagAnswerer
+from app_review_insights.rag.embeddings import EmbeddingStore
+from app_review_insights.rag.indexer import CorpusIndexer
+from app_review_insights.rag.retrieval import CorpusRetriever
 from app_review_insights.storage import RunRepository
 from app_review_insights.storage.agent_repository import AgentRepository
 
@@ -75,6 +80,8 @@ class AgentStack:
     agent_repository: AgentRepository
     webhook: Any = None
     rag: Any = None
+    indexer: Any = None
+    retriever: Any = None
 
 
 def build_agent_stack(
@@ -89,8 +96,18 @@ def build_agent_stack(
     if not use_fake_provider and settings.model_available:
         provider = DeepSeekProvider.from_settings(settings)
 
-    # RAG 与 Webhook 在本任务先占位（Task 10–17 填充真实实现）
-    rag = _placeholder_rag()
+    # RAG 装配：语料索引/检索/问答；embedding 未配置时退化为纯 FTS5 检索
+    embedding_store = None
+    if settings.embedding_enabled and settings.embedding_api_key:
+        embedding_store = EmbeddingStore(
+            api_key=settings.embedding_api_key,
+            model=settings.embedding_model,
+            base_url=settings.embedding_base_url,
+        )
+    indexer = CorpusIndexer(agent_repository)
+    retriever = CorpusRetriever(agent_repository, embedding_store=embedding_store)
+    rag = RagAnswerer(provider, retriever)
+
     webhook = _placeholder_webhook(agent_repository)
 
     tools = [
@@ -122,17 +139,27 @@ def build_agent_stack(
         agent_repository=agent_repository,
         webhook=webhook,
         rag=rag,
+        indexer=indexer,
+        retriever=retriever,
     )
 
 
-class _PlaceholderRag:
-    def answer(self, question, app_ids):
-        return {
-            "answer": "语料检索尚未启用（RAG 模块将在后续任务接入）。",
-            "citations": [],
-            "evidence_sufficient": False,
-            "limitation": "RAG 未启用",
-        }
+def index_run_cleaned(
+    stack: AgentStack,
+    run_id: str,
+    settings: Settings | None = None,
+) -> int:
+    """把一次已完成分析的清洗后评论写入语料库（供 RAG 检索）。
+
+    读取的是流水线检查点库（DATABASE_PATH）中的 CLEAN 阶段输出。
+    """
+    settings = settings or load_settings()
+    run_repository = RunRepository(settings.database_path)
+    cleaned = run_repository.get_output(run_id, Stage.CLEAN)
+    if not cleaned:
+        return 0
+    reviews = [Review.model_validate(item) for item in cleaned.get("reviews", [])]
+    return stack.indexer.index_reviews(reviews)
 
 
 class _PlaceholderWebhook:
@@ -142,10 +169,6 @@ class _PlaceholderWebhook:
     def send_report_by_id(self, report_id):
         report = self.agent_repository.get_report(report_id)
         return report.delivered_to if report else []
-
-
-def _placeholder_rag():
-    return _PlaceholderRag()
 
 
 def _placeholder_webhook(agent_repository):
