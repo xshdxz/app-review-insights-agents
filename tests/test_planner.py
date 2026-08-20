@@ -19,7 +19,13 @@ def _registry():
                 description="run",
                 parameters=_Params,
                 func=lambda app_url, goal: {"ok": True},
-            )
+            ),
+            Tool(
+                name="send_report",
+                description="send",
+                parameters=_Params,
+                func=lambda app_url, goal: {"ok": True},
+            ),
         ]
     )
 
@@ -79,3 +85,53 @@ def test_planner_falls_back_on_empty_calls():
     planner = Planner(provider, _registry())
     plan = planner.plan("分析订阅", "https://apps.apple.com/us/app/x/id1")
     assert plan.tool_calls[0].tool == "run_analysis"
+
+
+def test_planner_falls_back_on_none_provider():
+    planner = Planner(None, _registry())
+    plan = planner.plan("分析订阅", "https://apps.apple.com/us/app/x/id1")
+    assert plan.tool_calls[0].tool == "run_analysis"
+
+
+def test_planner_falls_back_on_missing_goal_arg():
+    provider = _FakeProvider(
+        plan={
+            "rationale": "no goal",
+            "tool_calls": [{"tool": "run_analysis", "arguments": {"app_url": "x"}}],
+        }
+    )
+    planner = Planner(provider, _registry())
+    plan = planner.plan("分析订阅", "https://apps.apple.com/us/app/x/id1")
+    assert plan.tool_calls[0].tool == "run_analysis"
+
+
+def test_planner_falls_back_on_duplicate_run_analysis():
+    provider = _FakeProvider(
+        plan={
+            "rationale": "dup",
+            "tool_calls": [
+                {"tool": "run_analysis", "arguments": {"app_url": "x", "goal": "g"}},
+                {"tool": "run_analysis", "arguments": {"app_url": "y", "goal": "g2"}},
+            ],
+        }
+    )
+    planner = Planner(provider, _registry())
+    plan = planner.plan("分析订阅", "https://apps.apple.com/us/app/x/id1")
+    assert plan.tool_calls[0].tool == "run_analysis"
+    assert len(plan.tool_calls) == 1
+
+
+def test_planner_falls_back_on_disallowed_tool():
+    provider = _FakeProvider(
+        plan={
+            "rationale": "bad tool",
+            "tool_calls": [
+                {"tool": "run_analysis", "arguments": {"app_url": "x", "goal": "g"}},
+                {"tool": "send_report", "arguments": {"report_id": "r1"}},
+            ],
+        }
+    )
+    planner = Planner(provider, _registry())
+    plan = planner.plan("分析订阅", "https://apps.apple.com/us/app/x/id1")
+    assert plan.tool_calls[0].tool == "run_analysis"
+    assert len(plan.tool_calls) == 1

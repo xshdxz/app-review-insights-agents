@@ -1,3 +1,5 @@
+import json
+
 PLANNER_SYSTEM_PROMPT = (
     "你是产品情报系统的规划 Agent。任务：根据用户的分析目标，从可用工具中选择并"
     "编排工具调用计划。规则：\n"
@@ -9,8 +11,6 @@ PLANNER_SYSTEM_PROMPT = (
 
 
 def render_planner_user_prompt(goal: str, app_url: str, tool_schemas: dict) -> str:
-    import json
-
     return (
         f"分析目标：{goal}\n"
         f"App 链接：{app_url}\n"

@@ -5,9 +5,10 @@ from typing import Any
 from app_review_insights.agent.prompts import PLANNER_SYSTEM_PROMPT, render_planner_user_prompt
 from app_review_insights.agent.schemas import AgentPlan, ToolCall
 from app_review_insights.agent.tools import ToolRegistry
-from app_review_insights.errors import RecoverableModelError
 
 _DEFAULT_TOOL = "run_analysis"
+# 与 PLANNER_SYSTEM_PROMPT 允许的工具集合保持一致；send_report 由调度/审批流程触发，不得入计划
+_PLANNER_ALLOWED_TOOLS = frozenset({"run_analysis", "query_corpus", "get_latest_report"})
 
 
 def default_plan(app_url: str, goal: str) -> AgentPlan:
@@ -38,9 +39,9 @@ class Planner:
                 render_planner_user_prompt(goal, app_url, self.registry.schemas()),
                 AgentPlan,
             )
-        except RecoverableModelError:
+        except Exception:  # noqa: BLE001 - 规划失败一律回退默认计划（离线演示永不失效）
             return default_plan(app_url, goal)
-        if not self._is_valid(plan):
+        if plan is None or not self._is_valid(plan):
             return default_plan(app_url, goal)
         return plan
 
@@ -50,11 +51,13 @@ class Planner:
         known = set(self.registry.names())
         if not all(call.tool in known for call in plan.tool_calls):
             return False
-        if not any(call.tool == _DEFAULT_TOOL for call in plan.tool_calls):
+        if not all(call.tool in _PLANNER_ALLOWED_TOOLS for call in plan.tool_calls):
             return False
-        for call in plan.tool_calls:
-            if call.tool == _DEFAULT_TOOL:
-                args = call.arguments
-                if not args.get("app_url") or not args.get("goal"):
-                    return False
+        run_analysis_calls = [call for call in plan.tool_calls if call.tool == _DEFAULT_TOOL]
+        if len(run_analysis_calls) != 1:
+            return False
+        for call in run_analysis_calls:
+            args = call.arguments
+            if not args.get("app_url") or not args.get("goal"):
+                return False
         return True
