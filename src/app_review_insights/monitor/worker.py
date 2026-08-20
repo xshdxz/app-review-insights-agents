@@ -20,18 +20,14 @@ logger = logging.getLogger("agent-worker")
 
 def make_run_job_fn(stack, settings):
     def run_job(goal: str, app_url: str, require_approval: bool) -> None:
-        agent_run = stack.orchestrator.run(
-            goal, app_url, require_approval=require_approval
-        )
+        agent_run = stack.orchestrator.run(goal, app_url, require_approval=require_approval)
         if agent_run.status.value in ("completed", "waiting_approval"):
             report = build_report(
                 agent_run,
                 RunRepository(settings.database_path),
                 stack.agent_repository,
             )
-            agent_run = agent_run.model_copy(
-                update={"report_id": report.report_id}
-            )
+            agent_run = agent_run.model_copy(update={"report_id": report.report_id})
             stack.agent_repository.save_agent_run(agent_run)
             if agent_run.status.value == "completed":
                 delivered = WebhookSender().send_report_by_id(
@@ -40,9 +36,7 @@ def make_run_job_fn(stack, settings):
                 if delivered:
                     report = report.model_copy(update={"delivered_to": delivered})
                     stack.agent_repository.save_report(report)
-                logger.info(
-                    "job %s report=%s delivered=%s", app_url, report.report_id, delivered
-                )
+                logger.info("job %s report=%s delivered=%s", app_url, report.report_id, delivered)
 
     return run_job
 

@@ -75,9 +75,7 @@ def _render_job_list(stack) -> None:
 
 def _render_approvals(stack) -> None:
     st.subheader("待审批", anchor=False)
-    waiting = stack.agent_repository.list_agent_runs(
-        status=AgentRunStatus.WAITING_APPROVAL
-    )
+    waiting = stack.agent_repository.list_agent_runs(status=AgentRunStatus.WAITING_APPROVAL)
     if not waiting:
         st.caption("无待审批运行")
         return

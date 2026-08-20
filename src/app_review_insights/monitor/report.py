@@ -140,7 +140,5 @@ def summarize_changes(previous: MonitorReport | None, current: MonitorReport) ->
     if previous is None:
         return ["首次报告"]
     if current.findings_count != previous.findings_count:
-        changes.append(
-            f"发现数量变化：{previous.findings_count} → {current.findings_count}"
-        )
+        changes.append(f"发现数量变化：{previous.findings_count} → {current.findings_count}")
     return changes

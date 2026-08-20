@@ -118,6 +118,7 @@ def test_index_run_cleaned_with_embeddings(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
     monkeypatch.setenv("AGENT_DB_PATH", str(tmp_path / "agent.sqlite3"))
     stack = build_agent_stack(use_fake_provider=True)
+
     # 注入 fake embedding store（不真正调用 API）
     class _FakeEmbeddingStore:
         def embed_texts(self, texts):
