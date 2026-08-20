@@ -20,6 +20,7 @@ from app_review_insights.collectors import AppStoreCollector
 from app_review_insights.config import Settings, load_settings
 from app_review_insights.llm import DeepSeekProvider
 from app_review_insights.models import Review, Stage
+from app_review_insights.monitor.webhook import WebhookSender
 from app_review_insights.pipeline.analyze import (
     analyze_batch,
     audit_finding_evidence,
@@ -109,14 +110,14 @@ def build_agent_stack(
     retriever = CorpusRetriever(agent_repository, embedding_store=embedding_store)
     rag = RagAnswerer(provider, retriever)
 
-    webhook = _placeholder_webhook(agent_repository)
+    webhook = WebhookSender()
 
     tools = [
         make_run_analysis_tool(pipeline_services),
         make_collect_reviews_tool(pipeline_services.collector, pipeline_services),
         make_query_corpus_tool(rag),
         make_get_latest_report_tool(agent_repository),
-        make_send_report_tool(webhook),
+        make_send_report_tool(webhook, settings, agent_repository),
     ]
     registry = ToolRegistry(tools)
     planner = Planner(provider, registry)
@@ -173,16 +174,3 @@ def index_run_cleaned(
         except Exception:  # noqa: BLE001 - 向量生成失败不影响 FTS 语料
             pass
     return count
-
-
-class _PlaceholderWebhook:
-    def __init__(self, agent_repository):
-        self.agent_repository = agent_repository
-
-    def send_report_by_id(self, report_id):
-        report = self.agent_repository.get_report(report_id)
-        return report.delivered_to if report else []
-
-
-def _placeholder_webhook(agent_repository):
-    return _PlaceholderWebhook(agent_repository)
