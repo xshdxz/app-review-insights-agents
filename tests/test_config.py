@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app_review_insights.config import Settings
+from app_review_insights.config import Settings, load_settings
 
 
 def test_settings_default_to_deepseek(tmp_path, monkeypatch):
@@ -41,3 +41,34 @@ def test_load_settings_strips_notepad_bom_from_env_file(tmp_path, monkeypatch):
     assert settings.deepseek_api_key == "sk-bom-key-1234567890"
     # The BOM is stripped from the file so dotenv parsing is stable.
     assert env_file.read_bytes()[:3] != b"\xef\xbb\xbf"
+
+
+def test_agent_and_webhook_settings_defaults(tmp_path, monkeypatch):
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.delenv("WEBHOOK_TYPE", raising=False)
+    monkeypatch.delenv("WEBHOOK_URLS", raising=False)
+    monkeypatch.delenv("SCHEDULER_ENABLED", raising=False)
+    monkeypatch.delenv("AGENT_DB_PATH", raising=False)
+    settings = load_settings()
+    assert settings.model_api_key == ""
+    assert settings.webhook_type == ""
+    assert settings.webhook_urls == []
+    assert settings.scheduler_enabled is False
+    assert settings.agent_max_review_rounds == 2
+    assert settings.approval_required is False
+    assert settings.agent_db_path.name == "agent.sqlite3"
+
+
+def test_webhook_urls_parsed_from_csv(monkeypatch):
+    monkeypatch.setenv("WEBHOOK_URLS", "https://a.example/hook,https://b.example/hook")
+    settings = load_settings()
+    assert settings.webhook_urls == [
+        "https://a.example/hook",
+        "https://b.example/hook",
+    ]
+
+
+def test_model_api_key_overrides_deepseek_key(monkeypatch):
+    monkeypatch.setenv("MODEL_API_KEY", "sk-custom")
+    settings = load_settings()
+    assert settings.effective_model_api_key == "sk-custom"

@@ -1,7 +1,8 @@
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -20,10 +21,40 @@ class Settings(BaseSettings):
     model_timeout_seconds: float = Field(default=60, alias="MODEL_TIMEOUT_SECONDS")
     model_max_retries: int = Field(default=2, alias="MODEL_MAX_RETRIES")
     model_max_tokens: int = Field(default=8192, alias="MODEL_MAX_TOKENS")
+    model_api_key: str = Field(default="", alias="MODEL_API_KEY")
     database_path: Path = Field(default=Path("data/runs/runs.sqlite3"), alias="DATABASE_PATH")
     default_review_limit: int = Field(default=500, alias="DEFAULT_REVIEW_LIMIT")
     batch_review_limit: int = Field(default=100, alias="BATCH_REVIEW_LIMIT")
     batch_max_characters: int = Field(default=60000, alias="BATCH_MAX_CHARACTERS")
+    agent_db_path: Path = Field(default=Path("data/agent/agent.sqlite3"), alias="AGENT_DB_PATH")
+    webhook_type: str = Field(default="", alias="WEBHOOK_TYPE")
+    webhook_urls: Annotated[list[str], NoDecode] = Field(
+        default_factory=list, alias="WEBHOOK_URLS"
+    )
+    scheduler_enabled: bool = Field(default=False, alias="SCHEDULER_ENABLED")
+    agent_max_review_rounds: int = Field(default=2, alias="AGENT_MAX_REVIEW_ROUNDS")
+    approval_required: bool = Field(default=False, alias="APPROVAL_REQUIRED")
+    embedding_enabled: bool = Field(default=False, alias="EMBEDDING_ENABLED")
+    embedding_model: str = Field(default="text-embedding-3-small", alias="EMBEDDING_MODEL")
+    embedding_base_url: str = Field(
+        default="https://api.openai.com/v1", alias="EMBEDDING_BASE_URL"
+    )
+    embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
+
+    @field_validator("webhook_urls", mode="before")
+    @classmethod
+    def _split_webhook_urls(cls, value):
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @property
+    def effective_model_api_key(self) -> str:
+        return self.model_api_key or self.deepseek_api_key
+
+    @property
+    def model_available(self) -> bool:
+        return self.model_enabled and bool(self.effective_model_api_key)
 
 
 _ENV_FILE = Path(".env")
