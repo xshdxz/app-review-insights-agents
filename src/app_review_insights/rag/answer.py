@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app_review_insights.rag.retrieval import CorpusRetriever
+from app_review_insights.rag.retrieval import CorpusRetriever, RetrievedChunk
 from app_review_insights.rag.schemas import Citation, RagAnswer
 
 _RAG_SYSTEM_PROMPT = (
@@ -16,7 +16,18 @@ _RAG_SYSTEM_PROMPT = (
 )
 
 
-def _render_chunks(chunks) -> str:
+def _quote_valid(quote: str, content: str) -> bool:
+    """空白归一化后，quote 必须是 chunk 原文的子串（允许模型裁剪标点）。"""
+
+    def _normalize(text: str) -> str:
+        return "".join(text.split())
+
+    quote_norm = _normalize(quote)
+    content_norm = _normalize(content)
+    return bool(quote_norm) and quote_norm in content_norm
+
+
+def _render_chunks(chunks: list[RetrievedChunk]) -> str:
     lines = []
     for index, chunk in enumerate(chunks, start=1):
         lines.append(
@@ -29,7 +40,7 @@ def _render_chunks(chunks) -> str:
 class RagAnswerer:
     def __init__(
         self,
-        provider: Any,
+        provider: Any | None,
         retriever: CorpusRetriever,
         top_k: int = 10,
     ):
@@ -68,14 +79,36 @@ class RagAnswerer:
                 limitation="模型调用失败",
             )
         valid_ids = {chunk.review_id for chunk in chunks}
-        citations = [
-            Citation(review_id=c.review_id, quote=c.quote)
-            for c in raw.citations
-            if c.review_id in valid_ids
-        ]
+        content_by_id = {chunk.review_id: chunk.content for chunk in chunks}
+        citations: list[Citation] = []
+        seen_review_ids: set[str] = set()
+        for c in raw.citations:
+            if (
+                c.review_id in valid_ids
+                and c.review_id not in seen_review_ids
+                and _quote_valid(c.quote, content_by_id[c.review_id])
+            ):
+                seen_review_ids.add(c.review_id)
+                citations.append(Citation(review_id=c.review_id, quote=c.quote))
+        if citations:
+            return RagAnswer(
+                answer=raw.answer,
+                citations=citations,
+                evidence_sufficient=True,
+                limitation="",
+            )
+        if raw.citations:
+            # 模型给了引用但全部未通过校验
+            return RagAnswer(
+                answer=raw.answer,
+                citations=[],
+                evidence_sufficient=False,
+                limitation="模型引用未通过校验，视为证据不足",
+            )
+        # 模型诚实报告证据不足：保留其 limitation
         return RagAnswer(
             answer=raw.answer,
-            citations=citations,
-            evidence_sufficient=bool(citations),
-            limitation="" if citations else "模型引用未通过校验，视为证据不足",
+            citations=[],
+            evidence_sufficient=False,
+            limitation=raw.limitation or "模型未提供证据引用",
         )

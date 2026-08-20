@@ -116,6 +116,71 @@ def test_answer_cross_app_comparison(retriever):
             )
         ]
     )
-    answerer = RagAnswerer(_FakeProvider(), retriever)
+    provider = _FakeProvider(
+        answer={
+            "answer": "两个 App 的订阅反馈不同。",
+            "citations": [
+                {"review_id": "v1", "quote": "订阅太贵了"},
+                {"review_id": "v3", "quote": "订阅流程顺畅"},
+            ],
+            "evidence_sufficient": True,
+            "limitation": "",
+        }
+    )
+    answerer = RagAnswerer(provider, retriever)
     answer = answerer.answer("订阅", ["app-a", "app-b"])
     assert answer.answer
+    assert answer.evidence_sufficient
+    assert {c.review_id for c in answer.citations} == {"v1", "v3"}
+
+
+def test_answer_all_citations_dropped_marks_insufficient(retriever):
+    provider = _FakeProvider(
+        answer={
+            "answer": "结论",
+            "citations": [{"review_id": "FAKE-1", "quote": "假的"}],
+            "evidence_sufficient": True,
+            "limitation": "",
+        }
+    )
+    answerer = RagAnswerer(provider, retriever)
+    answer = answerer.answer("订阅", ["app-a"])
+    assert not answer.evidence_sufficient
+    assert "未通过校验" in answer.limitation
+
+
+def test_answer_model_honest_no_evidence_preserves_limitation(retriever):
+    provider = _FakeProvider(
+        answer={
+            "answer": "结论",
+            "citations": [],
+            "evidence_sufficient": False,
+            "limitation": "语料中没有提到价格问题",
+        }
+    )
+    answerer = RagAnswerer(provider, retriever)
+    answer = answerer.answer("订阅", ["app-a"])
+    assert not answer.evidence_sufficient
+    assert "语料中没有提到价格问题" in answer.limitation
+
+
+def test_answer_provider_none_fallback(retriever):
+    answerer = RagAnswerer(None, retriever)
+    answer = answerer.answer("订阅", ["app-a"])
+    assert answer.evidence_sufficient
+    assert "模型未配置" in answer.limitation
+    assert answer.citations  # 有检索结果的引用
+
+
+def test_answer_rejects_empty_quote(retriever):
+    provider = _FakeProvider(
+        answer={
+            "answer": "结论",
+            "citations": [{"review_id": "v1", "quote": ""}],
+            "evidence_sufficient": True,
+            "limitation": "",
+        }
+    )
+    answerer = RagAnswerer(provider, retriever)
+    answer = answerer.answer("订阅", ["app-a"])
+    assert not answer.evidence_sufficient
