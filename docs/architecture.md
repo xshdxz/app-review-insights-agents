@@ -32,8 +32,15 @@ Streamlit 用户界面
 | `pipeline/traceability.py` | 全链路追溯校验：ID 唯一、引用存在、来源完整继承、每需求 2–4 条用例。 |
 | `cleaning.py` | 规范化、语言检测、去重、ID 冲突稳定重命名。 |
 | `batching.py` | 按数量与字符数分批，超长单条评论独占一批。 |
-| `collectors/app_store.py` | Apple RSS 采集适配器（httpx），与 `app-store-scraper` 的旧依赖冲突隔离。 |
-| `input_parsing.py` | App 链接解析（仅美国区）与 JSON/CSV 导入。 |
+| `collectors/app_store.py` | Apple RSS 采集适配器（httpx，支持任意区号），与 `app-store-scraper` 的旧依赖冲突隔离。 |
+| `collectors/google_play.py` | Google Play 评论采集（尽力而为，getreviews 端点）。 |
+| `collectors/social.py` | 社交舆情采集：Reddit 搜索完整实现；X 需要可配置端点。社交语料标记 `platform="social"`，与评论语料分离。 |
+| `input_parsing.py` | App 链接解析（任意区）与 JSON/CSV 导入。 |
+| `factory.py` | 依赖装配单一入口：`build_pipeline_services`（流水线）与 `build_agent_stack`（Agent 栈）、`index_run_cleaned`（语料索引助手）。 |
+| `agent/` | Planner（规划）/ Reviewer（复核）/ 工具注册表 / 编排器 / 人工审批；模型失败逐级回退默认计划或纯确定性。 |
+| `rag/` | FTS5 + 可选向量混合检索；单 App 与跨 App 问答；引用存在性校验。 |
+| `monitor/` | APScheduler 定时任务；飞书/钉钉/企业微信/Slack Webhook；Markdown 报告与变化摘要。 |
+| `storage/agent_repository.py` | Agent 运行、监控任务、报告、语料（FTS5）、向量 的 SQLite 仓库。 |
 | `llm/provider.py` | DeepSeek 客户端：JSON Schema 校验、有限重试、`max_tokens` 上限、错误脱敏。 |
 | `llm/prompts.py` | 各阶段 Prompt 与评论渲染。 |
 | `llm/schemas.py` | 模型草稿 Schema（Pydantic）。 |
@@ -61,4 +68,4 @@ Streamlit 用户界面
 
 ## 技术栈
 
-Python 3.11+、Streamlit 1.61+、Pydantic v2、pydantic-settings、OpenAI 兼容协议的 DeepSeek 客户端、httpx、Apple RSS JSON、pandas、rapidfuzz、langdetect、SQLite、pytest、Ruff。
+Python 3.11+、Streamlit 1.61+、Pydantic v2、pydantic-settings、OpenAI 兼容协议的 DeepSeek 客户端、httpx、Apple RSS JSON、Google Play getreviews、Reddit search.json、pandas、rapidfuzz、langdetect、APScheduler、SQLite（FTS5）、pytest、Ruff。
