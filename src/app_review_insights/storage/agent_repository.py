@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,9 +21,10 @@ _CORPUS_FTS_QUERY = (
 )
 
 
-def fts5_available(path: Path) -> bool:
+def fts5_available(path: Path | None = None) -> bool:
+    """探测当前 SQLite 是否编译了 FTS5（用 :memory: 连接，不落盘）。"""
     try:
-        connection = sqlite3.connect(path)
+        connection = sqlite3.connect(path if path is not None else ":memory:")
         try:
             row = connection.execute(
                 "SELECT sqlite_compileoption_used('ENABLE_FTS5')"
@@ -35,19 +37,29 @@ def fts5_available(path: Path) -> bool:
 
 
 def build_fts_query(text: str) -> str:
-    """把用户查询转成 FTS5 MATCH 表达式：逐词加引号、AND 连接；空则匹配不到任何行。
+    """把用户查询转成 FTS5 MATCH 表达式：CJK 短语按字符相邻匹配、英文单词独立匹配。
 
-    CJK 字符之间插入空格（与索引侧 _cjk_segment 对称），保证 FTS5 按字符分词，
-    中文检索在 unicode61 分词器下行为确定。
+    CJK 字符之间插入空格（与索引侧 _cjk_segment 对称），连续 CJK 字符组成
+    一个带引号的短语（如 "订 阅"），保证「订阅」不误命中「我订了酒店，阅读体验不错」。
     """
-    import re
-
     segmented = _cjk_segment(text)
     tokens = re.findall(r"[\w\u4e00-\u9fff]+", segmented.lower())
-    tokens = [f'"{token}"' for token in tokens if token.strip()]
     if not tokens:
         return '"__no_match__"'
-    return " AND ".join(tokens)
+    terms: list[str] = []
+    cjk_run: list[str] = []
+    for token in tokens:
+        if re.fullmatch(r"[\u4e00-\u9fff]+", token):
+            # _cjk_segment 已把 CJK 拆成单字符 token；相邻 CJK 收进同一短语
+            cjk_run.append(" ".join(token))
+        else:
+            if cjk_run:
+                terms.append(f'"{ " ".join(cjk_run) }"')
+                cjk_run = []
+            terms.append(f'"{token}"')
+    if cjk_run:
+        terms.append(f'"{ " ".join(cjk_run) }"')
+    return " AND ".join(terms)
 
 
 def _cjk_segment(text: str) -> str:
@@ -56,8 +68,6 @@ def _cjk_segment(text: str) -> str:
     FTS5 unicode61 对连续 CJK 的切分行为依赖 SQLite 版本；显式切分后
     索引与查询两侧行为一致，中文检索结果可复现。
     """
-    import re
-
     return re.sub(r"(?<=[\u4e00-\u9fff])(?=[\u4e00-\u9fff])", " ", text)
 
 
@@ -82,6 +92,10 @@ class AgentRepository:
             connection.close()
 
     def _initialize(self) -> None:
+        if not fts5_available():
+            raise RuntimeError(
+                "当前 Python 的 SQLite 未启用 FTS5（ENABLE_FTS5），无法创建评论语料索引"
+            )
         with self._session() as connection:
             connection.executescript(
                 """

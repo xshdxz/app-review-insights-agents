@@ -114,3 +114,17 @@ def test_delete_app(repo):
     repo.upsert_corpus(_review("v2", "app-b", "内容二"))
     assert repo.delete_app("app-a") == 1
     assert repo.app_ids() == ["app-b"]
+
+
+def test_corpus_cjk_phrase_precision(repo):
+    # 「订阅」不应命中订/阅分散在文中不同位置的评论
+    repo.upsert_corpus(_review("v1", "app-a", "订阅太贵了"))
+    repo.upsert_corpus(_review("v2", "app-a", "我订了酒店，阅读体验不错"))
+    hits = repo.search_corpus("订阅", app_ids=["app-a"], limit=10)
+    assert {h["review_id"] for h in hits} == {"v1"}
+
+
+def test_fts5_available():
+    from app_review_insights.storage.agent_repository import fts5_available
+
+    assert fts5_available() is True
