@@ -16,6 +16,8 @@ class RetrievedChunk(BaseModel):
     review_id: str
     app_id: str
     content: str
+    # 检索分：纯 FTS 模式为原始 -bm25（越大越相关，可为负）；
+    # 混合模式为 min-max 归一化到 [0,1] 后的加权分 0.6*fts + 0.4*vector，恒非负。
     score: float
     platform: str
     source: str
@@ -39,6 +41,7 @@ class CorpusRetriever:
         app_ids: list[str] | None = None,
         top_k: int = 10,
     ) -> list[RetrievedChunk]:
+        top_k = max(1, min(top_k, 100))
         fts_hits = self.agent_repository.search_corpus(query, app_ids=app_ids, limit=top_k * 3)
         chunks = [
             RetrievedChunk(
@@ -64,6 +67,7 @@ class CorpusRetriever:
         top_k: int = 10,
     ) -> list[RetrievedChunk]:
         """跨 App：每个 App 独立取 top，再按分数合并去重（保证每个 App 都有代表）。"""
+        top_k = max(1, min(top_k, 100))
         per_app: dict[str, RetrievedChunk] = {}
         for app_id in app_ids:
             for chunk in self.search(query, app_ids=[app_id], top_k=top_k):
@@ -86,13 +90,20 @@ class CorpusRetriever:
     ) -> list[RetrievedChunk]:
         if self.embedding_store is None:
             return sorted(chunks, key=lambda chunk: chunk.score, reverse=True)[:top_k]
+        # FTS 的 -bm25（约 -10…0，依赖语料规模）与 cosine [0,1] 量纲不一致：
+        # 先对候选集 min-max 归一化到 [0,1] 再混合，向量项才能按比例生效。
+        fts_scores = [chunk.score for chunk in chunks]
+        fts_min, fts_max = min(fts_scores), max(fts_scores)
+        fts_span = fts_max - fts_min
+        for chunk in chunks:
+            chunk.score = (chunk.score - fts_min) / fts_span if fts_span > 0 else 1.0
         try:
             query_vector = self.embedding_store.embed_texts([query])[0]
-        except Exception:
+            hits = self.agent_repository.search_embeddings(
+                query_vector, app_ids=app_ids, limit=top_k * 3
+            )
+        except Exception:  # noqa: BLE001 - embedding 故障降级为纯 FTS
             return sorted(chunks, key=lambda chunk: chunk.score, reverse=True)[:top_k]
-        hits = self.agent_repository.search_embeddings(
-            query_vector, app_ids=app_ids, limit=top_k * 3
-        )
         by_id = {hit["review_id"]: float(hit["score"]) for hit in hits}
         for chunk in chunks:
             vector_score = by_id.get(chunk.review_id, 0.0)

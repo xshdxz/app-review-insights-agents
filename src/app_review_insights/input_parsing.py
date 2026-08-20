@@ -131,7 +131,7 @@ def import_reviews(data: bytes, filename: str, app_id: str) -> list[Review]:
                             "review_id",
                             "id",
                             "评论 ID",
-                            default=f"import-{index}",
+                            default=f"import-{app_id}-{index}",
                         )
                     ),
                     app_id=app_id,

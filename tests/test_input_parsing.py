@@ -42,6 +42,18 @@ def test_import_json_normalizes_aliases():
     assert reviews[0].source == "import:json"
 
 
+def test_import_default_ids_are_app_scoped():
+    payload = json.dumps(
+        [
+            {"content": "no id one", "rating": 3, "date": "2026-08-01T10:00:00Z"},
+            {"content": "no id two", "rating": 4, "date": "2026-08-01T10:00:00Z"},
+        ]
+    ).encode()
+    reviews = import_reviews(payload, "reviews.json", app_id="app-x")
+    assert reviews[0].review_id == "import-app-x-1"
+    assert reviews[1].review_id == "import-app-x-2"
+
+
 def test_import_csv_accepts_documented_columns():
     payload = (
         b"review_id,content,rating,published_at,title\n"
