@@ -84,6 +84,7 @@ class AgentStack:
     indexer: Any = None
     retriever: Any = None
     embedding_store: Any = None
+    social: Any = None
 
 
 def build_agent_stack(
@@ -111,6 +112,10 @@ def build_agent_stack(
     rag = RagAnswerer(provider, retriever)
 
     webhook = WebhookSender()
+
+    from app_review_insights.collectors.social import SocialCollector
+
+    social = SocialCollector(x_endpoint=settings.social_x_endpoint)
 
     tools = [
         make_run_analysis_tool(pipeline_services),
@@ -144,6 +149,7 @@ def build_agent_stack(
         indexer=indexer,
         retriever=retriever,
         embedding_store=embedding_store,
+        social=social,
     )
 
 

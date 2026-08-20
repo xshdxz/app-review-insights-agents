@@ -1,0 +1,26 @@
+{
+  "data": {
+    "children": [
+      {
+        "data": {
+          "id": "abc123",
+          "title": "这个 App 的订阅太贵了",
+          "selftext": "用了三个月，续费涨了很多。",
+          "subreddit": "productivity",
+          "created_utc": 1767225600,
+          "permalink": "/r/productivity/comments/abc123/x/"
+        }
+      },
+      {
+        "data": {
+          "id": "def456",
+          "title": "推荐一下这个 App",
+          "selftext": "",
+          "subreddit": "apps",
+          "created_utc": 1767139200,
+          "permalink": "/r/apps/comments/def456/y/"
+        }
+      }
+    ]
+  }
+}
