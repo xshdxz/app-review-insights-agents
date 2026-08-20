@@ -1,0 +1,12 @@
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.git
+data/runs
+data/agent
+data/uploads
+output
+tmp
+.env
