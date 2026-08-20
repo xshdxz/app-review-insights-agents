@@ -72,3 +72,26 @@ def test_model_api_key_overrides_deepseek_key(monkeypatch):
     monkeypatch.setenv("MODEL_API_KEY", "sk-custom")
     settings = load_settings()
     assert settings.effective_model_api_key == "sk-custom"
+
+
+def test_webhook_urls_empty_string_parses_to_empty_list(monkeypatch):
+    monkeypatch.setenv("WEBHOOK_URLS", "")
+    settings = load_settings()
+    assert settings.webhook_urls == []
+
+
+def test_effective_model_api_key_falls_back_to_deepseek_key(monkeypatch):
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-deepseek")
+    settings = load_settings()
+    assert settings.effective_model_api_key == "sk-deepseek"
+
+
+def test_model_available_reflects_key_and_enabled_flag(monkeypatch, tmp_path):
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    # 隔离项目根目录下的本地 .env（gitignore，含真实 DEEPSEEK_API_KEY），
+    # 否则 load_settings() 会从 .env 读到 key 导致本测试不可复现。
+    monkeypatch.chdir(tmp_path)
+    settings = load_settings()
+    assert settings.model_available is False

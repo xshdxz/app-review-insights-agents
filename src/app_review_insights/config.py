@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     batch_max_characters: int = Field(default=60000, alias="BATCH_MAX_CHARACTERS")
     agent_db_path: Path = Field(default=Path("data/agent/agent.sqlite3"), alias="AGENT_DB_PATH")
     webhook_type: str = Field(default="", alias="WEBHOOK_TYPE")
+    # NoDecode 保留原始 CSV 字符串：pydantic-settings 默认会对复杂类型做 JSON
+    # 解码，空值或逗号分隔的 WEBHOOK_URLS 会抛 SettingsError 导致启动失败；
+    # 配合下方 mode="before" 校验器手工按逗号拆分。
     webhook_urls: Annotated[list[str], NoDecode] = Field(
         default_factory=list, alias="WEBHOOK_URLS"
     )
