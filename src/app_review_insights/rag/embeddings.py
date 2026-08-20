@@ -10,7 +10,9 @@ from typing import Any
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
     if len(a) != len(b):
-        return 0.0
+        raise ValueError(
+            f"向量维度不匹配：{len(a)} != {len(b)}（请检查 EMBEDDING_MODEL 是否与索引时一致）"
+        )
     dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm_a = sum(x * x for x in a) ** 0.5
     norm_b = sum(x * x for x in b) ** 0.5

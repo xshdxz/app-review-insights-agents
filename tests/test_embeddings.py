@@ -22,6 +22,11 @@ def test_cosine_zero_vector():
     assert cosine_similarity([0.0, 0.0], [1.0, 0.0]) == 0.0
 
 
+def test_cosine_similarity_dimension_mismatch_raises():
+    with pytest.raises(ValueError):
+        cosine_similarity([1.0, 0.0], [1.0, 0.0, 0.0])
+
+
 def test_embedding_upsert_and_query(repo):
     from datetime import UTC, datetime
 

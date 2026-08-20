@@ -12,6 +12,7 @@ from app_review_insights.models import (
     MonitorReport,
     Review,
 )
+from app_review_insights.rag.embeddings import cosine_similarity
 
 _CORPUS_FTS_QUERY = (
     "SELECT c.review_id, c.app_id, c.content, c.platform, c.source, c.region AS storefront, "
@@ -312,6 +313,11 @@ class AgentRepository:
 
     def delete_app(self, app_id: str) -> int:
         with self._session() as connection:
+            connection.execute(
+                "DELETE FROM embeddings WHERE review_id IN "
+                "(SELECT review_id FROM corpus WHERE app_id = ?)",
+                (app_id,),
+            )
             cursor = connection.execute("DELETE FROM corpus WHERE app_id = ?", (app_id,))
             connection.execute("DELETE FROM corpus_fts WHERE app_id = ?", (app_id,))
         return cursor.rowcount
@@ -333,8 +339,6 @@ class AgentRepository:
         app_ids: list[str] | None = None,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
-        from app_review_insights.rag.embeddings import cosine_similarity
-
         with self._session() as connection:
             if app_ids:
                 placeholders = ",".join("?" for _ in app_ids)

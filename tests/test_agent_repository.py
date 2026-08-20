@@ -116,6 +116,20 @@ def test_delete_app(repo):
     assert repo.app_ids() == ["app-b"]
 
 
+def test_delete_app_removes_embeddings(repo, tmp_path):
+    import sqlite3
+
+    repo.upsert_corpus(_review("v1", "app-a", "内容一"))
+    repo.upsert_embedding("v1", [1.0, 0.0, 0.0])
+    assert repo.delete_app("app-a") == 1
+    connection = sqlite3.connect(tmp_path / "agent.sqlite3")
+    try:
+        count = connection.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
+    finally:
+        connection.close()
+    assert count == 0
+
+
 def test_corpus_cjk_phrase_precision(repo):
     # 「订阅」不应命中订/阅分散在文中不同位置的评论
     repo.upsert_corpus(_review("v1", "app-a", "订阅太贵了"))
