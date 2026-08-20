@@ -42,9 +42,7 @@ def test_collect_parses_fixture():
     payload = FIXTURE.read_bytes()
     client = _client_for(payload)
     collector = GooglePlayCollector(client=client)
-    reviews = collector.collect(
-        "https://play.google.com/store/apps/details?id=com.example.app", 10
-    )
+    reviews = collector.collect("https://play.google.com/store/apps/details?id=com.example.app", 10)
     assert len(reviews) == 2
     assert reviews[0].rating == 3
     assert reviews[0].platform == "google-play"
@@ -55,6 +53,4 @@ def test_collect_empty_is_error():
     client = _client_for(b")]}'\n[[null,[],null]]")
     collector = GooglePlayCollector(client=client)
     with pytest.raises(CollectionError):
-        collector.collect(
-            "https://play.google.com/store/apps/details?id=com.example.app", 10
-        )
+        collector.collect("https://play.google.com/store/apps/details?id=com.example.app", 10)

@@ -17,9 +17,7 @@ def test_parse_us_app_store_url():
 
 
 def test_parse_app_store_url_accepts_any_region():
-    parsed = parse_app_store_url(
-        "https://apps.apple.com/gb/app/todoist-to-do-list/id572688855"
-    )
+    parsed = parse_app_store_url("https://apps.apple.com/gb/app/todoist-to-do-list/id572688855")
     assert parsed.country == "gb"
     assert parsed.app_id == "572688855"
 

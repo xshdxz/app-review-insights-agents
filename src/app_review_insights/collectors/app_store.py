@@ -50,9 +50,7 @@ class AppStoreCollector:
         bounded_limit = max(1, min(limit, maximum_limit))
         reviews: list[Review] = []
         seen_ids: set[str] = set()
-        next_url: str | None = _FIRST_PAGE_URL.format(
-            app_id=parsed.app_id, storefront=storefront
-        )
+        next_url: str | None = _FIRST_PAGE_URL.format(app_id=parsed.app_id, storefront=storefront)
         legacy_fallback_url = _LEGACY_FIRST_PAGE_URL.format(
             app_id=parsed.app_id, storefront=storefront
         )

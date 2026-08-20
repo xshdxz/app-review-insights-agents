@@ -43,9 +43,7 @@ class RedditCollector:
             content = f"{title}\n{body}".strip()
             if not content:
                 continue
-            created = datetime.fromtimestamp(
-                float(item.get("created_utc", 0)), tz=UTC
-            )
+            created = datetime.fromtimestamp(float(item.get("created_utc", 0)), tz=UTC)
             reviews.append(
                 Review(
                     review_id=f"reddit-{post_id}" if post_id else f"reddit-{len(reviews)}",

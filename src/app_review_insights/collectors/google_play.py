@@ -111,9 +111,7 @@ class GooglePlayCollector:
         author_block = row[1] if len(row) > 1 else None
         author = author_block[0] if isinstance(author_block, list) and author_block else None
         date_value = (
-            author_block[3]
-            if isinstance(author_block, list) and len(author_block) > 3
-            else ""
+            author_block[3] if isinstance(author_block, list) and len(author_block) > 3 else ""
         )
         rating_value = row[2] if len(row) > 2 else None
         content_block = row[4] if len(row) > 4 else None
