@@ -31,17 +31,13 @@ class Settings(BaseSettings):
     # NoDecode 保留原始 CSV 字符串：pydantic-settings 默认会对复杂类型做 JSON
     # 解码，空值或逗号分隔的 WEBHOOK_URLS 会抛 SettingsError 导致启动失败；
     # 配合下方 mode="before" 校验器手工按逗号拆分。
-    webhook_urls: Annotated[list[str], NoDecode] = Field(
-        default_factory=list, alias="WEBHOOK_URLS"
-    )
+    webhook_urls: Annotated[list[str], NoDecode] = Field(default_factory=list, alias="WEBHOOK_URLS")
     scheduler_enabled: bool = Field(default=False, alias="SCHEDULER_ENABLED")
     agent_max_review_rounds: int = Field(default=2, alias="AGENT_MAX_REVIEW_ROUNDS")
     approval_required: bool = Field(default=False, alias="APPROVAL_REQUIRED")
     embedding_enabled: bool = Field(default=False, alias="EMBEDDING_ENABLED")
     embedding_model: str = Field(default="text-embedding-3-small", alias="EMBEDDING_MODEL")
-    embedding_base_url: str = Field(
-        default="https://api.openai.com/v1", alias="EMBEDDING_BASE_URL"
-    )
+    embedding_base_url: str = Field(default="https://api.openai.com/v1", alias="EMBEDDING_BASE_URL")
     embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
 
     @field_validator("webhook_urls", mode="before")

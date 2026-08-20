@@ -145,6 +145,7 @@ Expected: 旧分页 URL 断言和 XML 解析测试失败。
 ```python
 _FIRST_PAGE_URL = "https://itunes.apple.com/us/rss/customerreviews/id={app_id}/json"
 
+
 def _safe_next_url(value: str | None) -> str | None:
     if not value:
         return None
@@ -272,6 +273,7 @@ Expected: `ReviewSummaryDraft` 或摘要合并函数不存在。
 class ReviewSummaryDraft(BaseModel):
     review_id: str
     summary_zh: str = Field(min_length=1)
+
 
 class BatchAnalysisResult(BaseModel):
     findings: list[FindingDraft]

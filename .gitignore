@@ -28,6 +28,7 @@ venv/
 # Runtime data and generated outputs
 data/runs/
 data/uploads/
+data/agent/
 output/
 
 # Editors and OS

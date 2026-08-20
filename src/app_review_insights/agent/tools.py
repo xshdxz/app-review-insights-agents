@@ -98,8 +98,7 @@ def make_run_analysis_tool(pipeline_services: PipelineServices) -> Tool:
     return Tool(
         name="run_analysis",
         description=(
-            "对指定 App 运行完整分析流水线（采集→清洗→分析→证据校验→PRD/用例），"
-            "返回 run_id。"
+            "对指定 App 运行完整分析流水线（采集→清洗→分析→证据校验→PRD/用例），返回 run_id。"
         ),
         parameters=RunAnalysisParams,
         func=run_analysis,
@@ -133,9 +132,7 @@ def make_send_report_tool(
 ) -> Tool:
     def send_report(report_id: str) -> dict:
         if settings is not None and agent_repository is not None:
-            delivered = webhook_sender.send_report_by_id(
-                report_id, settings, agent_repository
-            )
+            delivered = webhook_sender.send_report_by_id(report_id, settings, agent_repository)
         else:
             delivered = webhook_sender.send_report_by_id(report_id)
         return {"report_id": report_id, "delivered_to": delivered}

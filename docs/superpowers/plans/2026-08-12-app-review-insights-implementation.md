@@ -625,7 +625,9 @@ def import_reviews(data: bytes, filename: str, app_id: str) -> list[Review]:
                 rating=int(_first(record, "rating")),
                 app_version=_first(record, "app_version", "version"),
                 author=_first(record, "author", "userName", "username"),
-                published_at=datetime.fromisoformat(str(published).replace("Z", "+00:00")).astimezone(UTC),
+                published_at=datetime.fromisoformat(
+                    str(published).replace("Z", "+00:00")
+                ).astimezone(UTC),
                 language=_first(record, "language"),
                 source=f"import:{Path(filename).suffix.lower()[1:]}",
             )
@@ -761,9 +763,7 @@ def _language(value: str) -> str | None:
         return None
 
 
-def clean_reviews(
-    reviews: list[Review], near_duplicate_threshold: int = 96
-) -> CleaningResult:
+def clean_reviews(reviews: list[Review], near_duplicate_threshold: int = 96) -> CleaningResult:
     kept: list[Review] = []
     hashes: set[str] = set()
     exact_duplicates = near_duplicates = empty_removed = 0
@@ -842,14 +842,16 @@ class FakeResponse:
     def json(self):
         return {
             "feed": {
-                "entry": [{
-                    "id": {"label": "123"},
-                    "title": {"label": "Pricing"},
-                    "content": {"label": "The free trial renewal date is unclear."},
-                    "im:rating": {"label": "2"},
-                    "updated": {"label": "2026-08-01T10:00:00-07:00"},
-                    "im:version": {"label": "8.5.0"},
-                }]
+                "entry": [
+                    {
+                        "id": {"label": "123"},
+                        "title": {"label": "Pricing"},
+                        "content": {"label": "The free trial renewal date is unclear."},
+                        "im:rating": {"label": "2"},
+                        "updated": {"label": "2026-08-01T10:00:00-07:00"},
+                        "im:version": {"label": "8.5.0"},
+                    }
+                ]
             }
         }
 
@@ -892,8 +894,7 @@ from app_review_insights.models import Review
 
 
 _RSS_URL = (
-    "https://itunes.apple.com/us/rss/customerreviews/page={page}/"
-    "id={app_id}/sortby=mostrecent/json"
+    "https://itunes.apple.com/us/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json"
 )
 _REVIEWS_PER_PAGE = 50
 _MAX_PAGES = 10
@@ -913,9 +914,7 @@ class AppStoreCollector:
             bounded_limit = max(1, min(limit, _REVIEWS_PER_PAGE * _MAX_PAGES))
             reviews = []
             for page in range(1, min(ceil(bounded_limit / 50), _MAX_PAGES) + 1):
-                response = self.client.get(
-                    _RSS_URL.format(page=page, app_id=parsed.app_id)
-                )
+                response = self.client.get(_RSS_URL.format(page=page, app_id=parsed.app_id))
                 response.raise_for_status()
                 entries = response.json().get("feed", {}).get("entry", []) or []
                 for index, item in enumerate(entry for entry in entries if "im:rating" in entry):
@@ -1114,9 +1113,7 @@ class RunRepository:
             ).fetchall()
         return [RunRecord.model_validate_json(row["payload_json"]) for row in rows]
 
-    def save_output(
-        self, run_id: str, stage: Stage, payload: dict, batch_index: int = -1
-    ) -> None:
+    def save_output(self, run_id: str, stage: Stage, payload: dict, batch_index: int = -1) -> None:
         with self._connect() as connection:
             connection.execute(
                 "INSERT OR REPLACE INTO stage_outputs VALUES (?, ?, ?, ?)",
@@ -1302,8 +1299,7 @@ def make_review_batches(
     for review in reviews:
         review_characters = len(review.content_original)
         would_overflow = current and (
-            len(current) >= max_reviews
-            or current_characters + review_characters > max_characters
+            len(current) >= max_reviews or current_characters + review_characters > max_characters
         )
         if would_overflow:
             batches.append(current)
@@ -1515,10 +1511,7 @@ def analyze_batch(provider, reviews, analysis_goal: str) -> BatchAnalysisResult:
 
 def consolidate_findings(provider, batch_results, analysis_goal: str) -> ConsolidationResult:
     payload = [result.model_dump() for result in batch_results]
-    prompt = (
-        f"分析目标：{analysis_goal}\n"
-        f"候选发现：{json.dumps(payload, ensure_ascii=False)}"
-    )
+    prompt = f"分析目标：{analysis_goal}\n候选发现：{json.dumps(payload, ensure_ascii=False)}"
     return provider.generate(CONSOLIDATE_SYSTEM_PROMPT, prompt, ConsolidationResult)
 ```
 
@@ -1630,11 +1623,19 @@ def validate_finding_drafts(
     issues: list[ValidationIssue] = []
 
     for index, draft in enumerate(drafts, start=1):
-        valid_support = list(dict.fromkeys(r for r in draft.supporting_review_ids if r in review_ids))
-        valid_conflicts = list(
-            dict.fromkeys(r for r in draft.conflicting_review_ids if r in review_ids and r not in valid_support)
+        valid_support = list(
+            dict.fromkeys(r for r in draft.supporting_review_ids if r in review_ids)
         )
-        invalid = (set(draft.supporting_review_ids) | set(draft.conflicting_review_ids)) - review_ids
+        valid_conflicts = list(
+            dict.fromkeys(
+                r
+                for r in draft.conflicting_review_ids
+                if r in review_ids and r not in valid_support
+            )
+        )
+        invalid = (
+            set(draft.supporting_review_ids) | set(draft.conflicting_review_ids)
+        ) - review_ids
         if invalid:
             issues.append(
                 ValidationIssue(
@@ -1669,7 +1670,9 @@ def validate_finding_drafts(
                 limitations=draft.limitations,
             )
         )
-    return findings, ValidationReport(valid=not any(i.severity == "error" for i in issues), issues=issues)
+    return findings, ValidationReport(
+        valid=not any(i.severity == "error" for i in issues), issues=issues
+    )
 ```
 
 - [x] **步骤 4：运行校验测试并提交**
@@ -1806,7 +1809,9 @@ _COMPLEXITY_COST = {"low": 1, "medium": 2, "high": 3}
 
 
 def build_requirements(provider, findings: list[Finding], analysis_goal: str, total_reviews: int):
-    eligible = [finding for finding in findings if finding.evidence_status != EvidenceStatus.REJECTED]
+    eligible = [
+        finding for finding in findings if finding.evidence_status != EvidenceStatus.REJECTED
+    ]
     if not eligible:
         return []
     result = provider.generate(
@@ -1823,11 +1828,15 @@ def build_requirements(provider, findings: list[Finding], analysis_goal: str, to
         linked = [finding_index[item] for item in draft.finding_ids if item in finding_index]
         if not linked:
             continue
-        source_ids = list(dict.fromkeys(r for finding in linked for r in finding.supporting_review_ids))
+        source_ids = list(
+            dict.fromkeys(r for finding in linked for r in finding.supporting_review_ids)
+        )
         support = len(source_ids)
         confidence = sum(f.confidence for f in linked) / len(linked)
         frequency = support / max(total_reviews, 1)
-        score = round(draft.impact * frequency * confidence * 100 / _COMPLEXITY_COST[draft.complexity], 2)
+        score = round(
+            draft.impact * frequency * confidence * 100 / _COMPLEXITY_COST[draft.complexity], 2
+        )
         has_assumption = any(f.evidence_status == EvidenceStatus.ASSUMPTION for f in linked)
         target_version = "Future" if has_assumption else draft.proposed_version
         requirements.append(
@@ -2002,18 +2011,28 @@ def validate_traceability(review_ids, findings, requirements, test_cases) -> Val
 
     for finding in findings:
         if not set(finding.supporting_review_ids).issubset(review_ids):
-            issues.append(ValidationIssue(
-                entity_type="finding", entity_id=finding.finding_id,
-                rule="review_to_finding", severity="error",
-                message="Finding 引用了不存在的评论。"
-            ))
+            issues.append(
+                ValidationIssue(
+                    entity_type="finding",
+                    entity_id=finding.finding_id,
+                    rule="review_to_finding",
+                    severity="error",
+                    message="Finding 引用了不存在的评论。",
+                )
+            )
     for requirement in requirements:
-        if not requirement.finding_ids or any(item not in finding_index for item in requirement.finding_ids):
-            issues.append(ValidationIssue(
-                entity_type="requirement", entity_id=requirement.requirement_id,
-                rule="finding_to_requirement", severity="error",
-                message="Requirement 缺少有效 Finding。"
-            ))
+        if not requirement.finding_ids or any(
+            item not in finding_index for item in requirement.finding_ids
+        ):
+            issues.append(
+                ValidationIssue(
+                    entity_type="requirement",
+                    entity_id=requirement.requirement_id,
+                    rule="finding_to_requirement",
+                    severity="error",
+                    message="Requirement 缺少有效 Finding。",
+                )
+            )
         expected_reviews = {
             review_id
             for finding_id in requirement.finding_ids
@@ -2021,19 +2040,29 @@ def validate_traceability(review_ids, findings, requirements, test_cases) -> Val
             for review_id in finding_index[finding_id].supporting_review_ids
         }
         if not set(requirement.source_review_ids).issubset(expected_reviews):
-            issues.append(ValidationIssue(
-                entity_type="requirement", entity_id=requirement.requirement_id,
-                rule="requirement_reviews_inherit_findings", severity="error",
-                message="Requirement 评论来源不能回溯到 Finding。"
-            ))
+            issues.append(
+                ValidationIssue(
+                    entity_type="requirement",
+                    entity_id=requirement.requirement_id,
+                    rule="requirement_reviews_inherit_findings",
+                    severity="error",
+                    message="Requirement 评论来源不能回溯到 Finding。",
+                )
+            )
     for case in test_cases:
         requirement = requirement_index.get(case.requirement_id)
-        if requirement is None or not set(case.source_review_ids).issubset(set(requirement.source_review_ids)):
-            issues.append(ValidationIssue(
-                entity_type="test_case", entity_id=case.test_case_id,
-                rule="requirement_to_test_case", severity="error",
-                message="TestCase 缺少有效 Requirement/Review 路径。"
-            ))
+        if requirement is None or not set(case.source_review_ids).issubset(
+            set(requirement.source_review_ids)
+        ):
+            issues.append(
+                ValidationIssue(
+                    entity_type="test_case",
+                    entity_id=case.test_case_id,
+                    rule="requirement_to_test_case",
+                    severity="error",
+                    message="TestCase 缺少有效 Requirement/Review 路径。",
+                )
+            )
     return ValidationReport(valid=not issues, issues=issues)
 ```
 
@@ -2050,12 +2079,14 @@ def build_traceability_rows(findings, requirements, test_cases):
     rows = []
     for test_case_id, requirement_id in test_cases.items():
         for finding_id in requirements.get(requirement_id, []):
-            rows.append({
-                "review_ids": ",".join(findings.get(finding_id, [])),
-                "finding_id": finding_id,
-                "requirement_id": requirement_id,
-                "test_case_id": test_case_id,
-            })
+            rows.append(
+                {
+                    "review_ids": ",".join(findings.get(finding_id, [])),
+                    "finding_id": finding_id,
+                    "requirement_id": requirement_id,
+                    "test_case_id": test_case_id,
+                }
+            )
     return rows
 
 
@@ -2361,9 +2392,7 @@ class AnalysisOrchestrator:
         consolidated_payload = self.repository.get_output(run.run_id, Stage.CONSOLIDATE)
         if consolidated_payload is None:
             try:
-                consolidated = self.services.consolidator(
-                    batch_results, run.request.analysis_goal
-                )
+                consolidated = self.services.consolidator(batch_results, run.request.analysis_goal)
             except RecoverableModelError as exc:
                 return self._wait(run, Stage.CONSOLIDATE, exc)
             consolidated_payload = consolidated.model_dump(mode="json")
@@ -2413,9 +2442,7 @@ class AnalysisOrchestrator:
                 test_cases = self.services.test_case_builder(requirements)
             except RecoverableModelError as exc:
                 return self._wait(run, Stage.GENERATE_TESTS, exc)
-            test_payload = {
-                "test_cases": [item.model_dump(mode="json") for item in test_cases]
-            }
+            test_payload = {"test_cases": [item.model_dump(mode="json") for item in test_cases]}
             self.repository.save_output(run.run_id, Stage.GENERATE_TESTS, test_payload)
             run.current_stage = Stage.GENERATE_TESTS
             self._save(run, "测试用例生成完成")
@@ -2522,7 +2549,9 @@ def render_run_status(run, events):
 
 
 def render_reviews(reviews):
-    st.dataframe(pd.DataFrame([item.model_dump(mode="json") for item in reviews]), use_container_width=True)
+    st.dataframe(
+        pd.DataFrame([item.model_dump(mode="json") for item in reviews]), use_container_width=True
+    )
 
 
 def render_badge(label: str, kind: str):
@@ -2547,12 +2576,14 @@ def render_result_tabs(repository, run_id: str):
 
     clean = repository.get_output(run_id, Stage.CLEAN) or {"reviews": [], "stats": {}}
     findings = repository.get_output(run_id, Stage.VALIDATE_FINDINGS) or {
-        "findings": [], "validation": {}
+        "findings": [],
+        "validation": {},
     }
     plan = repository.get_output(run_id, Stage.PLAN) or {"requirements": []}
     tests = repository.get_output(run_id, Stage.GENERATE_TESTS) or {"test_cases": []}
     trace = repository.get_output(run_id, Stage.VALIDATE_TRACEABILITY) or {
-        "valid": False, "issues": []
+        "valid": False,
+        "issues": [],
     }
 
     overview, reviews_tab, findings_tab, plan_tab, tests_tab, trace_tab = st.tabs(
@@ -2573,14 +2604,16 @@ def render_result_tabs(repository, run_id: str):
             label = "Assumption" if finding["evidence_status"] == "assumption" else "Validated"
             with st.expander(f"{finding['finding_id']} · {finding['title']} · {label}"):
                 st.write(finding["problem_statement"])
-                st.write({
-                    "support_count": finding["support_count"],
-                    "conflict_count": finding["conflict_count"],
-                    "confidence": finding["confidence"],
-                    "supporting_review_ids": finding["supporting_review_ids"],
-                    "conflicting_review_ids": finding["conflicting_review_ids"],
-                    "limitations": finding["limitations"],
-                })
+                st.write(
+                    {
+                        "support_count": finding["support_count"],
+                        "conflict_count": finding["conflict_count"],
+                        "confidence": finding["confidence"],
+                        "supporting_review_ids": finding["supporting_review_ids"],
+                        "conflicting_review_ids": finding["conflicting_review_ids"],
+                        "limitations": finding["limitations"],
+                    }
+                )
     with plan_tab:
         if plan.get("quantity_notice"):
             st.info(plan["quantity_notice"])
@@ -2666,7 +2699,9 @@ def main():
         goal = st.text_area("分析目标", value="识别影响用户体验和产品增长的核心问题")
         source_label = st.radio("数据来源", ["在线采集", "导入 JSON/CSV"], horizontal=True)
         review_limit = st.slider("评论数量", 100, 1000, 500, 100)
-        upload = st.file_uploader("评论文件", type=["json", "csv"], disabled=source_label == "在线采集")
+        upload = st.file_uploader(
+            "评论文件", type=["json", "csv"], disabled=source_label == "在线采集"
+        )
         start = st.button(
             "开始分析",
             type="primary",
@@ -2678,8 +2713,12 @@ def main():
             if source_label == "导入 JSON/CSV" and upload is None:
                 st.error("请选择 JSON 或 CSV 评论文件。")
                 st.stop()
-            source_type = SourceType.ONLINE if source_label == "在线采集" else (
-                SourceType.JSON if upload and upload.name.endswith(".json") else SourceType.CSV
+            source_type = (
+                SourceType.ONLINE
+                if source_label == "在线采集"
+                else (
+                    SourceType.JSON if upload and upload.name.endswith(".json") else SourceType.CSV
+                )
             )
             request = AnalysisRequest(
                 source_type=source_type,
@@ -2687,7 +2726,9 @@ def main():
                 analysis_goal=goal,
                 review_limit=review_limit,
             )
-            imported = import_reviews(upload.getvalue(), upload.name, "imported") if upload else None
+            imported = (
+                import_reviews(upload.getvalue(), upload.name, "imported") if upload else None
+            )
             live_status = st.status("正在执行分析工作流", expanded=True)
             orchestrator = AnalysisOrchestrator(
                 services,
@@ -2790,12 +2831,9 @@ def build_downloads(repository, run_id: str) -> dict[str, bytes]:
     test_payload = repository.get_output(run_id, Stage.GENERATE_TESTS) or {"test_cases": []}
     finding_payload = repository.get_output(run_id, Stage.VALIDATE_FINDINGS) or {"findings": []}
     findings = {
-        item["finding_id"]: item["supporting_review_ids"]
-        for item in finding_payload["findings"]
+        item["finding_id"]: item["supporting_review_ids"] for item in finding_payload["findings"]
     }
-    requirements = {
-        item["requirement_id"]: item["finding_ids"] for item in plan["requirements"]
-    }
+    requirements = {item["requirement_id"]: item["finding_ids"] for item in plan["requirements"]}
     test_cases = {
         item["test_case_id"]: item["requirement_id"] for item in test_payload["test_cases"]
     }
@@ -2891,16 +2929,10 @@ if demo_mode:
 
 if st.session_state.get("run_id"):
     downloads = build_downloads(services.repository, st.session_state["run_id"])
-    st.download_button(
-        "下载清洗评论 JSON", downloads["cleaned_reviews"], "cleaned-reviews.json"
-    )
+    st.download_button("下载清洗评论 JSON", downloads["cleaned_reviews"], "cleaned-reviews.json")
     st.download_button("下载 PRD JSON", downloads["prd"], "prd.json")
-    st.download_button(
-        "下载测试用例 CSV", downloads["test_cases"], "test-cases.csv"
-    )
-    st.download_button(
-        "下载证据链 CSV", downloads["traceability"], "traceability.csv"
-    )
+    st.download_button("下载测试用例 CSV", downloads["test_cases"], "test-cases.csv")
+    st.download_button("下载证据链 CSV", downloads["traceability"], "traceability.csv")
 ```
 
 - [x] **步骤 6：运行测试并提交**

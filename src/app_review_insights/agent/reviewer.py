@@ -40,9 +40,7 @@ class Reviewer:
                 approved=False,
                 feedback=f"分析未完成（状态：{run.status.value}）",
             )
-        trace_output = self.repository.get_output(
-            analysis_run_id, Stage.VALIDATE_TRACEABILITY
-        )
+        trace_output = self.repository.get_output(analysis_run_id, Stage.VALIDATE_TRACEABILITY)
         if trace_output is None:
             return ReviewVerdict(approved=False, feedback="缺少追溯校验结果")
         try:

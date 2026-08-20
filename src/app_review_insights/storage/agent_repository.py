@@ -26,9 +26,7 @@ def fts5_available(path: Path | None = None) -> bool:
     try:
         connection = sqlite3.connect(path if path is not None else ":memory:")
         try:
-            row = connection.execute(
-                "SELECT sqlite_compileoption_used('ENABLE_FTS5')"
-            ).fetchone()
+            row = connection.execute("SELECT sqlite_compileoption_used('ENABLE_FTS5')").fetchone()
             return bool(row and row[0])
         finally:
             connection.close()
@@ -51,7 +49,7 @@ def build_fts_query(text: str) -> str:
         runs = re.findall(r"[\u4e00-\u9fff]+|[a-z0-9_]+", term)
         for run in runs:
             if re.fullmatch(r"[\u4e00-\u9fff]+", run):
-                fts_terms.append(f'"{ _cjk_segment(run) }"')
+                fts_terms.append(f'"{_cjk_segment(run)}"')
             else:
                 fts_terms.append(f'"{run}"')
     if not fts_terms:
@@ -273,9 +271,7 @@ class AgentRepository:
                     review.published_at.isoformat(),
                 ),
             )
-            connection.execute(
-                "DELETE FROM corpus_fts WHERE review_id = ?", (review.review_id,)
-            )
+            connection.execute("DELETE FROM corpus_fts WHERE review_id = ?", (review.review_id,))
             connection.execute(
                 "INSERT INTO corpus_fts(review_id, app_id, content) VALUES (?, ?, ?)",
                 (review.review_id, review.app_id, _cjk_segment(review.content_original)),

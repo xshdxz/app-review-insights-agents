@@ -152,9 +152,7 @@ def test_agent_run_waits_for_approval(tmp_path):
         reviewer=_FakeReviewer([_Verdict(True)]),
         agent_repository=agent_repo,
     )
-    result = orchestrator.run(
-        "g", "https://apps.apple.com/us/app/x/id1", require_approval=True
-    )
+    result = orchestrator.run("g", "https://apps.apple.com/us/app/x/id1", require_approval=True)
     assert result.status == AgentRunStatus.WAITING_APPROVAL
 
 

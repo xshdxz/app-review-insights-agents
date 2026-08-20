@@ -110,9 +110,7 @@ class Settings(BaseSettings):
     approval_required: bool = Field(default=False, alias="APPROVAL_REQUIRED")
     embedding_enabled: bool = Field(default=False, alias="EMBEDDING_ENABLED")
     embedding_model: str = Field(default="text-embedding-3-small", alias="EMBEDDING_MODEL")
-    embedding_base_url: str = Field(
-        default="https://api.openai.com/v1", alias="EMBEDDING_BASE_URL"
-    )
+    embedding_base_url: str = Field(default="https://api.openai.com/v1", alias="EMBEDDING_BASE_URL")
     embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
 
     @field_validator("webhook_urls", mode="before")
@@ -554,9 +552,7 @@ def fts5_available(path: Path) -> bool:
     try:
         connection = sqlite3.connect(path)
         try:
-            row = connection.execute(
-                "SELECT sqlite_compileoption_used('ENABLE_FTS5')"
-            ).fetchone()
+            row = connection.execute("SELECT sqlite_compileoption_used('ENABLE_FTS5')").fetchone()
             return bool(row and row[0])
         finally:
             connection.close()
@@ -783,9 +779,7 @@ class AgentRepository:
                     review.published_at.isoformat(),
                 ),
             )
-            connection.execute(
-                "DELETE FROM corpus_fts WHERE review_id = ?", (review.review_id,)
-            )
+            connection.execute("DELETE FROM corpus_fts WHERE review_id = ?", (review.review_id,))
             connection.execute(
                 "INSERT INTO corpus_fts(review_id, app_id, content) VALUES (?, ?, ?)",
                 (review.review_id, review.app_id, _cjk_segment(review.content_original)),
@@ -1153,9 +1147,7 @@ def make_send_report_tool(
 ) -> Tool:
     def send_report(report_id: str) -> dict:
         if settings is not None and agent_repository is not None:
-            delivered = webhook_sender.send_report_by_id(
-                report_id, settings, agent_repository
-            )
+            delivered = webhook_sender.send_report_by_id(report_id, settings, agent_repository)
         else:
             delivered = webhook_sender.send_report_by_id(report_id)
         return {"report_id": report_id, "delivered_to": delivered}
@@ -1588,9 +1580,7 @@ class Reviewer:
                 approved=False,
                 feedback=f"分析未完成（状态：{run.status.value}）",
             )
-        trace_output = self.repository.get_output(
-            analysis_run_id, Stage.VALIDATE_TRACEABILITY
-        )
+        trace_output = self.repository.get_output(analysis_run_id, Stage.VALIDATE_TRACEABILITY)
         if trace_output is None:
             return ReviewVerdict(approved=False, feedback="缺少追溯校验结果")
         report = ValidationReport.model_validate(trace_output)
@@ -1782,9 +1772,7 @@ def test_agent_run_waits_for_approval(tmp_path):
         reviewer=_FakeReviewer([_Verdict(True)]),
         agent_repository=agent_repo,
     )
-    result = orchestrator.run(
-        "g", "https://apps.apple.com/us/app/x/id1", require_approval=True
-    )
+    result = orchestrator.run("g", "https://apps.apple.com/us/app/x/id1", require_approval=True)
     assert result.status == AgentRunStatus.WAITING_APPROVAL
 
 
@@ -1875,7 +1863,9 @@ class AgentOrchestrator:
                 agent_run = self._update(
                     agent_run,
                     review_rounds=round_index + 1,
-                    feedback=[*agent_run.feedback, verdict.feedback] if verdict.feedback else agent_run.feedback,
+                    feedback=[*agent_run.feedback, verdict.feedback]
+                    if verdict.feedback
+                    else agent_run.feedback,
                 )
                 if verdict.approved:
                     agent_run = self._update(
@@ -2116,7 +2106,9 @@ def build_agent_stack(
     ]
     registry = ToolRegistry(tools)
     planner = Planner(provider, registry)
-    reviewer = Reviewer(provider, pipeline_services.repository, max_rounds=settings.agent_max_review_rounds)
+    reviewer = Reviewer(
+        provider, pipeline_services.repository, max_rounds=settings.agent_max_review_rounds
+    )
     orchestrator = AgentOrchestrator(
         planner=planner,
         registry=registry,
@@ -2192,7 +2184,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=200, help="评论数量（100–1000）")
     parser.add_argument("--out", type=Path, default=None, help="结果 JSON 输出路径")
     parser.add_argument("--require-approval", action="store_true", help="完成后停在待审批")
-    parser.add_argument("--webhook-test", action="store_true", help="只校验 Webhook payload 格式，不发送")
+    parser.add_argument(
+        "--webhook-test", action="store_true", help="只校验 Webhook payload 格式，不发送"
+    )
     return parser.parse_args()
 
 
@@ -2231,7 +2225,10 @@ def main() -> int:
     if agent_run.status in (AgentRunStatus.COMPLETED, AgentRunStatus.WAITING_APPROVAL):
         print(f"[ok] agent_run={agent_run.run_id} status={agent_run.status.value}")
         return 0
-    print(f"[error] agent_run={agent_run.run_id} status={agent_run.status.value} error={agent_run.error}", file=sys.stderr)
+    print(
+        f"[error] agent_run={agent_run.run_id} status={agent_run.status.value} error={agent_run.error}",
+        file=sys.stderr,
+    )
     return 1
 
 
@@ -2411,57 +2408,58 @@ class EmbeddingStore:
 并追加方法：
 
 ```python
-    def upsert_embedding(self, review_id: str, vector: list[float]) -> None:
-        with self._session() as connection:
-            connection.execute(
-                """
-                INSERT OR REPLACE INTO embeddings(review_id, vector_json)
-                VALUES (?, ?)
+def upsert_embedding(self, review_id: str, vector: list[float]) -> None:
+    with self._session() as connection:
+        connection.execute(
+            """
+            INSERT OR REPLACE INTO embeddings(review_id, vector_json)
+            VALUES (?, ?)
+            """,
+            (review_id, json.dumps(vector)),
+        )
+
+
+def search_embeddings(
+    self,
+    query_vector: list[float],
+    app_ids: list[str] | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    from app_review_insights.rag.embeddings import cosine_similarity
+
+    with self._session() as connection:
+        if app_ids:
+            placeholders = ",".join("?" for _ in app_ids)
+            rows = connection.execute(
+                f"""
+                SELECT e.review_id, e.vector_json, c.app_id, c.content,
+                       c.platform, c.source, c.storefront
+                FROM embeddings e
+                JOIN corpus c ON c.review_id = e.review_id
+                WHERE c.app_id IN ({placeholders})
                 """,
-                (review_id, json.dumps(vector)),
-            )
-
-    def search_embeddings(
-        self,
-        query_vector: list[float],
-        app_ids: list[str] | None = None,
-        limit: int = 20,
-    ) -> list[dict[str, Any]]:
-        from app_review_insights.rag.embeddings import cosine_similarity
-
-        with self._session() as connection:
-            if app_ids:
-                placeholders = ",".join("?" for _ in app_ids)
-                rows = connection.execute(
-                    f"""
-                    SELECT e.review_id, e.vector_json, c.app_id, c.content,
-                           c.platform, c.source, c.storefront
-                    FROM embeddings e
-                    JOIN corpus c ON c.review_id = e.review_id
-                    WHERE c.app_id IN ({placeholders})
-                    """,
-                    app_ids,
-                ).fetchall()
-            else:
-                rows = connection.execute(
-                    """
-                    SELECT e.review_id, e.vector_json, c.app_id, c.content,
-                           c.platform, c.source, c.storefront
-                    FROM embeddings e
-                    JOIN corpus c ON c.review_id = e.review_id
-                    """
-                ).fetchall()
-        scored = []
-        for row in rows:
-            vector = json.loads(row["vector_json"])
-            score = cosine_similarity(query_vector, vector)
-            if score > 0:
-                item = dict(row)
-                item["score"] = score
-                item.pop("vector_json", None)
-                scored.append(item)
-        scored.sort(key=lambda item: item["score"], reverse=True)
-        return scored[:limit]
+                app_ids,
+            ).fetchall()
+        else:
+            rows = connection.execute(
+                """
+                SELECT e.review_id, e.vector_json, c.app_id, c.content,
+                       c.platform, c.source, c.storefront
+                FROM embeddings e
+                JOIN corpus c ON c.review_id = e.review_id
+                """
+            ).fetchall()
+    scored = []
+    for row in rows:
+        vector = json.loads(row["vector_json"])
+        score = cosine_similarity(query_vector, vector)
+        if score > 0:
+            item = dict(row)
+            item["score"] = score
+            item.pop("vector_json", None)
+            scored.append(item)
+    scored.sort(key=lambda item: item["score"], reverse=True)
+    return scored[:limit]
 ```
 
 （确保文件顶部已 `import json`，已存在。）
@@ -2729,7 +2727,13 @@ from app_review_insights.rag.embeddings import EmbeddingStore, cosine_similarity
 from app_review_insights.rag.indexer import CorpusIndexer
 from app_review_insights.rag.retrieval import CorpusRetriever, RetrievedChunk
 
-__all__ = ["EmbeddingStore", "cosine_similarity", "CorpusIndexer", "CorpusRetriever", "RetrievedChunk"]
+__all__ = [
+    "EmbeddingStore",
+    "cosine_similarity",
+    "CorpusIndexer",
+    "CorpusRetriever",
+    "RetrievedChunk",
+]
 ```
 
 - [ ] **Step 6: 运行确认通过**
@@ -3139,7 +3143,9 @@ def build_agent_stack(
     ]
     registry = ToolRegistry(tools)
     planner = Planner(provider, registry)
-    reviewer = Reviewer(provider, pipeline_services.repository, max_rounds=settings.agent_max_review_rounds)
+    reviewer = Reviewer(
+        provider, pipeline_services.repository, max_rounds=settings.agent_max_review_rounds
+    )
     orchestrator = AgentOrchestrator(
         planner=planner,
         registry=registry,
@@ -3306,7 +3312,9 @@ def main() -> None:
 
     question = st.chat_input("例如：用户最不满的是什么？订阅转化差的原因？")
     if question and target_ids:
-        st.session_state["rag_messages"].append({"role": "user", "content": question, "citations": []})
+        st.session_state["rag_messages"].append(
+            {"role": "user", "content": question, "citations": []}
+        )
         with st.chat_message("user"):
             st.write(question)
         with st.spinner("检索语料并生成回答…"):
@@ -3915,9 +3923,7 @@ def summarize_changes(previous: MonitorReport | None, current: MonitorReport) ->
     if previous is None:
         return ["首次报告"]
     if current.findings_count != previous.findings_count:
-        changes.append(
-            f"发现数量变化：{previous.findings_count} → {current.findings_count}"
-        )
+        changes.append(f"发现数量变化：{previous.findings_count} → {current.findings_count}")
     return changes
 ```
 
@@ -4141,18 +4147,14 @@ logger = logging.getLogger("agent-worker")
 
 def make_run_job_fn(stack, settings):
     def run_job(goal: str, app_url: str, require_approval: bool) -> None:
-        agent_run = stack.orchestrator.run(
-            goal, app_url, require_approval=require_approval
-        )
+        agent_run = stack.orchestrator.run(goal, app_url, require_approval=require_approval)
         if agent_run.status.value in ("completed", "waiting_approval"):
             report = build_report(
                 agent_run,
                 RunRepository(settings.database_path),
                 stack.agent_repository,
             )
-            agent_run = agent_run.model_copy(
-                update={"report_id": report.report_id}
-            )
+            agent_run = agent_run.model_copy(update={"report_id": report.report_id})
             stack.agent_repository.save_agent_run(agent_run)
             if agent_run.status.value == "completed":
                 delivered = WebhookSender().send_report_by_id(
@@ -4313,9 +4315,7 @@ def _render_job_list(stack) -> None:
 
 def _render_approvals(stack) -> None:
     st.subheader("待审批", anchor=False)
-    waiting = stack.agent_repository.list_agent_runs(
-        status=AgentRunStatus.WAITING_APPROVAL
-    )
+    waiting = stack.agent_repository.list_agent_runs(status=AgentRunStatus.WAITING_APPROVAL)
     if not waiting:
         st.caption("无待审批运行")
         return
@@ -4436,9 +4436,7 @@ git commit -m "chore: phase d3-d4 rag and monitor regression"
 
 ```python
 def test_parse_app_store_url_accepts_any_region():
-    parsed = parse_app_store_url(
-        "https://apps.apple.com/gb/app/todoist-to-do-list/id572688855"
-    )
+    parsed = parse_app_store_url("https://apps.apple.com/gb/app/todoist-to-do-list/id572688855")
     assert parsed.country == "gb"
     assert parsed.app_id == "572688855"
 ```
@@ -4574,7 +4572,7 @@ def test_collector_uses_storefront_from_url():
 2. 输入表单 help 文案改为：
 
 ```python
-            help="在线采集支持任意区 App Store（区域取自链接中的区号，如 /us/、/gb/）。",
+help = ("在线采集支持任意区 App Store（区域取自链接中的区号，如 /us/、/gb/）。",)
 ```
 
 - [ ] **Step 7: 运行确认通过**
@@ -4629,7 +4627,9 @@ def _client_for(payload: bytes, status=200):
 
 def test_parse_play_url():
     collector = GooglePlayCollector()
-    parsed = collector.parse_url("https://play.google.com/store/apps/details?id=com.example.app&hl=en_US")
+    parsed = collector.parse_url(
+        "https://play.google.com/store/apps/details?id=com.example.app&hl=en_US"
+    )
     assert parsed.package == "com.example.app"
     assert parsed.lang == "en_US"
 
@@ -4644,9 +4644,7 @@ def test_collect_parses_fixture():
     payload = FIXTURE.read_bytes()
     client = _client_for(payload)
     collector = GooglePlayCollector(client=client)
-    reviews = collector.collect(
-        "https://play.google.com/store/apps/details?id=com.example.app", 10
-    )
+    reviews = collector.collect("https://play.google.com/store/apps/details?id=com.example.app", 10)
     assert len(reviews) == 2
     assert reviews[0].rating == 3
     assert reviews[0].platform == "google-play"
@@ -4773,7 +4771,9 @@ class GooglePlayCollector:
         # 行结构：[id, [作者, 头像, "", 日期], 评分, null, [标题, [正文], null, [版本], null], null]
         author_block = row[1] if len(row) > 1 else None
         author = author_block[0] if isinstance(author_block, list) and author_block else None
-        date_value = author_block[3] if isinstance(author_block, list) and len(author_block) > 3 else ""
+        date_value = (
+            author_block[3] if isinstance(author_block, list) and len(author_block) > 3 else ""
+        )
         rating_value = row[2] if len(row) > 2 else None
         content_block = row[4] if len(row) > 4 else None
         title = ""
@@ -4968,9 +4968,7 @@ class RedditCollector:
             content = f"{title}\n{body}".strip()
             if not content:
                 continue
-            created = datetime.fromtimestamp(
-                float(item.get("created_utc", 0)), tz=UTC
-            )
+            created = datetime.fromtimestamp(float(item.get("created_utc", 0)), tz=UTC)
             reviews.append(
                 Review(
                     review_id=f"reddit-{post_id}" if post_id else f"reddit-{len(reviews)}",
@@ -5012,7 +5010,11 @@ class XCollector:
             if not text:
                 continue
             created = item.get("created_at")
-            published = datetime.fromisoformat(created.replace("Z", "+00:00")) if created else datetime.now(UTC)
+            published = (
+                datetime.fromisoformat(created.replace("Z", "+00:00"))
+                if created
+                else datetime.now(UTC)
+            )
             reviews.append(
                 Review(
                     review_id=f"x-{item.get('id', len(reviews))}",
@@ -5408,9 +5410,7 @@ def _consolidate_node(state: ConsolidationState) -> dict:
 
 def _validate_node(state: ConsolidationState) -> dict:
     # 确定性校验：必须保留支持证据
-    valid = [
-        f for f in state["output"] if f.get("supporting_review_ids")
-    ]
+    valid = [f for f in state["output"] if f.get("supporting_review_ids")]
     return {"output": valid}
 
 

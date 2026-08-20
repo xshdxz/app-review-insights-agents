@@ -67,6 +67,7 @@
 ```python
 class ReviewCollector(Protocol):
     name: str
+
     def collect(self, source_url: str, limit: int, **kwargs) -> CollectResult: ...
 ```
 
