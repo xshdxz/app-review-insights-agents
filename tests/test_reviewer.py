@@ -107,3 +107,31 @@ def test_reviewer_rejects_malformed_traceability(repo):
     verdict = reviewer.review("goal", "r6")
     assert not verdict.approved
     assert "格式异常" in verdict.feedback
+
+
+def test_reviewer_rejects_missing_run(repo):
+    reviewer = Reviewer(provider=None, repository=repo)
+    verdict = reviewer.review("goal", "no-such-run")
+    assert not verdict.approved
+    assert "分析运行不存在" in verdict.feedback
+
+
+def test_reviewer_rejects_missing_traceability_output(repo):
+    repo.save_run(_run("r6"))
+    reviewer = Reviewer(provider=None, repository=repo)
+    verdict = reviewer.review("goal", "r6")
+    assert not verdict.approved
+    assert "缺少追溯校验结果" in verdict.feedback
+
+
+def test_reviewer_invalid_traceability_empty_issues_feedback(repo):
+    repo.save_run(_run("r7"))
+    repo.save_output(
+        "r7",
+        Stage.VALIDATE_TRACEABILITY,
+        ValidationReport(valid=False, issues=[]).model_dump(mode="json"),
+    )
+    reviewer = Reviewer(provider=None, repository=repo)
+    verdict = reviewer.review("goal", "r7")
+    assert not verdict.approved
+    assert "无明细" in verdict.feedback

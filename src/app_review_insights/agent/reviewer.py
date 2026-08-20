@@ -53,7 +53,8 @@ class Reviewer:
             return ReviewVerdict(approved=False, feedback="追溯校验结果格式异常")
         if not report.valid:
             issues = "; ".join(issue.message for issue in report.issues[:3])
-            return ReviewVerdict(approved=False, feedback=f"证据链校验未通过：{issues}")
+            detail = f"：{issues}" if issues else "（无明细）"
+            return ReviewVerdict(approved=False, feedback=f"证据链校验未通过{detail}")
 
         if self.provider is None:
             return ReviewVerdict(approved=True, feedback="")
