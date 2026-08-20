@@ -62,6 +62,7 @@ class Review(BaseModel):
     source: str
     source_page: int | None = None
     content_hash: str = ""
+    platform: str = "app-store"
 
 
 class AnalysisRequest(BaseModel):
@@ -162,3 +163,55 @@ class RunRecord(BaseModel):
         if self.status == RunStatus.COMPLETED and self.current_stage != Stage.COMPLETE:
             raise ValueError("completed runs must use the complete stage")
         return self
+
+
+class AgentRunStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    WAITING_APPROVAL = "waiting_approval"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class AgentRun(BaseModel):
+    run_id: str
+    goal: str
+    app_url: str
+    status: AgentRunStatus
+    plan_summary: str = ""
+    analysis_run_id: str | None = None
+    report_id: str | None = None
+    review_rounds: int = 0
+    feedback: list[str] = Field(default_factory=list)
+    require_approval: bool = False
+    error: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class MonitorJob(BaseModel):
+    job_id: str
+    name: str
+    app_url: str
+    goal: str
+    cron: str
+    review_limit: int = Field(default=200, ge=100, le=1000)
+    enabled: bool = True
+    require_approval: bool = False
+    last_run_at: datetime | None = None
+    last_status: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class MonitorReport(BaseModel):
+    report_id: str
+    agent_run_id: str
+    app_url: str
+    goal: str
+    markdown: str
+    summary: str
+    findings_count: int
+    changes: list[str] = Field(default_factory=list)
+    created_at: datetime
+    delivered_to: list[str] = Field(default_factory=list)
