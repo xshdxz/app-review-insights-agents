@@ -40,6 +40,7 @@ def main() -> int:
         args.goal,
         args.app_url,
         require_approval=args.require_approval,
+        review_limit=args.limit,
     )
 
     result = {
@@ -53,10 +54,15 @@ def main() -> int:
     }
 
     if args.webhook_test and settings.webhook_urls:
-        from app_review_insights.monitor.webhook import WebhookSender
+        try:
+            from app_review_insights.monitor.webhook import WebhookSender
 
-        sender = WebhookSender()
-        result["webhook_payloads"] = sender.build_payloads_for_test(settings)
+            sender = WebhookSender()
+            result["webhook_payloads"] = sender.build_payloads_for_test(settings)
+        except ImportError:
+            # webhook 模块在后续任务接入；当前仅优雅降级，不中断命令
+            result["webhook_payloads"] = []
+            result["webhook_note"] = "webhook 模块尚未接入（后续版本提供）"
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)

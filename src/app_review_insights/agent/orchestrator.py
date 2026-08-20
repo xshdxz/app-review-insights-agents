@@ -32,6 +32,7 @@ class AgentOrchestrator:
         goal: str,
         app_url: str,
         require_approval: bool = False,
+        review_limit: int = 200,
     ) -> AgentRun:
         now = datetime.now(UTC)
         agent_run = AgentRun(
@@ -46,7 +47,7 @@ class AgentOrchestrator:
         self.agent_repository.save_agent_run(agent_run)
 
         try:
-            plan = self.planner.plan(goal, app_url)
+            plan = self.planner.plan(goal, app_url, review_limit)
             agent_run = self._update(
                 agent_run,
                 plan_summary=plan.rationale,
@@ -101,6 +102,7 @@ class AgentOrchestrator:
                     "run_analysis",
                     app_url=app_url,
                     goal=current_goal,
+                    review_limit=review_limit,
                 )
                 if not isinstance(redo, dict) or not redo.get("run_id"):
                     raise RuntimeError("重做分析未获得运行 ID")

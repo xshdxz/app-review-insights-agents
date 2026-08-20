@@ -11,13 +11,17 @@ _DEFAULT_TOOL = "run_analysis"
 _PLANNER_ALLOWED_TOOLS = frozenset({"run_analysis", "query_corpus", "get_latest_report"})
 
 
-def default_plan(app_url: str, goal: str) -> AgentPlan:
+def default_plan(app_url: str, goal: str, review_limit: int = 200) -> AgentPlan:
     return AgentPlan(
         rationale="模型不可用或计划无效，回退到默认标准分析流程。",
         tool_calls=[
             ToolCall(
                 tool=_DEFAULT_TOOL,
-                arguments={"app_url": app_url, "goal": goal},
+                arguments={
+                    "app_url": app_url,
+                    "goal": goal,
+                    "review_limit": review_limit,
+                },
             )
         ],
     )
@@ -30,9 +34,9 @@ class Planner:
         self.provider = provider
         self.registry = registry
 
-    def plan(self, goal: str, app_url: str) -> AgentPlan:
+    def plan(self, goal: str, app_url: str, review_limit: int = 200) -> AgentPlan:
         if self.provider is None:
-            return default_plan(app_url, goal)
+            return default_plan(app_url, goal, review_limit)
         try:
             plan = self.provider.generate(
                 PLANNER_SYSTEM_PROMPT,
@@ -40,9 +44,9 @@ class Planner:
                 AgentPlan,
             )
         except Exception:  # noqa: BLE001 - 规划失败一律回退默认计划（离线演示永不失效）
-            return default_plan(app_url, goal)
+            return default_plan(app_url, goal, review_limit)
         if plan is None or not self._is_valid(plan):
-            return default_plan(app_url, goal)
+            return default_plan(app_url, goal, review_limit)
         return plan
 
     def _is_valid(self, plan: AgentPlan) -> bool:

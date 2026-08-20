@@ -26,8 +26,13 @@ class _FakePlanner:
             tool_calls=[ToolCall(tool="run_analysis", arguments={"goal": "g", "app_url": "u"})],
         )
 
-    def plan(self, goal, app_url):
-        return self._plan
+    def plan(self, goal, app_url, review_limit=200):
+        # 模拟真实 default_plan：把 review_limit 并入 run_analysis 参数
+        plan = self._plan.model_copy(deep=True)
+        for call in plan.tool_calls:
+            if call.tool == "run_analysis":
+                call.arguments = {**call.arguments, "review_limit": review_limit}
+        return plan
 
 
 class _FakeRegistry:
@@ -236,6 +241,30 @@ def test_agent_run_redo_goal_passed_to_reviewer(tmp_path):
     assert result.status == AgentRunStatus.COMPLETED
     # 第二轮 review 的 goal 必须带反馈（不能还是原始 goal）
     assert "覆盖不足" in reviewer.calls[1][0]
+
+
+def test_agent_run_forwards_review_limit(tmp_path):
+    agent_repo = AgentRepository(tmp_path / "agent.sqlite3")
+    run_repo = RunRepository(tmp_path / "runs.sqlite3")
+    for run_id in ("run-1", "run-2"):
+        run_repo.save_run(_completed_run(run_id))
+        run_repo.save_output(
+            run_id,
+            Stage.VALIDATE_TRACEABILITY,
+            ValidationReport(valid=True).model_dump(mode="json"),
+        )
+    registry = _FakeRegistry(["run-1", "run-2"])
+    orchestrator = AgentOrchestrator(
+        planner=_FakePlanner(),
+        registry=registry,
+        reviewer=_FakeReviewer([_Verdict(False, "覆盖不足"), _Verdict(True)]),
+        agent_repository=agent_repo,
+    )
+    result = orchestrator.run("g", "https://apps.apple.com/us/app/x/id1", review_limit=777)
+    assert result.status == AgentRunStatus.COMPLETED
+    # 计划路径与 redo 路径都要携带 review_limit
+    assert registry.calls[0][1].get("review_limit") == 777
+    assert registry.calls[1][1].get("review_limit") == 777
 
 
 def test_reject_run_wrong_state_raises(tmp_path):

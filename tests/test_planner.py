@@ -54,6 +54,11 @@ def test_default_plan_uses_run_analysis():
     assert plan.tool_calls[0].arguments["goal"] == "分析订阅"
 
 
+def test_default_plan_forwards_review_limit():
+    plan = default_plan("https://apps.apple.com/us/app/x/id1", "分析订阅", review_limit=500)
+    assert plan.tool_calls[0].arguments["review_limit"] == 500
+
+
 def test_planner_returns_model_plan():
     planner = Planner(_FakeProvider(), _registry())
     plan = planner.plan("分析订阅", "https://apps.apple.com/us/app/x/id1")
