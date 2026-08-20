@@ -95,13 +95,16 @@ class AgentOrchestrator:
                     )
                     return agent_run
                 # 重做：把反馈并入目标，重新分析（新 run_id）
-                current_goal = f"{current_goal}\n评审反馈：{verdict.feedback}"
+                if verdict.feedback:
+                    current_goal = f"{current_goal}\n评审反馈：{verdict.feedback}"
                 redo = self.registry.invoke(
                     "run_analysis",
                     app_url=app_url,
                     goal=current_goal,
                 )
-                analysis_run_id = redo.get("run_id") or analysis_run_id
+                if not isinstance(redo, dict) or not redo.get("run_id"):
+                    raise RuntimeError("重做分析未获得运行 ID")
+                analysis_run_id = redo["run_id"]
                 agent_run = self._update(agent_run, analysis_run_id=analysis_run_id)
 
             agent_run = self._update(

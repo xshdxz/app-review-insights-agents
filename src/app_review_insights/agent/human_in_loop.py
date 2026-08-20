@@ -28,6 +28,8 @@ def reject_run(
     reason: str,
 ) -> AgentRun:
     run = agent_repository.get_agent_run(run_id)
+    if run.status != AgentRunStatus.WAITING_APPROVAL:
+        raise ValueError(f"运行 {run_id} 不在待审批状态")
     updated = run.model_copy(
         update={
             "status": AgentRunStatus.FAILED,
