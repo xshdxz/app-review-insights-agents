@@ -36,13 +36,16 @@ def fts5_available(path: Path | None = None) -> bool:
         return False
 
 
-def build_fts_query(text: str) -> str:
+def build_fts_query(text: str, match_mode: str = "and") -> str:
     """把用户查询转成 FTS5 MATCH 表达式：原始词按空白切分，词内 CJK 短语相邻匹配。
 
     - 原始词「订阅」→ 短语 "订 阅"（要求相邻，避免误命中分散的订/阅）
     - 原始词「订阅 价格」→ "订 阅" AND "价 格"（词边界保留）
     - 「太贵了，续费」→ "太 贵 了" AND "续 费"（全角标点作为 run 边界，CJK run 同样分段）
     - 「订阅App」→ "订 阅" AND "app"（拉丁 run 独立加引号）
+
+    match_mode="and" 时所有词 AND 连接（严格）；"or" 时任一词命中即可（宽松，
+    用于严格检索无结果时的回退）。
     """
     raw_terms = [term.strip().lower() for term in re.split(r"\s+", text) if term.strip()]
     fts_terms: list[str] = []
@@ -56,7 +59,8 @@ def build_fts_query(text: str) -> str:
                 fts_terms.append(f'"{run}"')
     if not fts_terms:
         return '"__no_match__"'
-    return " AND ".join(fts_terms)
+    joiner = " OR " if match_mode == "or" else " AND "
+    return joiner.join(fts_terms)
 
 
 def _cjk_segment(text: str) -> str:
@@ -289,7 +293,20 @@ class AgentRepository:
         app_ids: list[str] | None = None,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
-        fts_query = build_fts_query(query)
+        """FTS5 检索：先严格 AND；无结果时回退宽松 OR，保证真实问句有召回。"""
+        strict = self._run_fts_query(query, app_ids=app_ids, limit=limit, match_mode="and")
+        if strict:
+            return strict
+        return self._run_fts_query(query, app_ids=app_ids, limit=limit, match_mode="or")
+
+    def _run_fts_query(
+        self,
+        query: str,
+        app_ids: list[str] | None,
+        limit: int,
+        match_mode: str,
+    ) -> list[dict[str, Any]]:
+        fts_query = build_fts_query(query, match_mode=match_mode)
         app_filter = ""
         params: list[Any] = [fts_query]
         if app_ids:

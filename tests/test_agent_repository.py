@@ -178,3 +178,27 @@ def test_fts5_available():
     from app_review_insights.storage.agent_repository import fts5_available
 
     assert fts5_available() is True
+
+
+def test_corpus_and_then_or_fallback(repo):
+    # 严格 AND 无结果时回退宽松 OR：任一词命中即可
+    repo.upsert_corpus(_review("v1", "app-a", "subscription is expensive"))
+    repo.upsert_corpus(_review("v2", "app-a", "billing was unclear"))
+    hits = repo.search_corpus("subscription billing", app_ids=["app-a"], limit=10)
+    assert {h["review_id"] for h in hits} == {"v1", "v2"}
+
+
+def test_corpus_and_still_preferred_when_both_terms_match(repo):
+    # AND 严格路径有结果时直接用严格结果（v2 只有单词，不进入 OR 回退）
+    repo.upsert_corpus(_review("v1", "app-a", "subscription billing both here"))
+    repo.upsert_corpus(_review("v2", "app-a", "subscription only"))
+    hits = repo.search_corpus("subscription billing", app_ids=["app-a"], limit=10)
+    assert {h["review_id"] for h in hits} == {"v1"}
+
+
+def test_corpus_or_fallback_keeps_bm25_ranking(repo):
+    # OR 回退路径也应返回按相关度排序的结果（v1 双词命中应排前）
+    repo.upsert_corpus(_review("v1", "app-a", "subscription billing unclear"))
+    repo.upsert_corpus(_review("v2", "app-a", "billing fine"))
+    hits = repo.search_corpus("subscription billing unclear", app_ids=["app-a"], limit=10)
+    assert hits[0]["review_id"] == "v1"
