@@ -88,15 +88,10 @@ class CorpusRetriever:
         app_ids: list[str] | None,
         top_k: int,
     ) -> list[RetrievedChunk]:
+        # search_corpus 已将 -bm25 归一化到 [0,1]，可直接排序。
         if self.embedding_store is None:
             return sorted(chunks, key=lambda chunk: chunk.score, reverse=True)[:top_k]
-        # FTS 的 -bm25（约 -10…0，依赖语料规模）与 cosine [0,1] 量纲不一致：
-        # 先对候选集 min-max 归一化到 [0,1] 再混合，向量项才能按比例生效。
-        fts_scores = [chunk.score for chunk in chunks]
-        fts_min, fts_max = min(fts_scores), max(fts_scores)
-        fts_span = fts_max - fts_min
-        for chunk in chunks:
-            chunk.score = (chunk.score - fts_min) / fts_span if fts_span > 0 else 1.0
+        # 混合排序：FTS 分（已是 [0,1]）与 cosine [0,1] 加权融合。
         try:
             query_vector = self.embedding_store.embed_texts([query])[0]
             hits = self.agent_repository.search_embeddings(

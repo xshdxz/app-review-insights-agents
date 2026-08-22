@@ -74,6 +74,12 @@ def build_pipeline_services(
 
 @dataclass
 class AgentStack:
+    """Agent 栈：装配完整的 Agent + RAG + 监控 + 采集能力。
+
+    后半部分字段（webhook/rag/indexer/retriever/embedding_store/social）
+    用 TYPE_CHECKING 守卫的协议类型做类型提示，避免运行时导入循环。
+    """
+
     registry: ToolRegistry
     planner: Planner
     reviewer: Reviewer
@@ -119,7 +125,7 @@ def build_agent_stack(
 
     tools = [
         make_run_analysis_tool(pipeline_services),
-        make_collect_reviews_tool(pipeline_services.collector, pipeline_services),
+        make_collect_reviews_tool(pipeline_services.collector),
         make_query_corpus_tool(rag),
         make_get_latest_report_tool(agent_repository),
         make_send_report_tool(webhook, settings, agent_repository),

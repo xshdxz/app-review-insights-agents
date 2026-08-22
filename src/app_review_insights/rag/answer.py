@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from typing import Any
 
 from app_review_insights.rag.retrieval import CorpusRetriever, RetrievedChunk
@@ -17,10 +18,14 @@ _RAG_SYSTEM_PROMPT = (
 
 
 def _quote_valid(quote: str, content: str) -> bool:
-    """空白归一化后，quote 必须是 chunk 原文的子串（允许模型裁剪标点）。"""
+    """NFKC 归一化 + 空白折叠后，quote 必须是 chunk 原文的子串。
+
+    NFKC 统一全角/半角、兼容字符与普通字符（如 "Ａ" → "A"、"，" → ","），
+    使不同输入法下的等价引用都能通过校验。
+    """
 
     def _normalize(text: str) -> str:
-        return "".join(text.split())
+        return "".join(unicodedata.normalize("NFKC", text).split())
 
     quote_norm = _normalize(quote)
     content_norm = _normalize(content)

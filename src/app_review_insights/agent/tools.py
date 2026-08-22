@@ -30,15 +30,19 @@ class Tool:
 @dataclass
 class ToolRegistry:
     tools: list[Tool] = field(default_factory=list)
+    _index: dict[str, Tool] = field(default_factory=dict, init=False, repr=False)
+
+    def __post_init__(self):
+        self._index = {tool.name: tool for tool in self.tools}
 
     def names(self) -> list[str]:
         return [tool.name for tool in self.tools]
 
     def get(self, name: str) -> Tool:
-        for tool in self.tools:
-            if tool.name == name:
-                return tool
-        raise KeyError(f"未知工具：{name}")
+        tool = self._index.get(name)
+        if tool is None:
+            raise KeyError(f"未知工具：{name}")
+        return tool
 
     def invoke(self, name: str, **kwargs: Any) -> Any:
         return self.get(name).invoke(**kwargs)
@@ -145,7 +149,7 @@ def make_send_report_tool(
     )
 
 
-def make_collect_reviews_tool(collector: Any, pipeline_services: PipelineServices) -> Tool:
+def make_collect_reviews_tool(collector: Any) -> Tool:
     def collect_reviews(app_url: str, review_limit: int = 200) -> dict:
         reviews = collector.collect(app_url, review_limit)
         return {"count": len(reviews), "sample_ids": [r.review_id for r in reviews[:5]]}

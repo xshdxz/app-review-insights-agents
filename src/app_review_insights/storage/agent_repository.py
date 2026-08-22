@@ -293,11 +293,28 @@ class AgentRepository:
         app_ids: list[str] | None = None,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
-        """FTS5 检索：先严格 AND；无结果时回退宽松 OR，保证真实问句有召回。"""
+        """FTS5 检索：先严格 AND；无结果时回退宽松 OR，保证真实问句有召回。
+
+        返回的 score 已 min-max 归一化到 [0,1]（越大越相关），供调用方直接使用。
+        """
         strict = self._run_fts_query(query, app_ids=app_ids, limit=limit, match_mode="and")
         if strict:
-            return strict
-        return self._run_fts_query(query, app_ids=app_ids, limit=limit, match_mode="or")
+            return self._normalize_scores(strict)
+        return self._normalize_scores(
+            self._run_fts_query(query, app_ids=app_ids, limit=limit, match_mode="or")
+        )
+
+    @staticmethod
+    def _normalize_scores(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """对原始 -bm25 分数做 min-max 归一化（恒 ≥ 0 且越大越相关）。"""
+        if not rows:
+            return rows
+        scores = [r["score"] for r in rows]
+        s_min, s_max = min(scores), max(scores)
+        span = s_max - s_min
+        for r in rows:
+            r["score"] = (r["score"] - s_min) / span if span > 0 else 1.0
+        return rows
 
     def _run_fts_query(
         self,
