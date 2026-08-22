@@ -10,13 +10,36 @@ from app_review_insights.storage.repository import RunRepository
 
 _REVIEWER_SYSTEM_PROMPT = (
     "你是产品情报系统的复核 Agent。检查分析结果是否覆盖用户目标。"
-    "输出 JSON：{approved: bool, feedback: string}。"
-    "approve=true 仅当结果与目标相关且证据充分；否则给出一句可执行的改进反馈。"
+    "输出 JSON：{approved: bool, feedback: string}。\n"
+    "规则：\n"
+    "1. approve=true 当且仅当结果与目标相关且证据充分。\n"
+    "2. 评论证据只能反映用户主观反馈（价格、功能、体验、客服等），"
+    "无法提供转化率、收入、留存等运营指标。目标中属于运营指标的部分，"
+    "只要评论证据边界内已覆盖用户相关痛点，即视为覆盖，不得以此拒绝。\n"
+    "3. 拒绝时必须给出基于现有证据可实现的具体改进反馈（如某条发现证据薄弱、"
+    "某个目标角度完全没有对应发现），不得索要评论数据无法提供的指标。"
 )
 
 
-def _render_review_prompt(goal: str) -> str:
-    return f"分析目标：{goal}\n请复核结果是否覆盖该目标。"
+def _render_review_prompt(goal: str, findings_summary: str = "") -> str:
+    lines = [f"分析目标：{goal}"]
+    if findings_summary:
+        lines.append(f"\n分析发现摘要（证据边界）：\n{findings_summary}")
+    lines.append("\n请复核结果是否覆盖该目标。")
+    return "\n".join(lines)
+
+
+def _findings_summary(findings: list[dict[str, Any]]) -> str:
+    lines = []
+    for index, finding in enumerate(findings, start=1):
+        lines.append(
+            f"{index}. {finding.get('title', '')} "
+            f"（状态 {finding.get('evidence_status', '')} · "
+            f"支持 {finding.get('support_count', 0)} / "
+            f"冲突 {finding.get('conflict_count', 0)} · "
+            f"置信度 {finding.get('confidence', 0)}）"
+        )
+    return "\n".join(lines)
 
 
 class Reviewer:
@@ -56,13 +79,27 @@ class Reviewer:
 
         if self.provider is None:
             return ReviewVerdict(approved=True, feedback="")
+        findings = self._load_findings(analysis_run_id)
         try:
             return self.provider.generate(
                 _REVIEWER_SYSTEM_PROMPT,
-                _render_review_prompt(goal),
+                _render_review_prompt(goal, findings),
                 ReviewVerdict,
             )
         except Exception:  # noqa: BLE001
             # 确定性检查已全部通过，LLM 抽查属增强性复核；
             # 任何模型侧失败都降级为通过（approved），保证复核流程可继续。
             return ReviewVerdict(approved=True, feedback="")
+
+    def _load_findings(self, analysis_run_id: str) -> str:
+        """读取已校验的发现摘要，让 LLM 复核时能看到证据边界。"""
+        try:
+            output = self.repository.get_output(analysis_run_id, Stage.VALIDATE_FINDINGS)
+        except Exception:  # noqa: BLE001
+            return ""
+        if not output:
+            return ""
+        findings = output.get("findings", [])
+        if not isinstance(findings, list):
+            return ""
+        return _findings_summary(findings)

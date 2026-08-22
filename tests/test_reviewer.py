@@ -39,8 +39,10 @@ class _FakeProvider:
     def __init__(self, verdict=None, error=False):
         self.verdict = verdict
         self.error = error
+        self.last_user_prompt = ""
 
     def generate(self, system_prompt, user_prompt, schema):
+        self.last_user_prompt = user_prompt
         if self.error:
             raise RecoverableModelError("boom")
         if self.verdict is not None:
@@ -135,3 +137,45 @@ def test_reviewer_invalid_traceability_empty_issues_feedback(repo):
     verdict = reviewer.review("goal", "r7")
     assert not verdict.approved
     assert "无明细" in verdict.feedback
+
+
+def test_reviewer_prompt_includes_findings_summary(repo):
+    repo.save_run(_run("r8"))
+    _save_valid_traceability(repo, "r8")
+    repo.save_output(
+        "r8",
+        Stage.VALIDATE_FINDINGS,
+        {
+            "findings": [
+                {
+                    "finding_id": "f1",
+                    "title": "订阅价格敏感",
+                    "problem_statement": "用户认为价格偏高",
+                    "topic_label": "价格",
+                    "supporting_review_ids": ["v1"],
+                    "support_count": 3,
+                    "conflict_count": 0,
+                    "confidence": 0.8,
+                    "evidence_status": "validated",
+                    "model_reasoning_summary": "多条评论提及",
+                }
+            ],
+            "report": ValidationReport(valid=True).model_dump(mode="json"),
+        },
+    )
+    provider = _FakeProvider()
+    reviewer = Reviewer(provider=provider, repository=repo)
+    reviewer.review("分析订阅转化", "r8")
+    assert "订阅价格敏感" in provider.last_user_prompt
+    assert "证据边界" in provider.last_user_prompt
+    assert "支持 3" in provider.last_user_prompt
+
+
+def test_reviewer_prompt_without_findings_still_works(repo):
+    repo.save_run(_run("r9"))
+    _save_valid_traceability(repo, "r9")
+    provider = _FakeProvider()
+    reviewer = Reviewer(provider=provider, repository=repo)
+    verdict = reviewer.review("分析订阅转化", "r9")
+    assert verdict.approved
+    assert "分析目标" in provider.last_user_prompt
