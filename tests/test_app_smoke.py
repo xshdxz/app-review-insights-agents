@@ -48,6 +48,38 @@ def test_build_services_without_key_keeps_repository_available(tmp_path, monkeyp
     assert services.batch_analyzer is None
 
 
+def test_model_ready_honors_model_api_key_only(tmp_path, monkeypatch):
+    """只配 MODEL_API_KEY（无 DEEPSEEK_API_KEY）时模型应视为可用。"""
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.config import load_settings
+
+    monkeypatch.chdir(tmp_path)  # 隔离项目根 .env
+    monkeypatch.setenv("MODEL_API_KEY", "sk-custom-only")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.setenv("MODEL_ENABLED", "true")
+
+    settings = load_settings()
+    state = ui_main._model_state(settings)
+    assert state != "missing"
+    assert settings.model_available is True
+
+
+def test_model_ready_missing_both_keys(tmp_path, monkeypatch):
+    """双 key 都为空时模型应标记为缺失。"""
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.config import load_settings
+
+    monkeypatch.chdir(tmp_path)  # 隔离项目根 .env
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.setenv("MODEL_ENABLED", "true")
+
+    settings = load_settings()
+    state = ui_main._model_state(settings)
+    assert state == "missing"
+    assert settings.model_available is False
+
+
 def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monkeypatch):
     import app_review_insights.factory as factory
     import app_review_insights.ui.main as ui_main

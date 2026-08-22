@@ -139,7 +139,7 @@ def _initialize_session_state(repository: RunRepository) -> None:
 def _model_config_fingerprint(settings: Settings) -> str:
     payload = "\x1f".join(
         (
-            settings.deepseek_api_key,
+            settings.effective_model_api_key,
             settings.model_provider,
             settings.model_name,
             settings.model_base_url,
@@ -152,7 +152,7 @@ def _model_state(settings: Settings, session_state=None) -> str:
     state = st.session_state if session_state is None else session_state
     if not settings.model_enabled:
         return "disabled"
-    if not settings.deepseek_api_key:
+    if not settings.effective_model_api_key:
         return "missing"
     verified_fingerprint = state.get("model_verified_fingerprint")
     if verified_fingerprint and hmac.compare_digest(
@@ -164,7 +164,7 @@ def _model_state(settings: Settings, session_state=None) -> str:
 
 
 def _model_key_source(settings: Settings) -> str | None:
-    if not settings.deepseek_api_key:
+    if not settings.effective_model_api_key:
         return None
     if os.environ.get("DEEPSEEK_API_KEY"):
         return "进程环境变量"
@@ -199,7 +199,7 @@ def _validate_model_key(settings: Settings, session_state=None) -> str | None:
     cached = state.get(_MODEL_KEY_CHECK)
     if cached:
         return cached
-    if not settings.model_enabled or not settings.deepseek_api_key:
+    if not settings.model_enabled or not settings.effective_model_api_key:
         return None
 
     try:
@@ -452,7 +452,7 @@ def main() -> None:
     # 计划书规定：按钮禁用条件 = 显式禁用 或 未配置密钥；
     # 密钥已填写（无论有效无效）即可开始，无效密钥在模型环节失败后
     # 保留检查点，换回有效密钥后同一 run_id 续跑。
-    model_ready = settings.model_enabled and bool(settings.deepseek_api_key)
+    model_ready = settings.model_available
     _initialize_session_state(services.repository)
     # 浏览器刷新会清空 session_state：从 URL 参数恢复输入，保持中断前的页面。
     _restore_inputs_from_query_params()
