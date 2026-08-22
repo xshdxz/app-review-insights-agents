@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import json
 import time
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
 from app_review_insights.errors import RecoverableModelError
+
+if TYPE_CHECKING:
+    from app_review_insights.config import Settings
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -36,7 +41,7 @@ class DeepSeekProvider:
         self.max_tokens = max_tokens
 
     @classmethod
-    def from_settings(cls, settings):
+    def from_settings(cls, settings: Settings) -> DeepSeekProvider:
         return cls(
             client=OpenAI(
                 api_key=settings.effective_model_api_key,
