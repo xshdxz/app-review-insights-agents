@@ -296,3 +296,38 @@ def test_reject_run_empty_reason(tmp_path):
     rejected = reject_run(agent_repo, "a4", "")
     assert rejected.status == AgentRunStatus.FAILED
     assert rejected.error == "审批驳回"
+
+
+def test_agent_run_emits_structured_events(tmp_path):
+    """验证编排器在运行过程中写入 agent_events.jsonl（结构化推理日志）。"""
+    from app_review_insights.agent.orchestrator import _event_path
+
+    agent_repo = AgentRepository(tmp_path / "agent.sqlite3")
+    run_repo = RunRepository(tmp_path / "runs.sqlite3")
+    run_repo.save_run(_completed_run("run-1"))
+    run_repo.save_output(
+        "run-1",
+        Stage.VALIDATE_TRACEABILITY,
+        ValidationReport(valid=True).model_dump(mode="json"),
+    )
+    orchestrator = AgentOrchestrator(
+        planner=_FakePlanner(),
+        registry=_FakeRegistry(["run-1"]),
+        reviewer=_FakeReviewer([_Verdict(True)]),
+        agent_repository=agent_repo,
+    )
+    orchestrator.run("g", "https://apps.apple.com/us/app/x/id1")
+
+    log_path = _event_path(agent_repo)
+    assert log_path.exists(), "agent_events.jsonl 应在运行后创建"
+    lines = log_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) >= 3, f"至少应有 plan + tool_call + finalize 三条事件，实际 {len(lines)} 条"
+    import json
+    for line in lines:
+        event = json.loads(line)
+        assert "run_id" in event
+        assert "step" in event
+        assert event["step"] in ("plan", "tool_call", "review", "redo", "finalize", "error")
+    # 第一条应该是 plan，最后一条应该是 finalize（approved）或 review
+    assert json.loads(lines[0])["step"] == "plan"
+    assert json.loads(lines[-1])["step"] in ("finalize", "review")
