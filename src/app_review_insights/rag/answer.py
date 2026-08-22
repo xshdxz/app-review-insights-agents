@@ -6,6 +6,7 @@ import unicodedata
 from typing import Any
 
 from app_review_insights.rag.retrieval import CorpusRetriever, RetrievedChunk
+from app_review_insights.rag.rewriter import QueryRewriter
 from app_review_insights.rag.schemas import Citation, RagAnswer
 
 _RAG_SYSTEM_PROMPT = (
@@ -48,13 +49,24 @@ class RagAnswerer:
         provider: Any | None,
         retriever: CorpusRetriever,
         top_k: int = 10,
+        rewriter: QueryRewriter | None = None,
     ):
         self.provider = provider
         self.retriever = retriever
         self.top_k = top_k
+        self.rewriter = rewriter or QueryRewriter()
 
     def answer(self, question: str, app_ids: list[str]) -> RagAnswer:
-        chunks = self.retriever.search_many(question, app_ids, top_k=self.top_k)
+        # 查询改写：把自然语言问题扩展为多条等价短查询，多路检索合并去重。
+        queries = self.rewriter.rewrite(question)
+        per_query_chunks: list[RetrievedChunk] = []
+        seen_ids: set[str] = set()
+        for q in queries:
+            for chunk in self.retriever.search_many(q, app_ids, top_k=self.top_k):
+                if chunk.review_id not in seen_ids:
+                    seen_ids.add(chunk.review_id)
+                    per_query_chunks.append(chunk)
+        chunks = sorted(per_query_chunks, key=lambda c: c.score, reverse=True)[: self.top_k]
         if not chunks:
             return RagAnswer(
                 answer="当前语料中没有找到与该问题相关的评论。",

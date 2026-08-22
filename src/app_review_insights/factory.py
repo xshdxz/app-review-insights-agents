@@ -35,6 +35,7 @@ from app_review_insights.rag.answer import RagAnswerer
 from app_review_insights.rag.embeddings import EmbeddingStore
 from app_review_insights.rag.indexer import CorpusIndexer
 from app_review_insights.rag.retrieval import CorpusRetriever
+from app_review_insights.rag.rewriter import QueryRewriter
 from app_review_insights.storage import RunRepository
 from app_review_insights.storage.agent_repository import AgentRepository
 
@@ -115,7 +116,8 @@ def build_agent_stack(
         )
     indexer = CorpusIndexer(agent_repository)
     retriever = CorpusRetriever(agent_repository, embedding_store=embedding_store)
-    rag = RagAnswerer(provider, retriever)
+    rewriter = QueryRewriter(provider)
+    rag = RagAnswerer(provider, retriever, rewriter=rewriter)
 
     webhook = WebhookSender()
 
