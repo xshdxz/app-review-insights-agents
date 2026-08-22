@@ -5,10 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app_review_insights.models import AgentRun, AgentRunStatus, MonitorReport
-
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,7 +61,7 @@ def test_run_job_builds_report_and_saves_when_completed():
     with (
         patch("app_review_insights.monitor.worker.build_report", return_value=report) as mock_build,
         patch("app_review_insights.monitor.worker.WebhookSender") as mock_sender_class,
-        patch("app_review_insights.monitor.worker.RunRepository") as mock_repo_class,
+        patch("app_review_insights.monitor.worker.RunRepository"),
     ):
         mock_sender = MagicMock()
         mock_sender.send_report_by_id.return_value = ["https://hooks.feishu.cn/test"]
@@ -141,7 +138,7 @@ def test_run_job_saves_delivered_to_on_webhook_success():
     settings.database_path = "/tmp/fake.db"
 
     with (
-        patch("app_review_insights.monitor.worker.build_report", return_value=report) as mock_build,
+        patch("app_review_insights.monitor.worker.build_report", return_value=report),
         patch("app_review_insights.monitor.worker.WebhookSender") as mock_sender_class,
         patch("app_review_insights.monitor.worker.RunRepository"),
     ):
@@ -152,7 +149,6 @@ def test_run_job_saves_delivered_to_on_webhook_success():
         fn = make_run_job_fn(stack, settings)
         fn("分析订阅转化", "https://apps.apple.com/us/app/x/id1", require_approval=False)
 
-    # 报告被更新了 delivered_to
     calls = stack.agent_repository.save_report.call_args_list
     assert len(calls) >= 1
     saved_report = calls[-1][0][0]
