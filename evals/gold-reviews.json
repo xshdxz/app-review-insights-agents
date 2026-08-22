@@ -3,7 +3,7 @@
     {
       "case_id": "eval-subscription-01",
       "analysis_goal": "重点分析订阅转化",
-      "expected_topics": ["subscription transparency"],
+      "expected_topics": ["订阅透明度", "价格透明度"],
       "expected_review_ids": ["eval-r-001", "eval-r-002"],
       "reviews": [
         {
@@ -35,7 +35,7 @@
     {
       "case_id": "eval-timer-01",
       "analysis_goal": "重点分析训练可用性",
-      "expected_topics": ["workout timer reliability", "audio guidance"],
+      "expected_topics": ["计时器问题", "音频指导"],
       "expected_review_ids": ["eval-r-005", "eval-r-006", "eval-r-007"],
       "reviews": [
         {
