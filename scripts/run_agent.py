@@ -31,10 +31,44 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _on_progress(event) -> None:
+    """CLI 进度回调：把 AgentEvent 实时打印到终端。"""
+    step = event.step
+    detail = event.detail
+    duration = f" [{event.duration_s}s]" if event.duration_s is not None else ""
+    if step == "plan":
+        tools = ", ".join(detail.get("tools", []))
+        print(f"📋 规划完成：{detail.get('rationale', '')[:60]} → {tools}{duration}")
+    elif step == "tool_call":
+        tool = detail.get("tool", "?")
+        print(f"🔧 执行工具：{tool}{duration}")
+        summary = detail.get("result_summary", {})
+        if isinstance(summary, dict):
+            status = summary.get("status", "")
+            run_id = summary.get("run_id", "")
+            if status:
+                print(f"   → 状态: {status}" + (f", run_id={run_id}" if run_id else ""))
+    elif step == "review":
+        approved = detail.get("approved", False)
+        feedback = detail.get("feedback", "")[:80]
+        label = "通过" if approved else "未通过"
+        rnd = detail.get("round", "?")
+        print(f"👁️ Reviewer {label}（第 {rnd} 轮）{duration}")
+        if feedback:
+            print(f"   → {feedback}")
+    elif step == "redo":
+        print(f"🔄 重做：{detail.get('feedback', '')[:80]}")
+    elif step == "finalize":
+        outcome = detail.get("outcome", "")
+        print(f"🏁 {'完成' if outcome == 'approved' else '失败'}{duration}")
+
+
 def main() -> int:
     args = parse_args()
     settings = load_settings()
     stack = build_agent_stack(settings)
+
+    stack.orchestrator.on_event = _on_progress
 
     agent_run = stack.orchestrator.run(
         args.goal,

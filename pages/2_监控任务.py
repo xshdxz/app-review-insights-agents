@@ -1,4 +1,4 @@
-"""监控任务：定时任务 CRUD、人工审批、报告查看与推送。"""
+"""监控任务：定时任务 CRUD、人工审批、报告查看与推送，手动触发 Agent 运行并实时展示推理过程。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from uuid import uuid4
 import streamlit as st
 
 from app_review_insights.agent.human_in_loop import approve_run, reject_run
+from app_review_insights.agent.schemas import AgentEvent
 from app_review_insights.config import load_settings
 from app_review_insights.factory import build_agent_stack
 from app_review_insights.models import AgentRunStatus, MonitorJob
@@ -47,6 +48,30 @@ def _render_job_form(stack, settings) -> None:
                 st.success(f"任务「{name}」已创建")
 
 
+def _render_event(status_ctx, event: AgentEvent) -> None:
+    """把 AgentEvent 实时写入 st.status 容器。"""
+    step = event.step
+    detail = event.detail
+    duration = f" [{event.duration_s}s]" if event.duration_s else ""
+    if step == "plan":
+        tools = ", ".join(detail.get("tools", []))
+        status_ctx.write(f"📋 规划：{detail.get('rationale', '')[:50]} → {tools}{duration}")
+    elif step == "tool_call":
+        tool = detail.get("tool", "?")
+        status_ctx.write(f"🔧 执行：{tool}{duration}")
+        summary = detail.get("result_summary", {})
+        if isinstance(summary, dict) and summary.get("status"):
+            status_ctx.write(f"   → {summary['status']}")
+    elif step == "review":
+        label = "✅ 通过" if detail.get("approved") else "❌ 未通过"
+        status_ctx.write(f"👁️ 复核（第 {detail.get('round', '?')} 轮）：{label}{duration}")
+    elif step == "redo":
+        status_ctx.write(f"🔄 重做：{detail.get('feedback', '')[:60]}")
+    elif step == "finalize":
+        outcome = detail.get("outcome", "")
+        status_ctx.write(f"🏁 {'完成' if outcome == 'approved' else '失败'}")
+
+
 def _render_job_list(stack) -> None:
     st.subheader("任务列表", anchor=False)
     jobs = stack.agent_repository.list_jobs()
@@ -55,7 +80,7 @@ def _render_job_list(stack) -> None:
         return
     for job in jobs:
         with st.container(border=True):
-            cols = st.columns([2, 1, 1, 1])
+            cols = st.columns([2, 1, 1, 1, 1])
             cols[0].markdown(f"**{job.name}**  \n`{job.cron}` · {job.app_url}")
             cols[1].caption(f"上次：{job.last_status or '未运行'}")
             enabled = cols[2].toggle("启用", value=job.enabled, key=f"job-en-{job.job_id}")
@@ -68,7 +93,28 @@ def _render_job_list(stack) -> None:
                 )
                 stack.agent_repository.save_job(updated)
                 st.rerun()
-            if cols[3].button("删除", key=f"job-del-{job.job_id}"):
+            if cols[3].button("手动运行", key=f"run-{job.job_id}", type="primary"):
+                status = st.status(f"运行任务「{job.name}」", expanded=True)
+                status.write(f"目标：{job.goal}\nApp：{job.app_url}")
+                # 挂载实时推理回调（default 参数捕获当前 status 变量）
+                stack.orchestrator.on_event = lambda e, s=status: _render_event(s, e)
+                agent_run = stack.orchestrator.run(
+                    job.goal, job.app_url,
+                    require_approval=job.require_approval,
+                    review_limit=job.review_limit,
+                )
+                label = f"任务「{job.name}」→ {agent_run.status.value}"
+                state = "complete" if agent_run.status == AgentRunStatus.COMPLETED else "error"
+                status.update(label=label, state=state)
+                # 刷新任务状态
+                refreshed = job.model_copy(update={
+                    "last_run_at": datetime.now(UTC),
+                    "last_status": agent_run.status.value,
+                    "updated_at": datetime.now(UTC),
+                })
+                stack.agent_repository.save_job(refreshed)
+                st.rerun()
+            if cols[4].button("删除", key=f"del-{job.job_id}"):
                 stack.agent_repository.delete_job(job.job_id)
                 st.rerun()
 
