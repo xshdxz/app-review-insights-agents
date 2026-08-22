@@ -44,6 +44,9 @@ def test_load_settings_strips_notepad_bom_from_env_file(tmp_path, monkeypatch):
 
 
 def test_agent_and_webhook_settings_defaults(tmp_path, monkeypatch):
+    # chdir 隔离：项目根 .env 可能含真实配置（如 SCHEDULER_ENABLED=true），
+    # 仅 delenv 环境变量不够，需让 load_settings 读不到 .env 文件。
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
     monkeypatch.delenv("WEBHOOK_TYPE", raising=False)
     monkeypatch.delenv("WEBHOOK_URLS", raising=False)
