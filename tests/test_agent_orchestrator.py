@@ -4,7 +4,7 @@ import pytest
 
 from app_review_insights.agent.human_in_loop import approve_run, reject_run
 from app_review_insights.agent.orchestrator import AgentOrchestrator
-from app_review_insights.agent.schemas import AgentPlan, ToolCall
+from app_review_insights.agent.schemas import AgentEvent, AgentPlan, ToolCall
 from app_review_insights.models import (
     AgentRun,
     AgentRunStatus,
@@ -331,3 +331,29 @@ def test_agent_run_emits_structured_events(tmp_path):
     # 第一条应该是 plan，最后一条应该是 finalize（approved）或 review
     assert json.loads(lines[0])["step"] == "plan"
     assert json.loads(lines[-1])["step"] in ("finalize", "review")
+
+
+def test_agent_run_on_event_callback_fires(tmp_path):
+    """验证 on_event 回调在每个关键步骤被调用（UI 实时可见性基础）。"""
+    agent_repo = AgentRepository(tmp_path / "agent.sqlite3")
+    run_repo = RunRepository(tmp_path / "runs.sqlite3")
+    run_repo.save_run(_completed_run("run-1"))
+    run_repo.save_output(
+        "run-1",
+        Stage.VALIDATE_TRACEABILITY,
+        ValidationReport(valid=True).model_dump(mode="json"),
+    )
+    received_events: list[AgentEvent] = []
+    orchestrator = AgentOrchestrator(
+        planner=_FakePlanner(),
+        registry=_FakeRegistry(["run-1"]),
+        reviewer=_FakeReviewer([_Verdict(True)]),
+        agent_repository=agent_repo,
+        on_event=lambda e: received_events.append(e),
+    )
+    orchestrator.run("g", "https://apps.apple.com/us/app/x/id1")
+    assert len(received_events) >= 3
+    steps = [e.step for e in received_events]
+    assert steps[0] == "plan"
+    assert "tool_call" in steps
+    assert steps[-1] == "finalize"

@@ -35,12 +35,23 @@ class AgentOrchestrator:
         reviewer: Reviewer,
         agent_repository: AgentRepository,
         max_review_rounds: int = 2,
+        on_event: Any | None = None,
     ):
         self.planner = planner
         self.registry = registry
         self.reviewer = reviewer
         self.agent_repository = agent_repository
         self.max_review_rounds = max(1, max_review_rounds)
+        self.on_event = on_event
+
+    def _emit_event(self, log_path: Path, event: AgentEvent) -> None:
+        """写 JSONL 文件 + 通知 on_event 回调（UI 实时可见性）。"""
+        _log_event(log_path, event)
+        if self.on_event is not None:
+            try:
+                self.on_event(event)
+            except Exception:  # noqa: BLE001 - 回调不应阻断编排流程
+                pass
 
     def run(
         self,
@@ -70,7 +81,7 @@ class AgentOrchestrator:
                 agent_run,
                 plan_summary=plan.rationale,
             )
-            _log_event(log_path, AgentEvent(
+            self._emit_event(log_path, AgentEvent(
                 run_id=agent_run.run_id,
                 step="plan",
                 detail={"rationale": plan.rationale, "tools": [c.tool for c in plan.tool_calls]},
@@ -87,7 +98,7 @@ class AgentOrchestrator:
                     {k: str(v)[:100] for k, v in result.items()}
                     if isinstance(result, dict) else str(result)[:200]
                 )
-                _log_event(log_path, AgentEvent(
+                self._emit_event(log_path, AgentEvent(
                     run_id=agent_run.run_id,
                     step="tool_call",
                     detail={
@@ -113,7 +124,7 @@ class AgentOrchestrator:
             for round_index in range(self.max_review_rounds):
                 tr = time.monotonic()
                 verdict = self.reviewer.review(current_goal, analysis_run_id)
-                _log_event(log_path, AgentEvent(
+                self._emit_event(log_path, AgentEvent(
                     run_id=agent_run.run_id,
                     step="review",
                     detail={
@@ -135,7 +146,7 @@ class AgentOrchestrator:
                     ),
                 )
                 if verdict.approved:
-                    _log_event(log_path, AgentEvent(
+                    self._emit_event(log_path, AgentEvent(
                         run_id=agent_run.run_id, step="finalize",
                         detail={"outcome": "approved"},
                         timestamp=datetime.now(UTC),
@@ -150,7 +161,7 @@ class AgentOrchestrator:
                     )
                     return agent_run
                 if round_index + 1 >= self.max_review_rounds:
-                    _log_event(log_path, AgentEvent(
+                    self._emit_event(log_path, AgentEvent(
                         run_id=agent_run.run_id, step="finalize",
                         detail={"outcome": "failed", "reason": verdict.feedback[:200]},
                         timestamp=datetime.now(UTC),
@@ -162,7 +173,7 @@ class AgentOrchestrator:
                     )
                     return agent_run
                 # 重做
-                _log_event(log_path, AgentEvent(
+                self._emit_event(log_path, AgentEvent(
                     run_id=agent_run.run_id, step="redo",
                     detail={"feedback": verdict.feedback[:300]},
                     timestamp=datetime.now(UTC),
@@ -187,7 +198,7 @@ class AgentOrchestrator:
             )
             return agent_run
         except Exception as exc:  # noqa: BLE001 - 编排器兜底
-            _log_event(log_path, AgentEvent(
+            self._emit_event(log_path, AgentEvent(
                 run_id=agent_run.run_id, step="error",
                 detail={"error": str(exc)[:500]},
                 timestamp=datetime.now(UTC),
