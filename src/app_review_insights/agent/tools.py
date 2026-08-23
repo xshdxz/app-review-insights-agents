@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app_review_insights.models import AnalysisRequest, SourceType
+from app_review_insights.models import AnalysisRequest, Review, SourceType, Stage
 from app_review_insights.pipeline.orchestrator import AnalysisOrchestrator, PipelineServices
 
 
@@ -84,7 +84,35 @@ class GetLatestReportParams(BaseModel):
 
 
 # ---- 工具工厂 ----
-def make_run_analysis_tool(pipeline_services: PipelineServices) -> Tool:
+def index_run_cleaned_by_tool(
+    pipeline_services: PipelineServices,
+    indexer: Any,
+    embedding_store: Any | None,
+    run_id: str,
+) -> int:
+    """从 pipeline 检查点读取清洗后评论，自动索引到语料库（供 RAG 检索）。"""
+    cleaned = pipeline_services.repository.get_output(run_id, Stage.CLEAN)
+    if not cleaned:
+        return 0
+    reviews = [Review.model_validate(item) for item in cleaned.get("reviews", [])]
+    count = indexer.index_reviews(reviews)
+    if embedding_store is not None and reviews:
+        try:
+            vectors = embedding_store.embed_texts(
+                [r.content_original for r in reviews]
+            )
+            for review, vector in zip(reviews, vectors, strict=False):
+                indexer.agent_repository.upsert_embedding(review.review_id, vector)
+        except Exception:  # noqa: BLE001 - 向量生成失败不影响 FTS 语料
+            pass
+    return count
+
+
+def make_run_analysis_tool(
+    pipeline_services: PipelineServices,
+    indexer: Any | None = None,
+    embedding_store: Any | None = None,
+) -> Tool:
     def run_analysis(app_url: str, goal: str, review_limit: int = 200) -> dict:
         request = AnalysisRequest(
             source_type=SourceType.ONLINE,
@@ -93,6 +121,14 @@ def make_run_analysis_tool(pipeline_services: PipelineServices) -> Tool:
             review_limit=review_limit,
         )
         run = AnalysisOrchestrator(pipeline_services).start(request)
+        # 分析完成后自动索引清洗后的评论到语料库（供 RAG 检索）
+        if run.status.value == "completed" and indexer is not None:
+            try:
+                index_run_cleaned_by_tool(
+                    pipeline_services, indexer, embedding_store, run.run_id,
+                )
+            except Exception:  # noqa: BLE001 - 索引失败不阻断工具返回
+                pass
         return {
             "run_id": run.run_id,
             "status": run.status.value,

@@ -126,7 +126,7 @@ def build_agent_stack(
     social = SocialCollector(x_endpoint=settings.social_x_endpoint)
 
     tools = [
-        make_run_analysis_tool(pipeline_services),
+        make_run_analysis_tool(pipeline_services, indexer, embedding_store),
         make_collect_reviews_tool(pipeline_services.collector),
         make_query_corpus_tool(rag),
         make_get_latest_report_tool(agent_repository),
