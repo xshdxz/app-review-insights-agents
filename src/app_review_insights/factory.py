@@ -107,8 +107,12 @@ def build_agent_stack(
         provider = DeepSeekProvider.from_settings(settings)
 
     # RAG 装配：语料索引/检索/问答；embedding 未配置时退化为纯 FTS5 检索
+    # 优先本地模型（无需 API Key），其次 API，最后降级为纯 FTS5
     embedding_store = None
-    if settings.embedding_enabled and settings.embedding_api_key:
+    if settings.embedding_enabled and settings.embedding_local_model_path:
+        from app_review_insights.rag.embeddings import LocalEmbeddingStore
+        embedding_store = LocalEmbeddingStore(settings.embedding_local_model_path)
+    elif settings.embedding_enabled and settings.embedding_api_key:
         embedding_store = EmbeddingStore(
             api_key=settings.embedding_api_key,
             model=settings.embedding_model,

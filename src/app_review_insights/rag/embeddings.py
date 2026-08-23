@@ -1,4 +1,4 @@
-"""向量检索底座：OpenAI 兼容 embeddings + 纯 Python 余弦相似度。
+"""向量检索底座：OpenAI 兼容 embeddings / 本地 sentence-transformers + 纯 Python 余弦相似度。
 
 未配置 embedding 时系统退化为纯 FTS5 检索（见 retrieval.py）。
 """
@@ -45,3 +45,15 @@ class EmbeddingStore:
         response = self.client.embeddings.create(model=self.model, input=texts)
         ordered = sorted(response.data, key=lambda item: item.index)
         return [item.embedding for item in ordered]
+
+
+class LocalEmbeddingStore:
+    """本地 sentence-transformers 模型生成向量（无需 API Key，离线可用）。"""
+
+    def __init__(self, model_path: str):
+        from sentence_transformers import SentenceTransformer
+        self.model = SentenceTransformer(model_path)
+
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        vectors = self.model.encode(texts)
+        return [vec.tolist() for vec in vectors]

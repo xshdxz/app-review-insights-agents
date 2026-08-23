@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     embedding_model: str = Field(default="text-embedding-3-small", alias="EMBEDDING_MODEL")
     embedding_base_url: str = Field(default="https://api.openai.com/v1", alias="EMBEDDING_BASE_URL")
     embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
+    embedding_local_model_path: str = Field(default="", alias="EMBEDDING_LOCAL_MODEL_PATH")
     social_x_endpoint: str = Field(default="", alias="SOCIAL_X_ENDPOINT")
 
     @field_validator("webhook_urls", mode="before")
