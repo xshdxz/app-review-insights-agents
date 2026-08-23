@@ -1,10 +1,11 @@
-"""语料库管理：查看、搜索、删除已索引评论，统计分布。"""
+"""语料库管理：查看、搜索、删除已索引评论，统计分布与图表。"""
 
 from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 _DB_PATH = Path("data/agent/agent.sqlite3")
@@ -17,7 +18,7 @@ def _conn():
 
 
 def _render_stats():
-    """语料库统计概览。"""
+    """语料库统计概览 + 图表。"""
     conn = _conn()
     try:
         total = conn.execute("SELECT COUNT(*) FROM corpus").fetchone()[0]
@@ -30,6 +31,16 @@ def _render_stats():
             "SELECT app_id, platform, COUNT(*) as cnt FROM corpus "
             "GROUP BY app_id, platform ORDER BY cnt DESC"
         ).fetchall()
+        # 语言分布
+        langs = conn.execute(
+            "SELECT COALESCE(language, 'unknown') as lang, COUNT(*) as cnt "
+            "FROM corpus GROUP BY language ORDER BY cnt DESC"
+        ).fetchall()
+        # 来源分布
+        sources = conn.execute(
+            "SELECT source, COUNT(*) as cnt FROM corpus "
+            "GROUP BY source ORDER BY cnt DESC"
+        ).fetchall()
     finally:
         conn.close()
 
@@ -38,10 +49,31 @@ def _render_stats():
     cols[1].metric("FTS 索引", fts)
     cols[2].metric("向量", emb)
 
-    if apps:
-        st.markdown("**按 App 分布：**")
-        for a in apps:
-            st.write(f"- `{a['app_id']}` ({a['platform']})：{a['cnt']} 条")
+    if not apps:
+        return
+
+    # 按 App 柱状图
+    st.markdown("**按 App 分布：**")
+    app_df = pd.DataFrame(
+        [{"App": f"{a['app_id']} ({a['platform']})", "评论数": a["cnt"]} for a in apps]
+    ).set_index("App")
+    st.bar_chart(app_df, horizontal=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if langs:
+            st.markdown("**语言分布：**")
+            lang_df = pd.DataFrame(
+                [{"Language": r["lang"], "Count": r["cnt"]} for r in langs]
+            ).set_index("Language")
+            st.bar_chart(lang_df)
+    with col2:
+        if sources:
+            st.markdown("**来源分布：**")
+            src_df = pd.DataFrame(
+                [{"Source": r["source"], "Count": r["cnt"]} for r in sources]
+            ).set_index("Source")
+            st.bar_chart(src_df)
 
 
 def _render_search():
