@@ -4,39 +4,54 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-把 App Store / Google Play / 社交媒体评论整理为有证据支撑的产品发现、分版本 PRD 需求与可追溯测试用例的中文本地分析工作台。
+**把 App Store / Google Play / 社交评论，变成有证据支撑的产品发现、分版本 PRD 需求与可追溯测试用例。**
 
-基于确定性证据链 + Agent 编排架构：**Review → Finding → Requirement → TestCase** 是唯一合法输出路径；每个阶段都持久化为检查点，模型调用失败不会丢失已完成的工作。
+把评论丢给大模型写一份报告，得到的是无法验证的文字：引用可能是编的、计数可能是错的、
+结论摊开来看无从追溯。这个项目的答案是把**判断权**交给模型，把**验证权**留在代码里 ——
+每条结论必须引用真实存在的 `review_id`，支持数/冲突数/置信度/优先级全部由程序重算，
+**Review → Finding → Requirement → TestCase 是唯一合法输出路径**，证据链断开的结果不会进入正式视图。
+
+![证据审阅工作台](docs/images/01-workbench-main.png)
 
 ---
 
-## 核心架构
+## 30 秒跑起来
 
-```mermaid
-flowchart LR
-    U[Streamlit UI<br/>工作台/问答/监控/语料/评测] --> A[Agent 层]
-    A --> P[Planner]
-    A --> T[工具注册表]
-    T --> C[既有流水线<br/>采集→分析→证据链]
-    T --> R[RAG<br/>FTS5+向量混合检索]
-    T --> QR[Query Rewriter<br/>语义级检索增强]
-    A --> V[Reviewer]
-    A --> M[调度器+Webhook]
-    C --> S[(SQLite 检查点)]
-    R --> S
-    M --> S
-    QR --> R
+```powershell
+git clone https://github.com/xshdxz/app-review-insights-agents.git
+cd app-review-insights-agents
+py -3.13 -m venv .venv
+.\.venv\Scripts\python -m pip install -e ".[dev]"
+Copy-Item .env.example .env      # 填 DEEPSEEK_API_KEY；留空则进入离线演示模式
+.\.venv\Scripts\streamlit run app.py
 ```
 
-### 职责划分
+打开 <http://localhost:8501>。**没有 API Key 也能启动**：界面可浏览附带的离线演示档案，
+"开始分析"按钮会禁用并说明原因 —— 绝不把历史缓存伪装成实时结果。
 
-Agent 层**包裹在确定性核心之外**：
+---
 
-| 层 | 职责 | 特征 |
-|---|---|---|
-| **Agent 层** | Planner 规划、Reviewer 复核、RAG 问答、Query Rewriting | LLM 驱动，任何失败都回退默认计划或确定性校验 |
-| **确定性核心** | 采集、清洗、计数、ID 校验、置信度、优先级、Schema 校验、追溯、检查点 | 纯程序，可复现、可测试 |
-| **基础设施** | SQLite 存储、FTS5 索引、向量检索、调度器、Webhook 推送 | 无状态，故障隔离 |
+## 和"让模型读评论写报告"有什么不同
+
+| 常见做法 | 这个项目 |
+|---|---|
+| 模型直接输出结论 | 模型只产出**候选**，程序逐条校验后才成为结论 |
+| 引用看着合理就行 | 引用的 `review_id` 必须真实存在；计数、置信度、优先级由程序**重算**，不采信模型给的数字 |
+| 失败就从头再来 | 每个阶段先落盘检查点；模型失败可用**同一 `run_id`** 续跑，已完成批次不重跑 |
+| 效果凭感觉 | 30 例 / 120 条评论的黄金评测集 + CI 门禁，指标跨版本可比 |
+| 上线才知道花多少钱 | 每次模型调用都计量 token 与费用，可按阶段拆解；支持单次/每日预算熔断 |
+
+### 证据链长什么样
+
+每一步都可回指上一步，最终回指到评论原文：
+
+```text
+F-001 免费内容大幅减少，付费墙限制基本功能   ← 15 条支持评论 + 3 条冲突评论（冲突也如实展示）
+  └─ REQ-001 优化免费内容与付费墙体验（V1.0）
+       └─ TC-001 验证未订阅用户可完成至少 3 个免费基础训练
+```
+
+证据不足时**宁可少给结论也不凑数**：不足 5 个需求是允许的，系统会显式披露原因。
 
 ---
 
@@ -74,7 +89,6 @@ Agent 层**包裹在确定性核心之外**：
 - **自动索引**：分析完成后自动将清洗后的评论写入语料库（含向量生成）
 - **语料管理页面**（`pages/4_语料库管理.py`）：查看分布、按关键词搜索、按 App 删除
 - **统计仪表盘**：App / 语言 / 来源分布图表
-- **当前语料**：300 条评论（Workout for Women + MyFitnessPal + Nike Run Club）
 
 ### 评测中心
 
@@ -86,28 +100,53 @@ Agent 层**包裹在确定性核心之外**：
 
 - **cron 调度**：APScheduler 定时触发分析，生成变化摘要报告
 - **群机器人推送**：飞书 / 钉钉 / 企业微信 / Slack
-- **独立 worker 进程**：`python -m app_review_insights.monitor.worker`
+- **独立 worker 进程**：`python -m app_review_insights.monitor.worker`，带健康探针与 Prometheus 指标端点
 
 ### 部署
 
-- **Docker + docker-compose**：web（Streamlit + 健康检查含 SQLite 连通性）+ worker（常驻调度）
+- **Docker + docker-compose**：web（Streamlit + 健康检查含 SQLite 连通性）+ worker（常驻调度 + 自身 healthcheck）
 - **一键脚本**：`scripts/setup.ps1`（本机）、`scripts/deploy.ps1`（Docker）
 
 ---
 
-## 快速开始
+## 核心架构
 
-### 本机运行
-
-```powershell
-# 一键安装：venv + 依赖 + .env 模板
-.\scripts\setup.ps1
-
-# 启动 Streamlit 工作台
-.\.venv\Scripts\streamlit run app.py
+```mermaid
+flowchart LR
+    U[Streamlit UI<br/>工作台/问答/监控/语料/评测] --> A[Agent 层]
+    A --> P[Planner]
+    A --> T[工具注册表]
+    T --> C[既有流水线<br/>采集→分析→证据链]
+    T --> R[RAG<br/>FTS5+向量混合检索]
+    T --> QR[Query Rewriter<br/>语义级检索增强]
+    A --> V[Reviewer]
+    A --> M[调度器+Webhook]
+    C --> S[(SQLite 检查点)]
+    R --> S
+    M --> S
+    QR --> R
 ```
 
-打开 http://localhost:8501。没有 DeepSeek 密钥时仍可浏览离线演示档案；"开始分析"按钮保持禁用并说明原因。
+### 职责划分
+
+Agent 层**包裹在确定性核心之外**：
+
+| 层 | 职责 | 特征 |
+|---|---|---|
+| **Agent 层** | Planner 规划、Reviewer 复核、RAG 问答、Query Rewriting | LLM 驱动，任何失败都回退默认计划或确定性校验 |
+| **确定性核心** | 采集、清洗、计数、ID 校验、置信度、优先级、Schema 校验、追溯、检查点 | 纯程序，可复现、可测试 |
+| **基础设施** | SQLite 存储、FTS5 索引、向量检索、调度器、Webhook 推送、健康探针 | 无状态，故障隔离 |
+
+---
+
+## 运行方式
+
+### 一键脚本（Windows）
+
+```powershell
+.\scripts\setup.ps1     # venv + 依赖 + .env 模板
+.\scripts\deploy.ps1    # Docker 构建并启动 web + worker
+```
 
 ### Agent CLI
 
@@ -117,14 +156,8 @@ Agent 层**包裹在确定性核心之外**：
   --app-url "https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684" `
   --goal "重点分析订阅转化" --out output/agent-run.json
 
-# 离线验证（不需要 API Key）
-python scripts/manual_agent_test.py
-```
-
-### Docker 部署
-
-```powershell
-.\scripts\deploy.ps1    # 构建并启动 web + worker
+# 离线冒烟验证（不需要 API Key）
+.\.venv\Scripts\python scripts/manual_agent_test.py
 ```
 
 ---
@@ -163,7 +196,7 @@ python scripts/manual_agent_test.py
 ## 测试与评测
 
 ```powershell
-# 全量测试（当前 293 项，覆盖率 92%）
+# 全量测试（当前 459 项，覆盖率 93%）
 .\.venv\Scripts\python -m pytest
 
 # 覆盖率报告
@@ -173,17 +206,18 @@ python scripts/manual_agent_test.py
 .\.venv\Scripts\python -m ruff check .
 .\.venv\Scripts\python -m ruff format --check .
 
-# Prompt 评测（dry run：只校验数据集）
-.\run_eval.ps1
-# 真实 DeepSeek 评测
+# 评测集完整性校验（不调用模型，CI 每次 push 都跑）
+.\.venv\Scripts\python scripts/run_eval.py
+
+# 真实 DeepSeek 评测（可传 --fail-under-topic-recall 等阈值做回归门禁）
 .\run_eval.ps1 -Live -Output output\prompt-eval.json
 
-# Agent CLI 端到端
-.\.venv\Scripts\python scripts/run_agent.py --app-url <URL> --goal "..." --out output/agent-run.json
-
-# 离线冒烟验证（不需要 API Key）
-.\.venv\Scripts\python scripts/manual_agent_test.py
+# 数据保留清理 + VACUUM
+.\.venv\Scripts\python -m app_review_insights.maintenance
 ```
+
+CI 在 push / PR 时跑 ruff 与 pytest（Python 3.11 / 3.12 / 3.13）；实时评测门禁
+（`.github/workflows/eval.yml`）需手动触发并配置 `DEEPSEEK_API_KEY` secret。
 
 ---
 
@@ -192,16 +226,18 @@ python scripts/manual_agent_test.py
 ```
 src/app_review_insights/
 ├── agent/          # Planner/Reviewer/Orchestrator/Tools/HumanInLoop
-├── collectors/     # AppStore/GooglePlay/Social(Reddit/X)
-├── llm/            # DeepSeek Provider + Prompt + Schema
-├── monitor/        # Scheduler/Webhook/Report/Worker
+├── collectors/     # AppStore/GooglePlay/Social(Reddit/X) + 瞬时故障重试
+├── llm/            # DeepSeek Provider + Prompt + Schema + 用量与预算计量
+├── monitor/        # Scheduler/Webhook/Report/Worker + 健康探针与告警
 ├── pipeline/       # 核心流水线：orchestrator/analyze/validate/planning/traceability
 ├── rag/            # embeddings/indexer/retrieval/answer/rewriter/schemas
-├── storage/        # RunRepository(检查点) + AgentRepository(FTS5语料库)
+├── storage/        # RunRepository(检查点) + AgentRepository(FTS5语料库) + 迁移
 ├── ui/             # Streamlit 主页面 + 组件
 ├── config.py       # Settings 配置
 ├── factory.py      # 依赖装配（单一装配点）
 ├── models.py       # 领域模型
+├── logging_setup.py# 结构化日志（JSON Lines + run_id 关联）
+├── maintenance.py  # 数据保留清理与 VACUUM
 └── errors.py       # 异常类
 
 pages/
@@ -212,7 +248,7 @@ pages/
 
 scripts/
 ├── run_agent.py        # Agent CLI
-├── run_eval.py         # Prompt 评测
+├── run_eval.py         # Prompt 评测 + 数据集完整性校验
 ├── run_real_validation.py  # 端到端验证
 ├── manual_agent_test.py    # 离线冒烟测试
 ├── setup.ps1           # 一键本机安装
@@ -226,11 +262,12 @@ evals/
 
 ## 数据源与限制
 
-- **Apple RSS**：`https://itunes.apple.com/{region}/rss/customerreviews/page={n}/id={appId}/sortby=mostrecent/json`——每页 50 条、最多 10 页、**每区最多 500 条**。接受任意区链接（`/us/`、`/gb/` 等）。
-- **Google Play**：无公开 RSS，采集器使用网页版 `getreviews` 端点，属**尽力而为**——上游结构变化时请改用 JSON/CSV 导入。
+- **Apple RSS**：`https://itunes.apple.com/{region}/rss/customerreviews/page={n}/id={appId}/sortby=mostrecent/json` —— 每页 50 条、最多 10 页、**每区最多 500 条**。接受任意区链接（`/us/`、`/gb/` 等）。接口历史上多次变更，采集器带旧式 URL 回退。
+- **Google Play**：无公开 RSS，采集器使用网页版 `getreviews` 端点，属**尽力而为** —— 上游结构变化时请改用 JSON/CSV 导入。
 - **Reddit**：`search.json` 公开可用。
 - **X**：需要自配 `SOCIAL_X_ENDPOINT`。
-- 若机器配置了未启动的 HTTP 代理（`HTTP_PROXY`/`HTTPS_PROXY`），采集与模型调用会连接失败——启动代理或临时移除这些环境变量。
+- 采集对**瞬时故障**（传输层异常与 429/5xx）做指数退避重试；4xx 等确定性错误立即失败，不浪费对方配额。
+- 若机器配置了未启动的 HTTP 代理（`HTTP_PROXY`/`HTTPS_PROXY`），采集与模型调用会连接失败 —— 启动代理或临时移除这些环境变量。
 
 ---
 
@@ -240,6 +277,7 @@ evals/
 - `docs/agent-architecture.md` — Planner/Reviewer/工具注册表设计与降级矩阵
 - `docs/data-format.md` — JSON/CSV 导入格式
 - `docs/model-and-prompts.md` — 模型/Prompt 设计与评测记录
+- `docs/defect-list.md` — 缺陷清单与修复记录
 - `docs/highlights.md` — 技术亮点
 - `docs/experiments/langgraph-vs-native.md` — LangGraph vs 原生编排对比实验
 
@@ -247,10 +285,10 @@ evals/
 
 ## 技术栈
 
-- **Python 3.11+** / **Streamlit 1.61+** / **Pydantic v2** / **SQLite (FTS5)** / **httpx** / **APScheduler 3.11**
+- **Python 3.11+** / **Streamlit** / **Pydantic v2** / **SQLite (FTS5 + WAL)** / **httpx** / **APScheduler 3.11**
 - **OpenAI 兼容 Provider**（DeepSeek 默认，可切换）
 - **sentence-transformers** + **bce-embedding-base_v1**（本地向量检索，768 维，无需 API Key）
-- **Docker + docker-compose** 部署
+- **Docker + docker-compose** 部署；GitHub Actions CI（ubuntu × 3 个 Python 版本）
 
 ---
 
