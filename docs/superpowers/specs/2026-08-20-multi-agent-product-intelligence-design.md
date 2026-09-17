@@ -2,15 +2,13 @@
 
 - 日期：2026-08-20
 - 状态：已获用户批准（Part 1/2/3 全部确认）
-- 基线：现有 App Review Insights（确定性证据链流水线）
+- 基线：现有 App Review Insights（确定性证据链流水线 + SQLite 检查点续跑）
 
 ## 1. 目标与背景
 
 在现有 App Review Insights 基础上，将其升级为**多 Agent 产品情报系统**：保留证据链核心（评论 → 发现 → 需求 → 用例，全程确定性校验与 SQLite 检查点），在外部增加 Agent 编排层、RAG 问答、定时监控与群机器人报告推送，并做到部署就绪（Docker + 一键脚本，本机运行，可随时上线）。
 
-
-
-## 2. 决策记录（用户已确认）
+## 2. 关键决策
 
 | 决策点 | 选择 |
 |---|---|
@@ -119,7 +117,7 @@ class ReviewCollector(Protocol):
 - `docs/agent-architecture.md`：Planner/Reviewer/工具注册表设计 + 降级策略 + 与确定性核心的边界
 - `docs/experiments/`：LangGraph 对比实验（弹性目标；同一子流程对比 自研 vs LangGraph 的质量/成本/延迟，中文结论）
 - `docs/architecture.md` 更新 + 架构图
-- 公开 GitHub 仓库：推送前确认用户 GitHub 账号，README 说明本升级与既有核心的关系
+- 公开仓库：README 说明本升级与既有证据链核心的关系
 
 ## 11. 一周分阶段计划（先闭环、后扩展）
 
@@ -130,13 +128,13 @@ class ReviewCollector(Protocol):
 | D4 | 调度器 + 监控任务 CRUD + Webhook 推送（四种适配器）+ 报告生成 | 定时监控→群推送演示 |
 | D5 | 数据源扩展：App Store 多区 + Google Play + 社交舆情（尽力而为） | 多源采集演示 |
 | D6 | Docker + 一键脚本 + 健康检查 + 配置整理 | 部署就绪 |
-| D7 | 测试补齐、文档重写、架构图、LangGraph 对比实验（若有余力）、GitHub 推送 | 文档齐备 |
+| D7 | 测试补齐、文档重写、架构图、LangGraph 对比实验（若有余力）、推送 | 文档齐备 |
 
 **弹性目标**：社交舆情（X/Reddit）与 LangGraph 对比实验，若时间不够先保证核心闭环，明确标注"后续迭代"。
 
 ## 12. 范围外（YAGNI）
 
-- 不做公网部署（用户暂不提供服务器；部署就绪已覆盖"可上线"叙事）
+- 不做公网部署（部署就绪已覆盖"可上线"）
 - 不做多用户账号/鉴权系统（单用户本地/自部署工具）
 - 不做评论情感分析实时流（定时批处理已满足监控需求）
 - 不引入向量数据库（SQLite FTS5 + 可选 embedding 已够，避免运维负担）

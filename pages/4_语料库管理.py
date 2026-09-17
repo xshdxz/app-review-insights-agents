@@ -38,8 +38,7 @@ def _render_stats():
         ).fetchall()
         # 来源分布
         sources = conn.execute(
-            "SELECT source, COUNT(*) as cnt FROM corpus "
-            "GROUP BY source ORDER BY cnt DESC"
+            "SELECT source, COUNT(*) as cnt FROM corpus GROUP BY source ORDER BY cnt DESC"
         ).fetchall()
     finally:
         conn.close()
@@ -120,8 +119,8 @@ def _render_search():
     st.write(f"找到 {len(rows)} 条：")
     for r in rows:
         with st.container(border=True):
-            rid = r['review_id']
-            aid = r['app_id']
+            rid = r["review_id"]
+            aid = r["app_id"]
             st.markdown(f"**`{rid}`** · app=`{aid}` · {r['platform']} · {r['region']}")
             st.caption(r["content"][:300])
 
@@ -151,12 +150,14 @@ def _render_delete():
             # 先删 embeddings（如有）
             conn.execute(
                 "DELETE FROM embeddings WHERE review_id IN "
-                "(SELECT review_id FROM corpus WHERE app_id = ?)", [app_id]
+                "(SELECT review_id FROM corpus WHERE app_id = ?)",
+                [app_id],
             )
             # 删 FTS
             conn.execute(
                 "DELETE FROM corpus_fts WHERE review_id IN "
-                "(SELECT review_id FROM corpus WHERE app_id = ?)", [app_id]
+                "(SELECT review_id FROM corpus WHERE app_id = ?)",
+                [app_id],
             )
             # 删 corpus
             conn.execute("DELETE FROM corpus WHERE app_id = ?", [app_id])

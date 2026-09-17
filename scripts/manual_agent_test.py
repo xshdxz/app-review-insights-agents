@@ -16,6 +16,7 @@ os.environ.setdefault("MODEL_ENABLED", "false")
 os.environ.pop("DEEPSEEK_API_KEY", None)
 os.environ.pop("MODEL_API_KEY", None)
 
+
 def test_1_cli_offline():
     """CLI 离线冒烟：Planner 回退默认计划，Reviewer 纯确定性。"""
     from app_review_insights.config import load_settings

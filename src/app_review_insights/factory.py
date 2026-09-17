@@ -111,6 +111,7 @@ def build_agent_stack(
     embedding_store = None
     if settings.embedding_enabled and settings.embedding_local_model_path:
         from app_review_insights.rag.embeddings import LocalEmbeddingStore
+
         embedding_store = LocalEmbeddingStore(settings.embedding_local_model_path)
     elif settings.embedding_enabled and settings.embedding_api_key:
         embedding_store = EmbeddingStore(

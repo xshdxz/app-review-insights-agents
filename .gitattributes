@@ -1,0 +1,14 @@
+# 二进制文件不做换行转换与文本 diff
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.xlsx binary
+*.docx binary
+*.sqlite3 binary
+
+# 说明：仓库内文本文件历史上以 CRLF 存储。此处不启用 * text=auto
+# 全局重规范化，以免产生 100+ 文件的纯换行噪音提交。

@@ -3426,9 +3426,9 @@ git status --short
 
 ```powershell
 git add src tests docs README.md README.zh-CN.md data/samples data/cache
-git commit -m "chore: prepare release candidate"
+git commit -m "chore: finalize release candidate"
 ```
 
-- [ ] **步骤 5：停止新增功能**
+- [ ] **步骤 5：功能收尾**
 
-进入收尾阶段后，只接受解决无法启动、证据损坏、必需输入模式失效或密钥泄露的问题；所有外观和可选增强均延期。
+进入收尾阶段后，只接受解决无法启动、证据损坏、必需输入模式失效或密钥泄露的问题。所有外观和可选增强均延期到后续迭代。

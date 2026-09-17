@@ -104,14 +104,16 @@ def _render_comparison(results: list[dict]) -> None:
     rows = []
     for r in results:
         summary = r.get("summary", {})
-        rows.append({
-            "来源": r.get("_source_path", "?").split("/")[-1],
-            "模型": r.get("model", "?"),
-            "主题召回": f"{summary.get('topic_recall', 0):.1%}",
-            "引用精确率": f"{summary.get('reference_precision', 0):.1%}",
-            "结构化成功率": f"{summary.get('structured_output_success', 0):.1%}",
-            "案例数": summary.get("cases", 0),
-        })
+        rows.append(
+            {
+                "来源": r.get("_source_path", "?").split("/")[-1],
+                "模型": r.get("model", "?"),
+                "主题召回": f"{summary.get('topic_recall', 0):.1%}",
+                "引用精确率": f"{summary.get('reference_precision', 0):.1%}",
+                "结构化成功率": f"{summary.get('structured_output_success', 0):.1%}",
+                "案例数": summary.get("cases", 0),
+            }
+        )
     st.dataframe(rows, use_container_width=True, hide_index=True)
 
 
@@ -122,9 +124,7 @@ def main() -> None:
         layout="wide",
     )
     st.title("评测中心", anchor=False)
-    st.caption(
-        "基于标注数据集对模型进行评测，量化主题召回率、引用精确率和结构化输出成功率。"
-    )
+    st.caption("基于标注数据集对模型进行评测，量化主题召回率、引用精确率和结构化输出成功率。")
     results = _load_latest_results()
     _render_summary(results)
     if results:

@@ -75,19 +75,32 @@ class AgentOrchestrator:
 
         try:
             agent_run, analysis_run_id = self._execute_plan(
-                agent_run, goal, app_url, review_limit, log_path,
+                agent_run,
+                goal,
+                app_url,
+                review_limit,
+                log_path,
             )
             agent_run = self._review_loop(
-                agent_run, goal, app_url, analysis_run_id,
-                require_approval, review_limit, log_path,
+                agent_run,
+                goal,
+                app_url,
+                analysis_run_id,
+                require_approval,
+                review_limit,
+                log_path,
             )
             return agent_run
         except Exception as exc:  # noqa: BLE001 - 编排器兜底
-            self._emit_event(log_path, AgentEvent(
-                run_id=agent_run.run_id, step="error",
-                detail={"error": str(exc)[:500]},
-                timestamp=datetime.now(UTC),
-            ))
+            self._emit_event(
+                log_path,
+                AgentEvent(
+                    run_id=agent_run.run_id,
+                    step="error",
+                    detail={"error": str(exc)[:500]},
+                    timestamp=datetime.now(UTC),
+                ),
+            )
             agent_run = self._update(
                 agent_run,
                 status=AgentRunStatus.FAILED,
@@ -107,12 +120,16 @@ class AgentOrchestrator:
         t0 = time.monotonic()
         plan = self.planner.plan(goal, app_url, review_limit)
         agent_run = self._update(agent_run, plan_summary=plan.rationale)
-        self._emit_event(log_path, AgentEvent(
-            run_id=agent_run.run_id, step="plan",
-            detail={"rationale": plan.rationale, "tools": [c.tool for c in plan.tool_calls]},
-            timestamp=datetime.now(UTC),
-            duration_s=round(time.monotonic() - t0, 3),
-        ))
+        self._emit_event(
+            log_path,
+            AgentEvent(
+                run_id=agent_run.run_id,
+                step="plan",
+                detail={"rationale": plan.rationale, "tools": [c.tool for c in plan.tool_calls]},
+                timestamp=datetime.now(UTC),
+                duration_s=round(time.monotonic() - t0, 3),
+            ),
+        )
 
         analysis_run_id: str | None = None
         for call in plan.tool_calls:
@@ -120,18 +137,23 @@ class AgentOrchestrator:
             result = self.registry.invoke(call.tool, **call.arguments)
             result_summary = (
                 {k: str(v)[:100] for k, v in result.items()}
-                if isinstance(result, dict) else str(result)[:200]
+                if isinstance(result, dict)
+                else str(result)[:200]
             )
-            self._emit_event(log_path, AgentEvent(
-                run_id=agent_run.run_id, step="tool_call",
-                detail={
-                    "tool": call.tool,
-                    "arguments": {k: str(v)[:200] for k, v in call.arguments.items()},
-                    "result_summary": result_summary,
-                },
-                timestamp=datetime.now(UTC),
-                duration_s=round(time.monotonic() - tc, 3),
-            ))
+            self._emit_event(
+                log_path,
+                AgentEvent(
+                    run_id=agent_run.run_id,
+                    step="tool_call",
+                    detail={
+                        "tool": call.tool,
+                        "arguments": {k: str(v)[:200] for k, v in call.arguments.items()},
+                        "result_summary": result_summary,
+                    },
+                    timestamp=datetime.now(UTC),
+                    duration_s=round(time.monotonic() - tc, 3),
+                ),
+            )
             if call.tool == "run_analysis" and isinstance(result, dict):
                 analysis_run_id = result.get("run_id") or analysis_run_id
         if analysis_run_id is None:
@@ -154,58 +176,78 @@ class AgentOrchestrator:
         for round_index in range(self.max_review_rounds):
             tr = time.monotonic()
             verdict = self.reviewer.review(current_goal, analysis_run_id)
-            self._emit_event(log_path, AgentEvent(
-                run_id=agent_run.run_id, step="review",
-                detail={
-                    "round": round_index + 1,
-                    "approved": verdict.approved,
-                    "feedback": verdict.feedback[:500],
-                },
-                timestamp=datetime.now(UTC),
-                duration_s=round(time.monotonic() - tr, 3),
-            ))
+            self._emit_event(
+                log_path,
+                AgentEvent(
+                    run_id=agent_run.run_id,
+                    step="review",
+                    detail={
+                        "round": round_index + 1,
+                        "approved": verdict.approved,
+                        "feedback": verdict.feedback[:500],
+                    },
+                    timestamp=datetime.now(UTC),
+                    duration_s=round(time.monotonic() - tr, 3),
+                ),
+            )
             agent_run = self._update(
                 agent_run,
                 review_rounds=round_index + 1,
                 feedback=(
                     [*agent_run.feedback, verdict.feedback]
-                    if verdict.feedback else agent_run.feedback
+                    if verdict.feedback
+                    else agent_run.feedback
                 ),
             )
             if verdict.approved:
-                self._emit_event(log_path, AgentEvent(
-                    run_id=agent_run.run_id, step="finalize",
-                    detail={"outcome": "approved"},
-                    timestamp=datetime.now(UTC),
-                ))
+                self._emit_event(
+                    log_path,
+                    AgentEvent(
+                        run_id=agent_run.run_id,
+                        step="finalize",
+                        detail={"outcome": "approved"},
+                        timestamp=datetime.now(UTC),
+                    ),
+                )
                 return self._update(
                     agent_run,
                     status=(
                         AgentRunStatus.WAITING_APPROVAL
-                        if require_approval else AgentRunStatus.COMPLETED
+                        if require_approval
+                        else AgentRunStatus.COMPLETED
                     ),
                 )
             if round_index + 1 >= self.max_review_rounds:
-                self._emit_event(log_path, AgentEvent(
-                    run_id=agent_run.run_id, step="finalize",
-                    detail={"outcome": "failed", "reason": verdict.feedback[:200]},
-                    timestamp=datetime.now(UTC),
-                ))
+                self._emit_event(
+                    log_path,
+                    AgentEvent(
+                        run_id=agent_run.run_id,
+                        step="finalize",
+                        detail={"outcome": "failed", "reason": verdict.feedback[:200]},
+                        timestamp=datetime.now(UTC),
+                    ),
+                )
                 return self._update(
                     agent_run,
                     status=AgentRunStatus.FAILED,
                     error=f"复核未通过（已达最大轮数）：{verdict.feedback}",
                 )
             # 重做：把反馈并入目标，重新分析
-            self._emit_event(log_path, AgentEvent(
-                run_id=agent_run.run_id, step="redo",
-                detail={"feedback": verdict.feedback[:300]},
-                timestamp=datetime.now(UTC),
-            ))
+            self._emit_event(
+                log_path,
+                AgentEvent(
+                    run_id=agent_run.run_id,
+                    step="redo",
+                    detail={"feedback": verdict.feedback[:300]},
+                    timestamp=datetime.now(UTC),
+                ),
+            )
             if verdict.feedback:
                 current_goal = f"{current_goal}\n评审反馈：{verdict.feedback}"
             redo = self.registry.invoke(
-                "run_analysis", app_url=app_url, goal=current_goal,
+                "run_analysis",
+                app_url=app_url,
+                goal=current_goal,
                 review_limit=review_limit,
             )
             if not isinstance(redo, dict) or not redo.get("run_id"):
@@ -213,7 +255,9 @@ class AgentOrchestrator:
             analysis_run_id = redo["run_id"]
             agent_run = self._update(agent_run, analysis_run_id=analysis_run_id)
         return self._update(
-            agent_run, status=AgentRunStatus.FAILED, error="复核循环意外结束",
+            agent_run,
+            status=AgentRunStatus.FAILED,
+            error="复核循环意外结束",
         )
 
     def _update(self, agent_run: AgentRun, **updates: Any) -> AgentRun:

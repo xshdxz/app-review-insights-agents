@@ -1,5 +1,9 @@
 # App Review Insights · 多 Agent 产品情报系统
 
+[![CI](https://github.com/xshdxz/app-review-insights-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/xshdxz/app-review-insights-agents/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+
 把 App Store / Google Play / 社交媒体评论整理为有证据支撑的产品发现、分版本 PRD 需求与可追溯测试用例的中文本地分析工作台。
 
 基于确定性证据链 + Agent 编排架构：**Review → Finding → Requirement → TestCase** 是唯一合法输出路径；每个阶段都持久化为检查点，模型调用失败不会丢失已完成的工作。

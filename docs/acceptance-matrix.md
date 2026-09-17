@@ -18,7 +18,7 @@
 | 10 | 续跑沿用原始 `run_id` 并跳过已完成批次 | ✅ | 同一 run_id 续跑完成；`analyzer.calls == 3` 回归测试；真实续跑事件序列确认 |
 | 11 | 缓存被明确标记为历史数据/非实时数据 | ✅ | `data/cache/demo-run.json`：`mode=historical_cache_demo`、`is_live=false`；`test_demo_cache_is_explicitly_labeled` |
 | 12 | 下载文件包含 ID 和 UTF-8 文本 | ✅ | 从真实运行 `2391b909` 构造下载：证据链 CSV 17 行（表头 `review_ids,finding_id,requirement_id,test_case_id` + 16 行，UTF-8 BOM），PRD JSON 4 个需求均含 ID |
-| 13 | 全新克隆后可按 README 完成启动 | ✅ | 同级目录 `ari-fresh-check` 全新克隆：`pip install -e ".[dev]"` 成功、140 测试通过、`streamlit run app.py` HTTP 200、无密钥演示模式可用、样例 JSON 导入 20 条 |
+| 13 | 全新克隆后可按 README 完成启动 | ✅ | 同级目录 `ari-fresh-check` 全新克隆：`pip install -e ".[dev]"` 成功、测试全绿、`streamlit run app.py` HTTP 200、无密钥演示模式可用、样例 JSON 导入 20 条 |
 | 14 | 仓库未跟踪密钥或私有文件 | ✅ | `git status --short --ignored`：`.env`、`data/runs/`、`output/`、`tmp/`、`.planning/` 均忽略；密钥扫描无真实密钥命中 |
 
 ## 演示截图清单（docs/images/）

@@ -85,7 +85,7 @@ published = _require(
 
 Run: `.\.venv\Scripts\python.exe -m pytest tests/test_input_parsing.py -q`
 
-Run: 使用 `import_reviews` 读取 `C:\Users\user\Desktop\评论.csv`，只输出行数、首尾 ID 和字段完整性，不打印完整文件。
+Run: 使用 `import_reviews` 读取一份中文表头的评论 CSV，只输出行数、首尾 ID 和字段完整性，不打印完整文件。
 
 Expected: 测试通过，用户 CSV 解析为 100 条评论。
 

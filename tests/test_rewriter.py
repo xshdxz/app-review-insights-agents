@@ -35,9 +35,7 @@ def test_rewrite_expands_to_multiple_queries():
 
 
 def test_rewrite_deduplicates_case_insensitive():
-    provider = _FakeProvider(
-        result={"queries": ["billing", "Billing", "价格", "价格"]}
-    )
+    provider = _FakeProvider(result={"queries": ["billing", "Billing", "价格", "价格"]})
     rewriter = QueryRewriter(provider=provider)
     result = rewriter.rewrite("payment issues")
     assert len(result) == 2

@@ -98,9 +98,7 @@ def index_run_cleaned_by_tool(
     count = indexer.index_reviews(reviews)
     if embedding_store is not None and reviews:
         try:
-            vectors = embedding_store.embed_texts(
-                [r.content_original for r in reviews]
-            )
+            vectors = embedding_store.embed_texts([r.content_original for r in reviews])
             for review, vector in zip(reviews, vectors, strict=False):
                 indexer.agent_repository.upsert_embedding(review.review_id, vector)
         except Exception:  # noqa: BLE001 - 向量生成失败不影响 FTS 语料
@@ -125,7 +123,10 @@ def make_run_analysis_tool(
         if run.status.value == "completed" and indexer is not None:
             try:
                 index_run_cleaned_by_tool(
-                    pipeline_services, indexer, embedding_store, run.run_id,
+                    pipeline_services,
+                    indexer,
+                    embedding_store,
+                    run.run_id,
                 )
             except Exception:  # noqa: BLE001 - 索引失败不阻断工具返回
                 pass

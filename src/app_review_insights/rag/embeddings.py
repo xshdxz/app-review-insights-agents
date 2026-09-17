@@ -52,6 +52,7 @@ class LocalEmbeddingStore:
 
     def __init__(self, model_path: str):
         from sentence_transformers import SentenceTransformer
+
         self.model = SentenceTransformer(model_path)
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:

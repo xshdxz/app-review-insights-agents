@@ -323,6 +323,7 @@ def test_agent_run_emits_structured_events(tmp_path):
     lines = log_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) >= 3, f"至少应有 plan + tool_call + finalize 三条事件，实际 {len(lines)} 条"
     import json
+
     for line in lines:
         event = json.loads(line)
         assert "run_id" in event

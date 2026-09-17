@@ -200,7 +200,7 @@ Provider 仍使用 Pydantic JSON Schema 校验和有限自动修复。每个成�
 
 最终手工验收使用：
 
-- `C:\Users\user\Desktop\评论.csv`；
+- 一份中文表头的评论 CSV；
 - `https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684`；
 - 有效 DeepSeek 配置；
 - 无效密钥；

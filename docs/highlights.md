@@ -6,5 +6,5 @@
 4. 定时监控：APScheduler cron 任务 + 飞书/钉钉/企业微信/Slack 四渠道 Webhook + 变化摘要报告
 5. 多源采集：App Store 任意区 / Google Play（尽力而为）/ Reddit 舆情，社交语料与评论语料隔离
 6. 部署就绪：Docker + docker-compose（web + worker + 健康检查）+ PowerShell 一键脚本（setup/deploy）
-7. 质量：全量 269 项 pytest + ruff 全绿 + 覆盖率 91% + 密钥扫描
+7. 质量：全量 293 项 pytest + ruff 全绿 + 覆盖率 92% + 密钥扫描
 8. 工程规范：TDD 全流程、SQLite 检查点续跑、JSON payload 持久化、CJK FTS5 检索定制（短语匹配 + 词边界保留）

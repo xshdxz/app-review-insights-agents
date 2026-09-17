@@ -99,7 +99,8 @@ def _render_job_list(stack) -> None:
                 # 挂载实时推理回调（default 参数捕获当前 status 变量）
                 stack.orchestrator.on_event = lambda e, s=status: _render_event(s, e)
                 agent_run = stack.orchestrator.run(
-                    job.goal, job.app_url,
+                    job.goal,
+                    job.app_url,
                     require_approval=job.require_approval,
                     review_limit=job.review_limit,
                 )
@@ -107,11 +108,13 @@ def _render_job_list(stack) -> None:
                 state = "complete" if agent_run.status == AgentRunStatus.COMPLETED else "error"
                 status.update(label=label, state=state)
                 # 刷新任务状态
-                refreshed = job.model_copy(update={
-                    "last_run_at": datetime.now(UTC),
-                    "last_status": agent_run.status.value,
-                    "updated_at": datetime.now(UTC),
-                })
+                refreshed = job.model_copy(
+                    update={
+                        "last_run_at": datetime.now(UTC),
+                        "last_status": agent_run.status.value,
+                        "updated_at": datetime.now(UTC),
+                    }
+                )
                 stack.agent_repository.save_job(refreshed)
                 st.rerun()
             if cols[4].button("删除", key=f"del-{job.job_id}"):
