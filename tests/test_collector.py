@@ -198,7 +198,12 @@ def test_collector_returns_completed_pages_when_a_later_page_fails():
     )
 
     assert len(reviews) == 50
-    assert len(client.requested_urls) == 2
+    # 第二页返回 503（瞬时故障）会被重试，因此请求次数多于页数；
+    # 这条测试关心的是「已完成的第 1 页被保留下来」，不是重试次数本身。
+    assert len(client.requested_urls) >= 2
+    assert client.requested_urls[0].startswith(
+        "https://itunes.apple.com/us/rss/customerreviews/id="
+    )
 
 
 def test_collector_skips_a_malformed_entry_without_losing_valid_reviews():

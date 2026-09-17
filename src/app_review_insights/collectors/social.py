@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 
+from app_review_insights.collectors.http import get_with_retry
 from app_review_insights.errors import CollectionError
 from app_review_insights.models import Review
 
@@ -27,7 +28,8 @@ class RedditCollector:
         query = query.strip()
         if not query:
             raise ValueError("Reddit 采集需要查询词（产品名）")
-        response = self.client.get(
+        response = get_with_retry(
+            self.client,
             "https://www.reddit.com/search.json",
             params={"q": query, "limit": min(max(limit, 1), 100), "sort": "relevance"},
         )
@@ -74,7 +76,7 @@ class XCollector:
         self.client = client or httpx.Client(timeout=timeout_seconds)
 
     def collect(self, query: str, limit: int) -> list[Review]:
-        response = self.client.get(self.endpoint, params={"q": query, "limit": limit})
+        response = get_with_retry(self.client, self.endpoint, params={"q": query, "limit": limit})
         response.raise_for_status()
         items = response.json()
         if not isinstance(items, list):

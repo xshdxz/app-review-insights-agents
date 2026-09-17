@@ -5,6 +5,7 @@ from xml.etree import ElementTree
 
 import httpx
 
+from app_review_insights.collectors.http import get_with_retry
 from app_review_insights.errors import CollectionError
 from app_review_insights.input_parsing import parse_app_store_url
 from app_review_insights.models import Review
@@ -60,7 +61,7 @@ class AppStoreCollector:
             if next_url is None:
                 break
             try:
-                response = self.client.get(next_url)
+                response = get_with_retry(self.client, next_url)
                 response.raise_for_status()
                 entries, candidate_next_url = self._parse_page(response)
             except Exception as exc:
@@ -76,7 +77,7 @@ class AppStoreCollector:
                 # 两者都为空才判定为源端无数据。
                 used_fallback = True
                 try:
-                    response = self.client.get(legacy_fallback_url)
+                    response = get_with_retry(self.client, legacy_fallback_url)
                     response.raise_for_status()
                     entries, candidate_next_url = self._parse_page(response)
                 except Exception:

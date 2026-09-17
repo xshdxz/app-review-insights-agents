@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
+from app_review_insights.collectors.http import post_with_retry
 from app_review_insights.errors import CollectionError
 from app_review_insights.models import Review
 
@@ -69,7 +70,7 @@ class GooglePlayCollector:
                 "xhr": "1",
             }
             try:
-                response = self.client.post(_GETREVIEWS_URL, data=payload)
+                response = post_with_retry(self.client, _GETREVIEWS_URL, data=payload)
                 response.raise_for_status()
                 rows = self._parse_rows(response.content)
             except Exception as exc:
