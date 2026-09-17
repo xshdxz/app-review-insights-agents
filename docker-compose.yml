@@ -25,6 +25,18 @@ services:
     env_file: .env
     volumes:
       - ./data:/app/data
+    ports:
+      # Prometheus 抓取用（仅绑本机）；不需要可删除
+      - "127.0.0.1:9100:9100"
+    healthcheck:
+      # 就绪探针反映调度器状态：worker "活着但卡死" 时会被判定为 unhealthy
+      test: >
+        python -c "import urllib.request;
+        urllib.request.urlopen('http://localhost:${WORKER_HEALTH_PORT:-9100}/readyz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
       web:
         condition: service_healthy

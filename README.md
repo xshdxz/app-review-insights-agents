@@ -142,6 +142,7 @@ python scripts/manual_agent_test.py
 | `AGENT_DB_PATH` | `data/agent/agent.sqlite3` | Agent 运行 / 监控任务 / 报告 / 语料（FTS5）。 |
 | `WEBHOOK_TYPE` / `WEBHOOK_URLS` | *(空)* | `feishu` / `dingtalk` / `wecom` / `slack`；多个地址用英文逗号分隔。 |
 | `SCHEDULER_ENABLED` | `false` | 本进程是否启动定时调度（worker 容器设为 `true`）。 |
+| `WORKER_HEALTH_HOST` / `WORKER_HEALTH_PORT` | `0.0.0.0` / `9100` | worker 的健康与指标端点：`/healthz` 存活、`/readyz` 就绪、`/metrics` Prometheus 文本。 |
 | `AGENT_MAX_REVIEW_ROUNDS` | `2` | Reviewer 复核不通过时的最大重做轮数。 |
 | `APPROVAL_REQUIRED` | `false` | 推送前是否需要人工审批。 |
 | `EMBEDDING_ENABLED` | `false` | 向量检索开关。 |

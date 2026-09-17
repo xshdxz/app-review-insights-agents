@@ -8,9 +8,12 @@ from __future__ import annotations
 import logging
 import signal
 import threading
+from collections.abc import Callable
+from typing import Any
 
 from app_review_insights.config import load_settings
 from app_review_insights.factory import build_agent_stack
+from app_review_insights.monitor.health import HealthState, start_health_server
 from app_review_insights.monitor.report import build_report
 from app_review_insights.monitor.scheduler import MonitorScheduler
 from app_review_insights.monitor.webhook import WebhookSender
@@ -42,6 +45,23 @@ def make_run_job_fn(stack, settings):
                 logger.info("job %s report=%s delivered=%s", app_url, report.report_id, delivered)
 
     return run_job
+
+
+def track_job_outcome(run_job: Callable[..., Any], state: HealthState) -> Callable[..., Any]:
+    """把任务成败计入健康状态，供 `/metrics` 暴露。
+
+    异常继续向上抛，由 `MonitorScheduler` 带 traceback 记录——这里只负责计数。
+    """
+
+    def _wrapper(goal: str, app_url: str, require_approval: bool = False) -> None:
+        try:
+            run_job(goal, app_url, require_approval)
+        except Exception:
+            state.record_job(success=False)
+            raise
+        state.record_job(success=True)
+
+    return _wrapper
 
 
 def install_signal_handlers(stop_event: threading.Event) -> None:
@@ -86,14 +106,32 @@ def main() -> None:
     stop_event = threading.Event()
     install_signal_handlers(stop_event)
 
+    state = HealthState()
+    server, _health_thread = start_health_server(
+        state,
+        host=settings.worker_health_host,
+        port=settings.worker_health_port,
+    )
+    logger.info(
+        "健康/指标端点已启动 %s:%s（/healthz /readyz /metrics）",
+        settings.worker_health_host,
+        server.server_address[1],
+    )
+
     stack = build_agent_stack(settings)
     scheduler = MonitorScheduler(
         agent_repository=stack.agent_repository,
-        run_job_fn=make_run_job_fn(stack, settings),
+        run_job_fn=track_job_outcome(make_run_job_fn(stack, settings), state),
     )
     scheduler.start()
+    state.set_ready(True)
     logger.info("scheduler started with %s jobs", len(scheduler._scheduler.get_jobs()))
-    serve(scheduler, stop_event)
+    try:
+        serve(scheduler, stop_event)
+    finally:
+        state.set_ready(False)
+        server.shutdown()
+        server.server_close()
 
 
 if __name__ == "__main__":

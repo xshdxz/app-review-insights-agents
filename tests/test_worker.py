@@ -230,9 +230,15 @@ def test_main_starts_scheduler_when_enabled():
             "app_review_insights.monitor.worker.install_signal_handlers",
             side_effect=lambda stop_event: stop_event.set(),
         ),
+        # 健康端点不真绑端口
+        patch("app_review_insights.monitor.worker.start_health_server") as mock_health,
     ):
+        mock_health.return_value = (MagicMock(), MagicMock())
         main()
 
     fake_scheduler.start.assert_called_once()
     fake_scheduler.shutdown.assert_called_once()
     mock_fn.assert_called_once_with(fake_stack, settings)
+    # 健康端点必须按配置的 host/port 启动
+    assert mock_health.call_args.kwargs["host"] == settings.worker_health_host
+    assert mock_health.call_args.kwargs["port"] == settings.worker_health_port

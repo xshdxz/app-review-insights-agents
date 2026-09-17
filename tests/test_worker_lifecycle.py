@@ -10,7 +10,14 @@ import signal
 import threading
 from unittest.mock import MagicMock
 
-from app_review_insights.monitor.worker import install_signal_handlers, serve
+import pytest
+
+from app_review_insights.monitor.health import HealthState
+from app_review_insights.monitor.worker import (
+    install_signal_handlers,
+    serve,
+    track_job_outcome,
+)
 
 
 def _capture_handlers(monkeypatch) -> dict:
@@ -49,6 +56,35 @@ def test_serve_shuts_down_scheduler_waiting_for_running_jobs():
     serve(scheduler, stop_event)
 
     scheduler.shutdown.assert_called_once_with(wait=True)
+
+
+def test_track_job_outcome_counts_success():
+    state = HealthState()
+    wrapped = track_job_outcome(lambda *args, **kwargs: None, state)
+
+    wrapped("目标", "https://example.invalid", False)
+
+    snapshot = state.snapshot()
+    assert snapshot["jobs_completed"] == 1
+    assert snapshot["jobs_failed"] == 0
+    assert snapshot["last_job_timestamp_seconds"] > 0
+
+
+def test_track_job_outcome_counts_failure_and_reraises():
+    """计数之后必须继续抛，否则 MonitorScheduler 就记不到 traceback 了。"""
+    state = HealthState()
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("采集失败")
+
+    wrapped = track_job_outcome(_boom, state)
+
+    with pytest.raises(RuntimeError, match="采集失败"):
+        wrapped("目标", "https://example.invalid", False)
+
+    snapshot = state.snapshot()
+    assert snapshot["jobs_failed"] == 1
+    assert snapshot["jobs_completed"] == 0
 
 
 def test_serve_blocks_until_stop_requested():

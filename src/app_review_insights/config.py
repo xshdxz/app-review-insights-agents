@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     # 配合下方 mode="before" 校验器手工按逗号拆分。
     webhook_urls: Annotated[list[str], NoDecode] = Field(default_factory=list, alias="WEBHOOK_URLS")
     scheduler_enabled: bool = Field(default=False, alias="SCHEDULER_ENABLED")
+    worker_health_host: str = Field(default="0.0.0.0", alias="WORKER_HEALTH_HOST")
+    worker_health_port: int = Field(default=9100, alias="WORKER_HEALTH_PORT")
     agent_max_review_rounds: int = Field(default=2, alias="AGENT_MAX_REVIEW_ROUNDS")
     approval_required: bool = Field(default=False, alias="APPROVAL_REQUIRED")
     embedding_enabled: bool = Field(default=False, alias="EMBEDDING_ENABLED")
