@@ -13,6 +13,7 @@ from app_review_insights.models import (
     Review,
 )
 from app_review_insights.rag.embeddings import cosine_similarity
+from app_review_insights.storage.migrations import AGENT_MIGRATIONS, apply_migrations
 from app_review_insights.storage.sqlite import connect
 
 _CORPUS_FTS_QUERY = (
@@ -104,45 +105,7 @@ class AgentRepository:
                 "当前 Python 的 SQLite 未启用 FTS5（ENABLE_FTS5），无法创建评论语料索引"
             )
         with self._session() as connection:
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS agent_runs (
-                    run_id TEXT PRIMARY KEY,
-                    payload_json TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS monitor_jobs (
-                    job_id TEXT PRIMARY KEY,
-                    payload_json TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS reports (
-                    report_id TEXT PRIMARY KEY,
-                    payload_json TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS corpus (
-                    review_id TEXT PRIMARY KEY,
-                    app_id TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    language TEXT,
-                    platform TEXT,
-                    region TEXT,
-                    source TEXT,
-                    published_at TEXT
-                );
-                CREATE VIRTUAL TABLE IF NOT EXISTS corpus_fts USING fts5(
-                    review_id UNINDEXED,
-                    app_id UNINDEXED,
-                    content,
-                    tokenize='unicode61'
-                );
-                CREATE TABLE IF NOT EXISTS embeddings (
-                    review_id TEXT PRIMARY KEY,
-                    vector_json TEXT NOT NULL
-                );
-                """
-            )
+            apply_migrations(connection, AGENT_MIGRATIONS)
 
     # ---- agent runs ----
     def save_agent_run(self, run: AgentRun) -> None:

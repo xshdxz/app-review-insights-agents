@@ -7,6 +7,7 @@ from typing import Any
 
 from app_review_insights.llm.usage import ModelUsage
 from app_review_insights.models import RunRecord, RunStatus, Stage, StageEvent
+from app_review_insights.storage.migrations import RUNS_MIGRATIONS, apply_migrations
 from app_review_insights.storage.sqlite import connect
 
 
@@ -31,40 +32,7 @@ class RunRepository:
 
     def _initialize(self) -> None:
         with self._session() as connection:
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS runs (
-                    run_id TEXT PRIMARY KEY,
-                    payload_json TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS stage_outputs (
-                    run_id TEXT NOT NULL,
-                    stage TEXT NOT NULL,
-                    batch_index INTEGER NOT NULL DEFAULT -1,
-                    payload_json TEXT NOT NULL,
-                    PRIMARY KEY (run_id, stage, batch_index)
-                );
-                CREATE TABLE IF NOT EXISTS events (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    run_id TEXT NOT NULL,
-                    payload_json TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS model_usage (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    run_id TEXT,
-                    stage TEXT,
-                    model TEXT NOT NULL,
-                    prompt_tokens INTEGER NOT NULL,
-                    completion_tokens INTEGER NOT NULL,
-                    total_tokens INTEGER NOT NULL,
-                    latency_ms REAL NOT NULL,
-                    estimated_cost_usd REAL NOT NULL,
-                    created_at TEXT NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS idx_model_usage_run ON model_usage(run_id);
-                """
-            )
+            apply_migrations(connection, RUNS_MIGRATIONS)
 
     def save_run(self, run: RunRecord) -> None:
         with self._session() as connection:
