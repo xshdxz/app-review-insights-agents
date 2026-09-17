@@ -34,7 +34,10 @@ experiments = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+# "." 是仓库根：tests 里有 `from scripts.run_eval import ...`，而裸 pytest 的
+# console script 不会把 CWD 放进 sys.path（只有 `python -m pytest` 会）。
+# 少了它，CI 上用裸 pytest 会在收集阶段就 ModuleNotFoundError。
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = "-q"
 
