@@ -258,13 +258,22 @@ def _build_request(
     )
 
 
+def _max_duration_seconds() -> float | None:
+    """整轮运行上限；0 或未配置表示不限制。"""
+    return load_settings().run_max_duration_seconds or None
+
+
 def _run_analysis(
     services: PipelineServices,
     request: AnalysisRequest,
     imported_reviews,
     event_writer: EventWriter | None = None,
 ) -> RunRecord:
-    return AnalysisOrchestrator(services, on_event=event_writer).start(
+    return AnalysisOrchestrator(
+        services,
+        on_event=event_writer,
+        max_duration_seconds=_max_duration_seconds(),
+    ).start(
         request,
         imported_reviews=imported_reviews,
     )
@@ -275,7 +284,11 @@ def _resume_analysis(
     run_id: str,
     event_writer: EventWriter | None = None,
 ) -> RunRecord:
-    return AnalysisOrchestrator(services, on_event=event_writer).resume(run_id)
+    return AnalysisOrchestrator(
+        services,
+        on_event=event_writer,
+        max_duration_seconds=_max_duration_seconds(),
+    ).resume(run_id)
 
 
 def _prepare_imported_reviews(request: AnalysisRequest, upload):
@@ -585,7 +598,8 @@ def main() -> None:
                     events,
                     usage=services.repository.model_usage_summary(run_id=run.run_id),
                 )
-                if run.status == RunStatus.WAITING:
+                # 超时停止的运行同样停在检查点上，可以续跑
+                if run.status in (RunStatus.WAITING, RunStatus.TIMED_OUT):
                     resume = st.button(
                         "继续分析",
                         type="primary",

@@ -17,6 +17,7 @@ class RunStatus(StrEnum):
     RUNNING = "running"
     PARTIAL = "partial"
     WAITING = "waiting_for_model"
+    TIMED_OUT = "timed_out"
     COMPLETED = "completed"
     FAILED = "failed"
 

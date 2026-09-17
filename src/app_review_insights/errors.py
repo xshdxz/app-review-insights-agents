@@ -14,6 +14,15 @@ class RecoverableModelError(AppReviewInsightsError):
     """模型阶段失败，但可以从已保存的检查点继续。"""
 
 
+class RunDeadlineExceeded(AppReviewInsightsError):
+    """整轮运行超过配置的墙钟上限。
+
+    单次调用早有超时（模型 60s、采集 20s、Webhook 15s），但整轮运行此前没有上限：
+    输入异常大或模型持续变慢时，一次分析可以跑上几小时没人察觉。
+    停在检查点上，调高上限即可续跑。
+    """
+
+
 class ConcurrentRunError(AppReviewInsightsError):
     """同一 App 已有进行中的分析运行。
 

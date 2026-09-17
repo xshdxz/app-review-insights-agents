@@ -613,7 +613,10 @@ def test_resume_analysis_passes_the_existing_run_id(monkeypatch):
 
     result = ui_main._resume_analysis(services, "existing-run", event_writer)
 
-    orchestrator_factory.assert_called_once_with(services, on_event=event_writer)
+    # 只断言关键参数，避免每次给编排器加配置都来改这条断言
+    orchestrator_factory.assert_called_once()
+    assert orchestrator_factory.call_args.args == (services,)
+    assert orchestrator_factory.call_args.kwargs["on_event"] is event_writer
     orchestrator.resume.assert_called_once_with("existing-run")
     assert result.run_id == "existing-run"
 

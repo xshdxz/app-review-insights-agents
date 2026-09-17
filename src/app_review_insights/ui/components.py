@@ -13,6 +13,7 @@ STATUS_LABELS = {
     "pending": "待开始",
     "running": "运行中",
     "waiting_for_model": "等待模型恢复",
+    "timed_out": "超时停止",
     "partial": "部分完成",
     "completed": "已完成",
     "failed": "失败",
@@ -416,6 +417,7 @@ def render_run_status(
                 "completed": "green",
                 "running": "blue",
                 "waiting_for_model": "orange",
+                "timed_out": "orange",
                 "partial": "yellow",
                 "failed": "red",
             }.get(run.status.value, "gray")

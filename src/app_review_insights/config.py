@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     webhook_urls: Annotated[list[str], NoDecode] = Field(default_factory=list, alias="WEBHOOK_URLS")
     scheduler_enabled: bool = Field(default=False, alias="SCHEDULER_ENABLED")
     # 日志：LOG_FORMAT=json 时输出 JSON Lines（带 run_id 关联 ID），便于采集器索引
+    # 整轮运行的墙钟上限（秒；0 = 不限制）。单次调用超时之外的第二道保险。
+    run_max_duration_seconds: float = Field(default=0, alias="RUN_MAX_DURATION_SECONDS")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_format: str = Field(default="text", alias="LOG_FORMAT")
     # 数据保留策略：events 每阶段写一条、报告每次监控新增一份，不清理只涨不跌。

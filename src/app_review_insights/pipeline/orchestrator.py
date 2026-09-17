@@ -1,5 +1,6 @@
 import inspect
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -12,6 +13,7 @@ from app_review_insights.errors import (
     CollectionError,
     ConcurrentRunError,
     RecoverableModelError,
+    RunDeadlineExceeded,
 )
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
@@ -69,10 +71,14 @@ class AnalysisOrchestrator:
         self,
         services: PipelineServices,
         on_event: EventCallback | None = None,
+        max_duration_seconds: float | None = None,
     ) -> None:
         self.services = services
         self.repository = services.repository
         self.on_event = on_event
+        #: 整轮运行的墙钟上限；None 表示不限制
+        self.max_duration_seconds = max_duration_seconds
+        self._deadline: float | None = None
 
     def start(
         self,
@@ -102,14 +108,25 @@ class AnalysisOrchestrator:
         self._add_event(run, "Analysis run created")
         return self._run_in_context(run, imported_reviews=imported_reviews)
 
-    def resume(self, run_id: str) -> RunRecord:
+    def resume(
+        self,
+        run_id: str,
+        imported_reviews: list[Review] | None = None,
+    ) -> RunRecord:
+        """从检查点续跑。
+
+        `imported_reviews` 用于「采集阶段尚未完成就中断」的情形（超时或首次失败
+        发生在 collect 之前）：此时检查点里没有评论，必须重新提供导入文件才能继续。
+        采集已完成时会直接读检查点，该参数被忽略。
+        """
         run = self.repository.get_run(run_id)
-        if run.status != RunStatus.WAITING:
+        # 超时停止的运行同样可续跑——它们都停在检查点上
+        if run.status not in (RunStatus.WAITING, RunStatus.TIMED_OUT):
             return run
 
         run = self._update_run(run, status=RunStatus.RUNNING, last_error=None)
         self._add_event(run, "Analysis run resumed")
-        return self._run_in_context(run)
+        return self._run_in_context(run, imported_reviews=imported_reviews)
 
     def _run_in_context(
         self,
@@ -122,11 +139,25 @@ class AnalysisOrchestrator:
         之外的调用（例如流水线跑完后 Agent 侧再发起的模型调用），把成本记到
         一个已经结束的运行上。
         """
+        self._deadline = (
+            None
+            if self.max_duration_seconds is None
+            else time.monotonic() + self.max_duration_seconds
+        )
         run_token = current_run_id.set(run.run_id)
         stage_token = current_stage.set(None)
         try:
             return self._execute(run, imported_reviews=imported_reviews)
+        except RunDeadlineExceeded as exc:
+            # 停在检查点上：已完成阶段全部保留，调高上限即可续跑
+            return self._stop(
+                self.repository.get_run(run.run_id),
+                status=RunStatus.TIMED_OUT,
+                error=str(exc),
+                message="Run exceeded the configured max duration",
+            )
         finally:
+            self._deadline = None
             current_stage.reset(stage_token)
             current_run_id.reset(run_token)
 
@@ -637,6 +668,11 @@ class AnalysisOrchestrator:
         stage: Stage,
         **updates: Any,
     ) -> RunRecord:
+        if self._deadline is not None and time.monotonic() > self._deadline:
+            raise RunDeadlineExceeded(
+                f"运行超过最长时长限制（{self.max_duration_seconds:.0f} 秒），已在检查点停止；"
+                "调高 RUN_MAX_DURATION_SECONDS 后可用同一 run_id 续跑。"
+            )
         run = self._update_run(
             run,
             current_stage=stage,
