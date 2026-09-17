@@ -64,17 +64,23 @@
   "is_live": false,
   "recorded_at": "2026-09-17T...Z",
   "model": "deepseek-chat",
-  "input_fingerprint": "<清洗后评论集指纹>",
+  "input_fingerprint": "<输入评论集指纹>",
   "entries": [
     {
       "key": "<sha256(schema名 + \u0000 + system_prompt + \u0000 + user_prompt) 前 16 位十六进制>",
-      "schema": "FindingDraftList",
+      "schema_name": "BatchAnalysisResult",
       "request": { "system": "...", "user": "..." },
       "response": { }
     }
   ]
 }
 ```
+
+字段名用 `schema_name` 而非 `schema`：pydantic v2 中名为 `schema` 的字段会遮蔽
+`BaseModel.schema()` 并触发告警。
+
+指纹取**传入的输入评论集**（清洗之前），而不是清洗后的结果——录制方与回放方都直接
+持有这份输入，无需先跑一遍清洗才能比对。
 
 顶层必须携带 `mode` 与 `is_live`，并沿用 `storage/cache.py:26` 已确立的**强制标注约定**——
 加载时校验 `mode == "recorded_live_run"` 且 `is_live is False`，缺失或标错即拒绝加载。
