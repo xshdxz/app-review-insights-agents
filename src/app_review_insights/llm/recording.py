@@ -1,0 +1,108 @@
+"""模型层录制与回放。
+
+LLM 应用的输出不可复现：同一个输入，换一次调用就可能得到不同结论，测试因此只能
+依赖手写假响应，与真实模型的输出分布长期脱节。这里在 provider 边界做一层录制——
+把每次 generate 的「请求 → 响应」按请求指纹存下来，回放时按同一指纹取回，
+不发起任何外部调用。
+
+两条用途：
+1. 离线演示：没有密钥的部署靠回放跑完整流水线；
+2. 可复现回归：测试可以跑真实录制，而不是手写响应。
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+from collections.abc import Sequence
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel, Field, ValidationError, model_validator
+
+from app_review_insights.errors import InputDataError
+from app_review_insights.models import Review
+
+logger = logging.getLogger("ari-llm")
+
+#: 录制文件的模式标记。与 storage/cache.py 的 historical_cache_demo 同一套约定：
+#: 离线产物必须显式标注，且永远不是实时结果。
+RECORDING_MODE = "recorded_live_run"
+
+#: 请求三段之间的分隔符，避免「前一段结尾拼上后一段开头」撞出同一个键。
+_FIELD_SEP = chr(0)
+
+
+def recording_key(schema_name: str, system_prompt: str, user_prompt: str) -> str:
+    """按请求内容推导录制键。"""
+    payload = _FIELD_SEP.join((schema_name, system_prompt, user_prompt))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def input_fingerprint(reviews: Sequence[Review]) -> str:
+    """输入评论集指纹，用于回放前发现「录制与当前输入不是同一份」。
+
+    取排序后的 (review_id, content_original)，因此与评论顺序无关，但增删一条评论
+    或改动一条正文都会换指纹。
+    """
+    parts = sorted(f"{review.review_id}{chr(31)}{review.content_original}" for review in reviews)
+    return hashlib.sha256(chr(30).join(parts).encode("utf-8")).hexdigest()[:16]
+
+
+class RecordingRequest(BaseModel):
+    system: str
+    user: str
+
+
+class RecordingEntry(BaseModel):
+    key: str
+    schema_name: str
+    request: RecordingRequest
+    response: dict[str, Any]
+
+
+class RecordingDocument(BaseModel):
+    mode: str
+    is_live: bool
+    recorded_at: datetime
+    model: str
+    input_fingerprint: str
+    entries: list[RecordingEntry] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def must_be_labeled_non_live(self) -> RecordingDocument:
+        if self.mode != RECORDING_MODE:
+            raise ValueError(
+                f"录制文件的 mode 必须是 {RECORDING_MODE!r}，实际为 {self.mode!r}；"
+                "离线产物不得冒充实时结果。"
+            )
+        if self.is_live is not False:
+            raise ValueError("录制文件的 is_live 必须是 false；离线产物不得冒充实时结果。")
+        return self
+
+
+def load_recording(path: Path | str) -> RecordingDocument:
+    """读取并校验录制文件；标注不正确就拒绝加载。
+
+    抛 InputDataError 而不是 RecoverableModelError：文件缺失或标错属于配置与素材
+    问题，应当在运行开始前暴露，重试没有意义。
+    """
+    target = Path(path)
+    try:
+        raw = target.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise InputDataError(f"录制文件不存在：{target}") from exc
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise InputDataError(f"录制文件不是合法 JSON：{target}") from exc
+    if not isinstance(payload, dict):
+        raise InputDataError(f"录制文件必须是 JSON 对象：{target}")
+    try:
+        return RecordingDocument.model_validate(payload)
+    except ValidationError as exc:
+        first = exc.errors()[0]
+        message = first.get("msg", "校验失败")
+        raise InputDataError(f"录制文件校验失败：{target}（{message}）") from exc
