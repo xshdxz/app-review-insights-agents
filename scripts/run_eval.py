@@ -68,7 +68,8 @@ def validate_dataset(gold: dict[str, Any]) -> list[str]:
         for topic in case.get("expected_topics", []):
             if not normalize_topic_key(str(topic)):
                 problems.append(
-                    f"{label}：主题键 {topic!r} 不是可比的 ascii 主题键（应形如 subscription_transparency）"
+                    f"{label}：主题键 {topic!r} 不是可比的 ascii 主题键"
+                    "（应形如 subscription_transparency）"
                 )
 
     return problems
