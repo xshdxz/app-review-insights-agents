@@ -13,6 +13,7 @@ from typing import Any
 
 from app_review_insights.config import load_settings
 from app_review_insights.factory import build_agent_stack
+from app_review_insights.monitor.alerts import make_status_alerter
 from app_review_insights.monitor.health import HealthState, start_health_server
 from app_review_insights.monitor.report import build_report
 from app_review_insights.monitor.scheduler import MonitorScheduler
@@ -119,9 +120,11 @@ def main() -> None:
     )
 
     stack = build_agent_stack(settings)
+    webhook = WebhookSender()
     scheduler = MonitorScheduler(
         agent_repository=stack.agent_repository,
         run_job_fn=track_job_outcome(make_run_job_fn(stack, settings), state),
+        on_job_result=make_status_alerter(webhook, settings),
     )
     scheduler.start()
     state.set_ready(True)

@@ -64,6 +64,23 @@ class WebhookSender:
             )
         return payloads
 
+    def send_text(self, text: str, settings) -> list[str]:
+        """向所有已配置 Webhook 推送一条纯文本；返回实际送达的 URL 列表。
+
+        未配置 Webhook、渠道未知或全部推送失败时返回空列表。
+        """
+        if not settings.webhook_urls or not settings.webhook_type:
+            return []
+        delivered = []
+        for url in settings.webhook_urls:
+            try:
+                payload = self.payload_for(settings.webhook_type, text)
+            except ValueError:
+                return []
+            if self.send(url, payload):
+                delivered.append(url)
+        return delivered
+
     def send_report_by_id(
         self,
         report_id: str,

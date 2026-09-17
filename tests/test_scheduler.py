@@ -110,6 +110,42 @@ def test_failed_job_is_logged_with_cause_and_traceback(agent_repo, caplog):
     assert any(record.exc_info for record in caplog.records)
 
 
+def test_job_result_hook_receives_before_and_after_status(agent_repo):
+    """告警依赖状态跃迁，所以钩子必须同时拿到保存前后的状态。"""
+    agent_repo.save_job(_job("j1"))
+    seen = []
+    scheduler = MonitorScheduler(
+        agent_repository=agent_repo,
+        run_job_fn=_boom,
+        timezone="UTC",
+        on_job_result=lambda prev, updated, err: seen.append(
+            (prev.last_status, updated.last_status, err)
+        ),
+    )
+
+    scheduler._run_job("j1")
+
+    assert seen == [(None, "failed", "采集源返回 0 条评论")]
+
+
+def test_job_result_hook_failure_does_not_break_scheduling(agent_repo):
+    agent_repo.save_job(_job("j1"))
+
+    def _explode(*_args):
+        raise RuntimeError("告警通道炸了")
+
+    scheduler = MonitorScheduler(
+        agent_repository=agent_repo,
+        run_job_fn=_boom,
+        timezone="UTC",
+        on_job_result=_explode,
+    )
+
+    scheduler._run_job("j1")  # 不抛
+
+    assert agent_repo.get_job("j1").last_status == "failed"
+
+
 def test_successful_job_does_not_log_error(agent_repo, caplog):
     agent_repo.save_job(_job("j1"))
     fake = _FakeStack()

@@ -24,9 +24,12 @@ class MonitorScheduler:
         agent_repository: AgentRepository,
         run_job_fn: Callable[[str], Any],
         timezone: str = "UTC",
+        on_job_result: Callable[[Any, Any, str | None], None] | None = None,
     ):
         self.agent_repository = agent_repository
         self.run_job_fn = run_job_fn
+        # (保存前的任务, 保存后的任务, 错误文本) -> None，用于失败/恢复告警
+        self.on_job_result = on_job_result
         self._scheduler = BackgroundScheduler(timezone=timezone)
 
     def start(self) -> None:
@@ -56,13 +59,16 @@ class MonitorScheduler:
 
     def _run_job(self, job_id: str) -> None:
         job = self.agent_repository.get_job(job_id)
+        previous = job
+        error_text: str | None = None
         try:
             self.run_job_fn(job.goal, job.app_url, job.require_approval)
             status = "completed"
-        except Exception:
+        except Exception as exc:
             # 必须带 traceback 记录：只写 last_status="failed" 会让故障原因彻底丢失，
             # 线上将无法判断是采集、模型还是校验环节出错。
             status = "failed"
+            error_text = str(exc)
             logger.exception(
                 "监控任务执行失败 job_id=%s app_url=%s goal=%s",
                 job_id,
@@ -77,6 +83,16 @@ class MonitorScheduler:
             }
         )
         self.agent_repository.save_job(updated)
+        self._notify_job_result(previous, updated, error_text)
+
+    def _notify_job_result(self, previous, updated, error_text: str | None) -> None:
+        """通知状态跃迁（失败/恢复）；回调故障不影响调度。"""
+        if self.on_job_result is None:
+            return
+        try:
+            self.on_job_result(previous, updated, error_text)
+        except Exception:
+            logger.warning("任务结果回调失败（不影响调度）", exc_info=True)
 
     def shutdown(self, wait: bool = True) -> None:
         """停止调度器。
