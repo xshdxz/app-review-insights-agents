@@ -8,11 +8,24 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-_DB_PATH = Path("data/agent/agent.sqlite3")
+from app_review_insights.config import load_settings
+from app_review_insights.storage.agent_repository import AgentRepository
+
+
+def _db_path() -> Path:
+    """语料库路径取自 `AGENT_DB_PATH` 配置，不写死。
+
+    同时通过 `AgentRepository` 幂等地补齐父目录与表结构（`CREATE TABLE IF NOT EXISTS`），
+    使全新环境（尚未跑过分析、`data/agent/` 不存在）也能正常渲染空语料库，
+    而不是抛 `unable to open database file`。
+    """
+    path = load_settings().agent_db_path
+    AgentRepository(path)
+    return path
 
 
 def _conn():
-    c = sqlite3.connect(str(_DB_PATH))
+    c = sqlite3.connect(str(_db_path()))
     c.row_factory = sqlite3.Row
     return c
 

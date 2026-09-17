@@ -1,9 +1,23 @@
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).parents[1]
+
+# 被验证的 `run_eval.ps1` 是 Windows 专用入口：它按 `.venv\\Scripts\\python.exe` 定位解释器
+# （POSIX 上是 `.venv/bin/python`），并依赖 Windows PowerShell。因此仅在「Windows 且项目内确实
+# 存在 .venv」时才具备运行条件——CI 把依赖装进 runner 自身的 Python，没有 .venv，故一并跳过。
+# 跨平台入口请直接用 `python scripts/run_eval.py`。
+_VENV_PYTHON = ROOT / ".venv" / "Scripts" / "python.exe"
+
+pytestmark = pytest.mark.skipif(
+    os.name != "nt" or not _VENV_PYTHON.exists(),
+    reason="run_eval.ps1 依赖 Windows 下的 .venv\\Scripts\\python.exe；当前环境不满足",
+)
 
 
 def test_root_eval_entrypoint_runs_offline_without_live_model():
