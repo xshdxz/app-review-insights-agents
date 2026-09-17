@@ -387,7 +387,6 @@ class ReplayProvider:
         self._by_key = {entry.key: entry for entry in document.entries}
 
     @property
-
     def model(self) -> str:
         return self.document.model
 
@@ -473,9 +472,7 @@ def test_recording_provider_passes_through_result(tmp_path: Path):
 def test_recording_provider_writes_loadable_document(tmp_path: Path):
     destination = tmp_path / "rec.json"
     inner = _StubInner([{"summaries": [], "findings": []}])
-    provider = RecordingProvider(
-        inner, destination, input_fingerprint="fp1", model="deepseek-chat"
-    )
+    provider = RecordingProvider(inner, destination, input_fingerprint="fp1", model="deepseek-chat")
     provider.generate("s", "u", BatchAnalysisResult)
 
     document = load_recording(destination)
@@ -488,9 +485,9 @@ def test_recording_provider_writes_loadable_document(tmp_path: Path):
 def test_recording_provider_output_can_be_replayed(tmp_path: Path):
     destination = tmp_path / "rec.json"
     inner = _StubInner([{"summaries": [], "findings": []}])
-    RecordingProvider(
-        inner, destination, input_fingerprint="fp1", model="deepseek-chat"
-    ).generate("s", "u", BatchAnalysisResult)
+    RecordingProvider(inner, destination, input_fingerprint="fp1", model="deepseek-chat").generate(
+        "s", "u", BatchAnalysisResult
+    )
 
     replayed = ReplayProvider(load_recording(destination)).generate("s", "u", BatchAnalysisResult)
     assert isinstance(replayed, BatchAnalysisResult)
@@ -501,9 +498,7 @@ def test_recording_provider_does_not_swallow_inner_failure(tmp_path: Path):
         def generate(self, system_prompt, user_prompt, schema):
             raise RuntimeError("模型调用失败")
 
-    provider = RecordingProvider(
-        _Boom(), tmp_path / "rec.json", input_fingerprint="fp1", model="m"
-    )
+    provider = RecordingProvider(_Boom(), tmp_path / "rec.json", input_fingerprint="fp1", model="m")
     with pytest.raises(RuntimeError, match="模型调用失败"):
         provider.generate("s", "u", BatchAnalysisResult)
 
@@ -513,9 +508,7 @@ def test_recording_provider_failure_to_write_does_not_break_the_call(tmp_path: P
     blocked = tmp_path / "blocked"
     blocked.write_text("我是文件不是目录", encoding="utf-8")
     inner = _StubInner([{"summaries": [], "findings": []}])
-    provider = RecordingProvider(
-        inner, blocked / "rec.json", input_fingerprint="fp1", model="m"
-    )
+    provider = RecordingProvider(inner, blocked / "rec.json", input_fingerprint="fp1", model="m")
     result = provider.generate("s", "u", BatchAnalysisResult)
     assert isinstance(result, BatchAnalysisResult)
 
