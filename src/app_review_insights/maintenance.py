@@ -20,6 +20,7 @@ import threading
 from typing import Any
 
 from app_review_insights.config import Settings, load_settings
+from app_review_insights.logging_setup import configure_logging
 from app_review_insights.storage.agent_repository import AgentRepository
 from app_review_insights.storage.repository import RunRepository
 
@@ -74,9 +75,9 @@ def start_maintenance_loop(
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
-    result = run_maintenance()
-    print(result)
+    settings = load_settings()
+    configure_logging(level=settings.log_level, fmt=settings.log_format)
+    print(run_maintenance(settings))
 
 
 if __name__ == "__main__":

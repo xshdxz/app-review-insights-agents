@@ -144,6 +144,7 @@ python scripts/manual_agent_test.py
 | `WEBHOOK_TYPE` / `WEBHOOK_URLS` | *(空)* | `feishu` / `dingtalk` / `wecom` / `slack`；多个地址用英文逗号分隔。 |
 | `SCHEDULER_ENABLED` | `false` | 本进程是否启动定时调度（worker 容器设为 `true`）。 |
 | `WORKER_HEALTH_HOST` / `WORKER_HEALTH_PORT` | `0.0.0.0` / `9100` | worker 的健康与指标端点：`/healthz` 存活、`/readyz` 就绪、`/metrics` Prometheus 文本。 |
+| `LOG_LEVEL` / `LOG_FORMAT` | `INFO` / `text` | `json` 时输出 JSON Lines，每条带 `run_id` / `stage` 关联 ID，便于采集器按运行检索。 |
 | `RETENTION_DAYS` / `EVENTS_KEEP_PER_RUN` / `REPORTS_KEEP_PER_APP` | `90` / `50` / `20` | 数据保留策略。只清理终态运行；可续跑的运行永不删除。 |
 | `MAINTENANCE_ENABLED` / `MAINTENANCE_INTERVAL_SECONDS` | `true` / `86400` | worker 自动执行数据维护；也可手动 `python -m app_review_insights.maintenance`。 |
 | `AGENT_MAX_REVIEW_ROUNDS` | `2` | Reviewer 复核不通过时的最大重做轮数。 |

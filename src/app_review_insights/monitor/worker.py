@@ -13,6 +13,7 @@ from typing import Any
 
 from app_review_insights.config import load_settings
 from app_review_insights.factory import build_agent_stack
+from app_review_insights.logging_setup import configure_logging
 from app_review_insights.maintenance import start_maintenance_loop
 from app_review_insights.monitor.alerts import make_status_alerter
 from app_review_insights.monitor.health import HealthState, start_health_server
@@ -99,8 +100,11 @@ def serve(scheduler: MonitorScheduler, stop_event: threading.Event) -> None:
 
 
 def main() -> None:
+    # 先用兜底日志（load_settings 本身可能失败），拿到配置后再按 LOG_FORMAT 重配
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     settings = load_settings()
+    configure_logging(level=settings.log_level, fmt=settings.log_format)
+    logger.info("worker 启动 log_format=%s", settings.log_format)
     if not settings.scheduler_enabled:
         logger.warning("SCHEDULER_ENABLED=false，worker 退出（请在 .env 开启）")
         return

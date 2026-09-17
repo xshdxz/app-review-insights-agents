@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # 配合下方 mode="before" 校验器手工按逗号拆分。
     webhook_urls: Annotated[list[str], NoDecode] = Field(default_factory=list, alias="WEBHOOK_URLS")
     scheduler_enabled: bool = Field(default=False, alias="SCHEDULER_ENABLED")
+    # 日志：LOG_FORMAT=json 时输出 JSON Lines（带 run_id 关联 ID），便于采集器索引
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_format: str = Field(default="text", alias="LOG_FORMAT")
     # 数据保留策略：events 每阶段写一条、报告每次监控新增一份，不清理只涨不跌。
     retention_days: int = Field(default=90, alias="RETENTION_DAYS")
     events_keep_per_run: int = Field(default=50, alias="EVENTS_KEEP_PER_RUN")
