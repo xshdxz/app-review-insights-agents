@@ -250,6 +250,36 @@ class AgentRepository:
             ).fetchall()
         return [MonitorReport.model_validate_json(row["payload_json"]) for row in rows]
 
+    def vacuum(self) -> None:
+        """回收已删除数据的磁盘空间（VACUUM 不能在事务内执行）。"""
+        connection = self._connect()
+        try:
+            connection.execute("VACUUM")
+        finally:
+            connection.close()
+
+    def prune_reports(self, keep_per_app: int = 20) -> int:
+        """每个 App 只保留最近 `keep_per_app` 份报告，返回删除条数。"""
+        if keep_per_app < 0:
+            raise ValueError("keep_per_app must be non-negative")
+        with self._session() as connection:
+            cursor = connection.execute(
+                """
+                DELETE FROM reports WHERE report_id IN (
+                    SELECT report_id FROM (
+                        SELECT report_id,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY json_extract(payload_json, '$.app_url')
+                                   ORDER BY created_at DESC
+                               ) AS rn
+                        FROM reports
+                    ) WHERE rn > ?
+                )
+                """,
+                (keep_per_app,),
+            )
+            return cursor.rowcount
+
     def latest_report(self, app_url: str) -> MonitorReport | None:
         with self._session() as connection:
             row = connection.execute(

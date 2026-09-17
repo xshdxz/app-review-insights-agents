@@ -13,6 +13,7 @@ from typing import Any
 
 from app_review_insights.config import load_settings
 from app_review_insights.factory import build_agent_stack
+from app_review_insights.maintenance import start_maintenance_loop
 from app_review_insights.monitor.alerts import make_status_alerter
 from app_review_insights.monitor.health import HealthState, start_health_server
 from app_review_insights.monitor.report import build_report
@@ -106,6 +107,10 @@ def main() -> None:
 
     stop_event = threading.Event()
     install_signal_handlers(stop_event)
+
+    if settings.maintenance_enabled:
+        start_maintenance_loop(settings, stop_event)
+        logger.info("数据维护已启用：每 %s 秒一次", settings.maintenance_interval_seconds)
 
     state = HealthState()
     server, _health_thread = start_health_server(

@@ -1,12 +1,12 @@
 import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from app_review_insights.llm.usage import ModelUsage
-from app_review_insights.models import RunRecord, Stage, StageEvent
+from app_review_insights.models import RunRecord, RunStatus, Stage, StageEvent
 from app_review_insights.storage.sqlite import connect
 
 
@@ -210,6 +210,74 @@ class RunRepository:
             }
             for row in rows
         }
+
+    #: 未终结的运行还可以续跑，任何保留策略都不得删除它们。
+    RESUMABLE_STATUSES = (
+        RunStatus.PENDING.value,
+        RunStatus.RUNNING.value,
+        RunStatus.WAITING.value,
+    )
+
+    def prune_events(self, keep_per_run: int = 50) -> int:
+        """每个运行只保留最近 `keep_per_run` 条事件，返回删除条数。
+
+        events 表每推进一个阶段就写一条，是最容易无限增长的一张表。
+        """
+        if keep_per_run < 0:
+            raise ValueError("keep_per_run must be non-negative")
+        with self._session() as connection:
+            cursor = connection.execute(
+                """
+                DELETE FROM events WHERE id IN (
+                    SELECT id FROM (
+                        SELECT id,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY run_id ORDER BY id DESC
+                               ) AS rn
+                        FROM events
+                    ) WHERE rn > ?
+                )
+                """,
+                (keep_per_run,),
+            )
+            return cursor.rowcount
+
+    def prune_runs(self, older_than_days: int = 90, now: datetime | None = None) -> int:
+        """删除超过保留期的**终态**运行及其阶段输出、事件与用量记录。
+
+        `pending` / `running` / `waiting_for_model` 一律保留——它们还能续跑，
+        删掉等于丢掉用户还没取回的工作。
+        """
+        if older_than_days < 0:
+            raise ValueError("older_than_days must be non-negative")
+        cutoff = ((now or datetime.now(UTC)) - timedelta(days=older_than_days)).isoformat()
+        with self._session() as connection:
+            rows = connection.execute(
+                "SELECT run_id, payload_json FROM runs WHERE updated_at < ?", (cutoff,)
+            ).fetchall()
+            victims = [
+                row["run_id"]
+                for row in rows
+                if RunRecord.model_validate_json(row["payload_json"]).status.value
+                not in self.RESUMABLE_STATUSES
+            ]
+            for run_id in victims:
+                connection.execute("DELETE FROM stage_outputs WHERE run_id = ?", (run_id,))
+                connection.execute("DELETE FROM events WHERE run_id = ?", (run_id,))
+                connection.execute("DELETE FROM model_usage WHERE run_id = ?", (run_id,))
+                connection.execute("DELETE FROM runs WHERE run_id = ?", (run_id,))
+        return len(victims)
+
+    def vacuum(self) -> None:
+        """回收已删除数据的磁盘空间。
+
+        `VACUUM` 不能在事务内执行，因此这里自己开连接而不是走 `_session`。
+        """
+        connection = self._connect()
+        try:
+            connection.execute("VACUUM")
+        finally:
+            connection.close()
 
     def list_events(self, run_id: str) -> list[StageEvent]:
         with self._session() as connection:

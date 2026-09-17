@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # 配合下方 mode="before" 校验器手工按逗号拆分。
     webhook_urls: Annotated[list[str], NoDecode] = Field(default_factory=list, alias="WEBHOOK_URLS")
     scheduler_enabled: bool = Field(default=False, alias="SCHEDULER_ENABLED")
+    # 数据保留策略：events 每阶段写一条、报告每次监控新增一份，不清理只涨不跌。
+    retention_days: int = Field(default=90, alias="RETENTION_DAYS")
+    events_keep_per_run: int = Field(default=50, alias="EVENTS_KEEP_PER_RUN")
+    reports_keep_per_app: int = Field(default=20, alias="REPORTS_KEEP_PER_APP")
+    maintenance_enabled: bool = Field(default=True, alias="MAINTENANCE_ENABLED")
+    maintenance_interval_seconds: float = Field(default=86400, alias="MAINTENANCE_INTERVAL_SECONDS")
     worker_health_host: str = Field(default="0.0.0.0", alias="WORKER_HEALTH_HOST")
     worker_health_port: int = Field(default=9100, alias="WORKER_HEALTH_PORT")
     agent_max_review_rounds: int = Field(default=2, alias="AGENT_MAX_REVIEW_ROUNDS")
