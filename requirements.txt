@@ -1,0 +1,15 @@
+# Streamlit Community Cloud 用 requirements.txt 安装依赖。
+#
+# 为什么是 "-e ." 而不是逐条列出依赖？
+#   1) 本仓库是 src/ 布局。Streamlit Cloud 只把**仓库根**加进 sys.path，
+#      不安装包的话 app.py 里的 `from app_review_insights...` 会 ImportError。
+#   2) `-e .` 让 pip 从 pyproject.toml 安装本项目及其全部依赖，
+#      依赖清单只有一处（pyproject.toml），不会两边不同步。
+#
+# 为什么必须有这个文件？
+#   本仓库的 pyproject.toml 是 setuptools 后端，但 Streamlit Cloud 只会把
+#   pyproject.toml 当作 **poetry** 文件识别。requirements.txt 的优先级高于
+#   pyproject.toml，所以它会先被找到并采用。
+#
+# 本地等价命令：pip install -e .
+-e .

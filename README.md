@@ -148,6 +148,13 @@ Agent 层**包裹在确定性核心之外**：
 .\scripts\deploy.ps1    # Docker 构建并启动 web + worker
 ```
 
+### 部署到云端（Streamlit Community Cloud）
+
+免费公开 demo，访客**无需安装**即可使用 —— 详见 [`docs/deploy-streamlit-cloud.md`](docs/deploy-streamlit-cloud.md)。
+
+要点：Cloud 走 `requirements.txt`（`-e .`）安装依赖；Python 版本在部署对话框的 Advanced settings 里选 **3.11**；
+不配密钥即进入离线演示模式，配密钥时**务必同时设 `MODEL_BUDGET_USD_PER_DAY`**（公开 demo 需要预算上限）。
+
 ### Agent CLI
 
 ```powershell

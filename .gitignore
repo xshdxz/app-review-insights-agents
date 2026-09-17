@@ -7,6 +7,8 @@ tmp/
 .env
 .env.*
 !.env.example
+# Streamlit 本地 secrets（Cloud 上用 Secrets UI，本地可能有人建这个文件）
+.streamlit/secrets.toml
 
 # Python
 __pycache__/
