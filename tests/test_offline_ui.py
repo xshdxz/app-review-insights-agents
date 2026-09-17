@@ -7,14 +7,15 @@ def _app(tmp_path, monkeypatch) -> AppTest:
     app_path = Path(__file__).parents[1] / "app.py"
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
-    return AppTest.from_file(str(app_path)).run(timeout=15)
+    # 30s：15s 在负载高时会假红（曾导致一次全量误报）
+    return AppTest.from_file(str(app_path)).run(timeout=30)
 
 
 def test_offline_demo_reuses_result_views_and_exposes_downloads(tmp_path, monkeypatch):
     app = _app(tmp_path, monkeypatch)
 
     demo_toggle = next(toggle for toggle in app.toggle if toggle.label == "查看历史缓存演示")
-    app = demo_toggle.set_value(True).run(timeout=15)
+    app = demo_toggle.set_value(True).run(timeout=30)
 
     warning_text = " ".join(item.value for item in app.warning)
     assert "历史缓存演示" in warning_text

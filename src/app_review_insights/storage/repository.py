@@ -186,6 +186,32 @@ class RunRepository:
         RunStatus.WAITING.value,
     )
 
+    def find_active_run(
+        self,
+        app_url: str,
+        stale_after_minutes: int = 60,
+        now: datetime | None = None,
+    ) -> RunRecord | None:
+        """返回该 App 上仍在进行中的运行；没有则返回 `None`。
+
+        超过 `stale_after_minutes` 未更新的运行视为进程崩溃留下的孤儿，
+        不参与互斥——否则一次崩溃就会永久卡死这个 App 的后续分析。
+        返回最近更新的一条。
+        """
+        cutoff = ((now or datetime.now(UTC)) - timedelta(minutes=stale_after_minutes)).isoformat()
+        with self._session() as connection:
+            rows = connection.execute(
+                "SELECT payload_json FROM runs WHERE updated_at >= ? ORDER BY updated_at DESC",
+                (cutoff,),
+            ).fetchall()
+        for row in rows:
+            run = RunRecord.model_validate_json(row["payload_json"])
+            if run.request.app_url != app_url:
+                continue
+            if run.status.value in self.RESUMABLE_STATUSES:
+                return run
+        return None
+
     def prune_events(self, keep_per_run: int = 50) -> int:
         """每个运行只保留最近 `keep_per_run` 条事件，返回删除条数。
 

@@ -14,6 +14,14 @@ class RecoverableModelError(AppReviewInsightsError):
     """模型阶段失败，但可以从已保存的检查点继续。"""
 
 
+class ConcurrentRunError(AppReviewInsightsError):
+    """同一 App 已有进行中的分析运行。
+
+    不是数据格式问题，而是**白花钱**问题：并发分析各烧一遍模型额度，
+    得到的还是同一份结论。属于可展示给用户的前置条件失败。
+    """
+
+
 class ModelBudgetExceeded(RecoverableModelError):
     """模型费用达到预算上限。
 

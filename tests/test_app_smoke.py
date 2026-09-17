@@ -128,7 +128,7 @@ def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert not app.exception
     assert any("证据审阅工作台" in title.value for title in app.title)
@@ -146,7 +146,7 @@ def test_input_mode_switches_to_mode_specific_fields(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
 
-    online = AppTest.from_file(str(app_path)).run(timeout=10)
+    online = AppTest.from_file(str(app_path)).run(timeout=30)
     source = next(item for item in online.segmented_control if item.label == "数据来源")
     online_limit = next(item for item in online.slider if item.label == "评论数量")
 
@@ -155,7 +155,7 @@ def test_input_mode_switches_to_mode_specific_fields(tmp_path, monkeypatch):
     assert online_limit.max == 1000
     assert online_limit.step == 1
 
-    json_mode = source.set_value("JSON 导入").run(timeout=10)
+    json_mode = source.set_value("JSON 导入").run(timeout=30)
     json_limit = next(item for item in json_mode.slider if item.label == "评论数量")
 
     assert [item.label for item in json_mode.text_input] == []
@@ -164,7 +164,7 @@ def test_input_mode_switches_to_mode_specific_fields(tmp_path, monkeypatch):
     assert json_limit.step == 1
 
     csv_source = next(item for item in json_mode.segmented_control if item.label == "数据来源")
-    csv_mode = csv_source.set_value("CSV 导入").run(timeout=10)
+    csv_mode = csv_source.set_value("CSV 导入").run(timeout=30)
 
     assert [item.label for item in csv_mode.text_input] == []
     assert [item.label for item in csv_mode.file_uploader] == ["CSV 评论文件"]
@@ -175,12 +175,12 @@ def test_input_form_keeps_values_across_reruns(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
     url_input = next(item for item in app.text_input if item.label == "App 地址（URL）")
     url_input.set_value("https://apps.apple.com/us/app/example/id123456789")
     goal = next(item for item in app.text_area if item.label == "分析目标")
     goal.set_value("自定义分析目标")
-    app = app.run(timeout=10)
+    app = app.run(timeout=30)
 
     assert (
         next(item for item in app.text_input if item.label == "App 地址（URL）").value
@@ -197,7 +197,7 @@ def test_explicit_model_disable_overrides_configured_key(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "configured-but-disabled")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
     start_button = next(button for button in app.button if button.label == "开始分析")
 
     assert start_button.disabled is True
@@ -209,7 +209,7 @@ def test_model_status_banner_hidden_when_configured(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert not any("模型状态" in item.value for item in app.success)
     assert not any("模型状态" in item.value for item in app.info)
@@ -223,10 +223,10 @@ def test_model_status_banner_hidden_when_verified(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
     settings = Settings(deepseek_api_key="test-key")
     app.session_state["model_verified_fingerprint"] = ui_main._model_config_fingerprint(settings)
-    app = app.run(timeout=10)
+    app = app.run(timeout=30)
 
     assert not any("模型状态" in item.value for item in app.success)
     assert not any("模型状态" in item.value for item in app.info)
@@ -237,7 +237,7 @@ def test_model_status_banner_warns_when_key_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert any("未配置" in item.value for item in app.warning)
 
@@ -304,10 +304,10 @@ def test_online_input_error_is_friendly_and_does_not_create_run(tmp_path, monkey
     database_path = tmp_path / "runs.sqlite3"
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     monkeypatch.setenv("DATABASE_PATH", str(database_path))
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     start_button = next(button for button in app.button if button.label == "开始分析")
-    app = start_button.click().run(timeout=10)
+    app = start_button.click().run(timeout=30)
 
     assert not app.exception
     assert any("在线采集需要填写 App Store URL" in error.value for error in app.error)
@@ -371,7 +371,7 @@ def test_waiting_run_keeps_saved_output_visible_without_model_key(tmp_path, monk
         ),
     )
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert not app.exception
     assert any(metric.label == "输入评论" and metric.value == "4" for metric in app.metric)
@@ -584,7 +584,7 @@ def test_completed_run_displays_evidence_validation_and_prd_metadata(
         {"valid": True, "issues": []},
     )
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert not app.exception
     markdown_values = [item.value for item in app.markdown]
@@ -684,7 +684,7 @@ def test_resume_hides_old_error_and_shows_recovery_state(tmp_path, monkeypatch):
 
     monkeypatch.setattr(ui_main, "_resume_analysis", fake_resume)
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert any("模型调用失败" in item.value for item in app.warning)
     resume_btn = next(button for button in app.button if button.label == "继续分析")
@@ -692,7 +692,7 @@ def test_resume_hides_old_error_and_shows_recovery_state(tmp_path, monkeypatch):
 
     # Simulate clicking 继续分析: pending resume state hides the old error.
     app.session_state["pending_resume"] = "waiting-run"
-    app = app.run(timeout=10)
+    app = app.run(timeout=30)
 
     assert not any("模型调用失败" in item.value for item in app.warning)
     assert not any("等待模型恢复" in item.value for item in app.warning)
@@ -711,7 +711,7 @@ def test_invalid_key_shows_warning_but_keeps_start_clickable(tmp_path, monkeypat
         lambda settings, session_state=None: "invalid",
     )
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert any("密钥无效" in item.value for item in app.warning)
     start_button = next(button for button in app.button if button.label == "开始分析")
@@ -731,7 +731,7 @@ def test_unavailable_model_shows_warning_but_keeps_start_clickable(tmp_path, mon
         lambda settings, session_state=None: "unavailable",
     )
 
-    app = AppTest.from_file(str(app_path)).run(timeout=10)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert any("无法连接模型服务" in item.value for item in app.warning)
     start_button = next(button for button in app.button if button.label == "开始分析")

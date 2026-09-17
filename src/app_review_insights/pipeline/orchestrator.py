@@ -8,7 +8,11 @@ from uuid import uuid4
 
 from app_review_insights.batching import make_review_batches
 from app_review_insights.cleaning import CleaningResult, clean_reviews
-from app_review_insights.errors import CollectionError, RecoverableModelError
+from app_review_insights.errors import (
+    CollectionError,
+    ConcurrentRunError,
+    RecoverableModelError,
+)
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
     ConsolidationResult,
@@ -74,7 +78,17 @@ class AnalysisOrchestrator:
         self,
         request: AnalysisRequest,
         imported_reviews: list[Review] | None = None,
+        allow_concurrent: bool = False,
     ) -> RunRecord:
+        # 同一 App 并发分析只是把同一份结论算两遍并双倍计费
+        if not allow_concurrent and request.app_url:
+            active = self.repository.find_active_run(request.app_url)
+            if active is not None:
+                raise ConcurrentRunError(
+                    f"该 App 已有进行中的运行（run_id={active.run_id}，"
+                    f"状态 {active.status.value}）。并发分析会重复消耗模型额度；"
+                    "请等待其结束，或先续跑/放弃该运行后再试。"
+                )
         now = datetime.now(UTC)
         run = RunRecord(
             run_id=str(uuid4()),
@@ -86,9 +100,7 @@ class AnalysisOrchestrator:
         )
         self.repository.save_run(run)
         self._add_event(run, "Analysis run created")
-        # 让模型用量账目能归集到本次运行（provider 从 contextvar 读取）
-        current_run_id.set(run.run_id)
-        return self._execute(run, imported_reviews=imported_reviews)
+        return self._run_in_context(run, imported_reviews=imported_reviews)
 
     def resume(self, run_id: str) -> RunRecord:
         run = self.repository.get_run(run_id)
@@ -97,8 +109,26 @@ class AnalysisOrchestrator:
 
         run = self._update_run(run, status=RunStatus.RUNNING, last_error=None)
         self._add_event(run, "Analysis run resumed")
-        current_run_id.set(run.run_id)
-        return self._execute(run)
+        return self._run_in_context(run)
+
+    def _run_in_context(
+        self,
+        run: RunRecord,
+        imported_reviews: list[Review] | None = None,
+    ) -> RunRecord:
+        """在带 run_id / stage 上下文的范围内执行，结束后**必定还原**。
+
+        这两个 contextvar 供 provider 归集模型用量。若不还原，值会泄漏到运行
+        之外的调用（例如流水线跑完后 Agent 侧再发起的模型调用），把成本记到
+        一个已经结束的运行上。
+        """
+        run_token = current_run_id.set(run.run_id)
+        stage_token = current_stage.set(None)
+        try:
+            return self._execute(run, imported_reviews=imported_reviews)
+        finally:
+            current_stage.reset(stage_token)
+            current_run_id.reset(run_token)
 
     def _execute(
         self,

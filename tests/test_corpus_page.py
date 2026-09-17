@@ -12,6 +12,8 @@ def test_corpus_page_loads(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENT_DB_PATH", str(tmp_path / "agent.sqlite3"))
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
-    app = AppTest.from_file(str(PAGE), default_timeout=15)
+    app = AppTest.from_file(
+        str(PAGE), default_timeout=30
+    )  # 30s：15s 在负载高时会假红（曾导致一次全量误报）
     app.run()
     assert not app.exception

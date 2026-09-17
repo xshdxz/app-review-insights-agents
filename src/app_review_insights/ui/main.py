@@ -9,7 +9,7 @@ from pathlib import Path
 import streamlit as st
 
 from app_review_insights.config import Settings, load_settings
-from app_review_insights.errors import InputDataError
+from app_review_insights.errors import ConcurrentRunError, InputDataError
 from app_review_insights.factory import (
     build_pipeline_services as _build_pipeline_services,
 )
@@ -523,7 +523,7 @@ def main() -> None:
                         upload.name if upload else None,
                     )
                     imported_reviews = _prepare_imported_reviews(request, upload)
-                except (InputDataError, ValueError) as exc:
+                except (InputDataError, ConcurrentRunError, ValueError) as exc:
                     st.error(str(exc), icon=":material/input:")
                 else:
                     live_status = st.status("正在执行分析工作流", expanded=True)
