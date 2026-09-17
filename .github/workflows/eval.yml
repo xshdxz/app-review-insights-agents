@@ -1,0 +1,66 @@
+name: Live Prompt Evaluation
+
+# 手动触发：实时评测要调用真实模型、产生费用，不适合每次 push 都跑。
+# 需要先在仓库 Settings → Secrets 里配置 DEEPSEEK_API_KEY。
+#
+# 填了下限即成为**回归门禁**：指标跌破阈值时 workflow 失败。
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic_recall_floor:
+        description: "主题召回下限（0-1，留空则只出报告不设门禁）"
+        required: false
+        default: ""
+      reference_precision_floor:
+        description: "引用精确率下限（0-1，留空则只出报告不设门禁）"
+        required: false
+        default: ""
+
+jobs:
+  live-eval:
+    name: Live evaluation on gold dataset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Require API key
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "::error::未配置 DEEPSEEK_API_KEY secret，无法运行实时评测。"
+            exit 1
+          fi
+
+      - name: Run live evaluation
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TOPIC_FLOOR: ${{ inputs.topic_recall_floor }}
+          PRECISION_FLOOR: ${{ inputs.reference_precision_floor }}
+        run: |
+          set -euo pipefail
+          args=(--live --output output/prompt-eval.json)
+          if [ -n "$TOPIC_FLOOR" ]; then
+            args+=(--fail-under-topic-recall "$TOPIC_FLOOR")
+          fi
+          if [ -n "$PRECISION_FLOOR" ]; then
+            args+=(--fail-under-reference-precision "$PRECISION_FLOOR")
+          fi
+          python scripts/run_eval.py "${args[@]}"
+
+      - name: Upload evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-eval-report
+          path: output/prompt-eval.json
+          if-no-files-found: warn

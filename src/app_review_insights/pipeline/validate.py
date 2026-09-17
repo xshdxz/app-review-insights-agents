@@ -188,6 +188,7 @@ def validate_finding_drafts(
                 title=draft.title,
                 problem_statement=draft.problem_statement,
                 topic_label=draft.topic_label,
+                topic_key=draft.topic_key,
                 supporting_review_ids=valid_support,
                 conflicting_review_ids=valid_conflicts,
                 support_count=len(valid_support),

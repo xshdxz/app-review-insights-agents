@@ -41,3 +41,6 @@ jobs:
           pip install -e ".[dev]"
       - name: Run tests
         run: pytest --cov=app_review_insights --cov-report=term-missing
+      # 坏掉的评测集跑出来的数字毫无意义，所以它本身也要过门禁（不调用模型，零成本）
+      - name: Validate gold evaluation dataset
+        run: python scripts/run_eval.py

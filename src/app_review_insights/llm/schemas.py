@@ -1,16 +1,33 @@
+import re
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def normalize_topic_key(value: str) -> str:
+    """把主题键规范成 ascii snake_case；无法规范化时返回空串。
+
+    空串表示"这次没有可比的键"，评测会把它计入覆盖率缺口，而不是拿一个
+    不可比的中文标签去和黄金集做精确匹配——那只会得到假阴性。
+    """
+    ascii_only = value.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^0-9a-zA-Z]+", "_", ascii_only).strip("_").lower()
 
 
 class FindingDraft(BaseModel):
     title: str
     problem_statement: str
     topic_label: str
+    topic_key: str = ""
     supporting_review_ids: list[str] = Field(min_length=1)
     conflicting_review_ids: list[str] = Field(default_factory=list)
     reasoning_summary: str
     limitations: list[str] = Field(default_factory=list)
+
+    @field_validator("topic_key")
+    @classmethod
+    def _normalize_key(cls, value: str) -> str:
+        return normalize_topic_key(value)
 
 
 class ReviewSummaryDraft(BaseModel):

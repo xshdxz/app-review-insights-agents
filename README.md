@@ -78,7 +78,7 @@ Agent 层**包裹在确定性核心之外**：
 
 ### 评测中心
 
-- **标注数据集**（`evals/gold-reviews.json`）：3 个案例，覆盖"有发现"和"证据不足"场景
+- **标注数据集**（`evals/gold-reviews.json`）：**30 个案例 / 120 条评论**，覆盖中英单语与混排、冲突证据、证据不足、重复评论、Prompt 注入、全正面等场景；数据集完整性在 CI 里有独立门禁
 - **自动评测**（`scripts/run_eval.py --live`）：主题召回率、引用精确率、结构化输出成功率
 - **评测中心页面**（`pages/3_评测中心.py`）：可视化结果 + 历史对比
 
@@ -218,7 +218,7 @@ scripts/
 └── deploy.ps1          # 一键 Docker 部署
 
 evals/
-└── gold-reviews.json   # 标注评测数据集（3 个案例）
+└── gold-reviews.json   # 标注评测数据集（30 个案例 / 120 条评论）
 ```
 
 ---

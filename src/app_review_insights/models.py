@@ -79,6 +79,8 @@ class Finding(BaseModel):
     title: str
     problem_statement: str
     topic_label: str
+    #: 语言无关的稳定主题键（ascii snake_case），供评测比对；展示仍用 topic_label
+    topic_key: str = ""
     supporting_review_ids: list[str] = Field(min_length=1)
     conflicting_review_ids: list[str] = Field(default_factory=list)
     support_count: int = 0
