@@ -13,6 +13,7 @@ from app_review_insights.models import (
     Review,
 )
 from app_review_insights.rag.embeddings import cosine_similarity
+from app_review_insights.storage.sqlite import connect
 
 _CORPUS_FTS_QUERY = (
     "SELECT c.review_id, c.app_id, c.content, c.platform, c.source, c.region AS storefront, "
@@ -86,9 +87,7 @@ class AgentRepository:
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path)
-        connection.row_factory = sqlite3.Row
-        return connection
+        return connect(self.path)
 
     @contextmanager
     def _session(self):

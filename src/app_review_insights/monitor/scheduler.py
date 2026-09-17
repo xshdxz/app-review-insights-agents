@@ -5,6 +5,7 @@ web 进程默认不启动（SCHEDULER_ENABLED=false）；worker 进程启动。
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -13,6 +14,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app_review_insights.storage.agent_repository import AgentRepository
+
+logger = logging.getLogger("agent-scheduler")
 
 
 class MonitorScheduler:
@@ -57,7 +60,15 @@ class MonitorScheduler:
             self.run_job_fn(job.goal, job.app_url, job.require_approval)
             status = "completed"
         except Exception:
+            # 必须带 traceback 记录：只写 last_status="failed" 会让故障原因彻底丢失，
+            # 线上将无法判断是采集、模型还是校验环节出错。
             status = "failed"
+            logger.exception(
+                "监控任务执行失败 job_id=%s app_url=%s goal=%s",
+                job_id,
+                job.app_url,
+                job.goal,
+            )
         updated = job.model_copy(
             update={
                 "last_run_at": datetime.now(UTC),
@@ -67,6 +78,12 @@ class MonitorScheduler:
         )
         self.agent_repository.save_job(updated)
 
-    def shutdown(self) -> None:
+    def shutdown(self, wait: bool = True) -> None:
+        """停止调度器。
+
+        默认 `wait=True`：不再接受新任务，但等正在执行的任务跑完，
+        避免进程退出把进行中的分析拦腰砍断（流水线虽有检查点可续跑，
+        但被动中断会留下 `running` 状态的孤儿运行）。
+        """
         if self._scheduler.running:
-            self._scheduler.shutdown(wait=False)
+            self._scheduler.shutdown(wait=wait)

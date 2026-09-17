@@ -225,11 +225,12 @@ def test_main_starts_scheduler_when_enabled():
         patch("app_review_insights.monitor.worker.build_agent_stack", return_value=fake_stack),
         patch("app_review_insights.monitor.worker.MonitorScheduler", return_value=fake_scheduler),
         patch("app_review_insights.monitor.worker.make_run_job_fn") as mock_fn,
-        patch("app_review_insights.monitor.worker.time") as mock_time,
+        # 装上"信号处理器"即刻请求停止，等价于收到一次 SIGTERM
+        patch(
+            "app_review_insights.monitor.worker.install_signal_handlers",
+            side_effect=lambda stop_event: stop_event.set(),
+        ),
     ):
-        # 模拟 KeyboardInterrupt 结束主循环
-        mock_time.sleep.side_effect = KeyboardInterrupt
-
         main()
 
     fake_scheduler.start.assert_called_once()

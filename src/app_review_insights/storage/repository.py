@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from app_review_insights.models import RunRecord, Stage, StageEvent
+from app_review_insights.storage.sqlite import connect
 
 
 class RunRepository:
@@ -14,9 +15,7 @@ class RunRepository:
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path)
-        connection.row_factory = sqlite3.Row
-        return connection
+        return connect(self.path)
 
     @contextmanager
     def _session(self):
