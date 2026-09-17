@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from app_review_insights.llm.usage import ModelUsage
 from app_review_insights.models import RunRecord, Stage, StageEvent
 from app_review_insights.storage.sqlite import connect
 
@@ -48,6 +49,19 @@ class RunRepository:
                     run_id TEXT NOT NULL,
                     payload_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS model_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT,
+                    stage TEXT,
+                    model TEXT NOT NULL,
+                    prompt_tokens INTEGER NOT NULL,
+                    completion_tokens INTEGER NOT NULL,
+                    total_tokens INTEGER NOT NULL,
+                    latency_ms REAL NOT NULL,
+                    estimated_cost_usd REAL NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_model_usage_run ON model_usage(run_id);
                 """
             )
 
@@ -116,6 +130,76 @@ class RunRepository:
                 "INSERT INTO events(run_id, payload_json) VALUES (?, ?)",
                 (run_id, event.model_dump_json()),
             )
+
+    def record_model_usage(self, usage: ModelUsage) -> None:
+        """记一笔模型调用账目（token 与估算费用）。"""
+        with self._session() as connection:
+            connection.execute(
+                """
+                INSERT INTO model_usage(
+                    run_id, stage, model, prompt_tokens, completion_tokens,
+                    total_tokens, latency_ms, estimated_cost_usd, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    usage.run_id,
+                    usage.stage,
+                    usage.model,
+                    usage.prompt_tokens,
+                    usage.completion_tokens,
+                    usage.total_tokens,
+                    usage.latency_ms,
+                    usage.estimated_cost_usd,
+                    usage.created_at.isoformat(),
+                ),
+            )
+
+    def model_usage_summary(self, run_id: str | None = None) -> dict[str, Any]:
+        """汇总调用次数、token 与估算费用；`run_id` 为空时统计全部。"""
+        with self._session() as connection:
+            row = connection.execute(
+                """
+                SELECT COUNT(*) AS calls,
+                       COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,
+                       COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
+                       COALESCE(SUM(total_tokens), 0) AS total_tokens,
+                       COALESCE(SUM(estimated_cost_usd), 0.0) AS estimated_cost_usd
+                FROM model_usage
+                WHERE (? IS NULL OR run_id = ?)
+                """,
+                (run_id, run_id),
+            ).fetchone()
+        return {
+            "calls": row["calls"],
+            "prompt_tokens": row["prompt_tokens"],
+            "completion_tokens": row["completion_tokens"],
+            "total_tokens": row["total_tokens"],
+            "estimated_cost_usd": row["estimated_cost_usd"],
+        }
+
+    def model_usage_by_stage(self, run_id: str | None = None) -> dict[str, dict[str, Any]]:
+        """按阶段拆解开销，用于定位成本大头。"""
+        with self._session() as connection:
+            rows = connection.execute(
+                """
+                SELECT COALESCE(stage, 'unknown') AS stage,
+                       COUNT(*) AS calls,
+                       COALESCE(SUM(total_tokens), 0) AS total_tokens,
+                       COALESCE(SUM(estimated_cost_usd), 0.0) AS estimated_cost_usd
+                FROM model_usage
+                WHERE (? IS NULL OR run_id = ?)
+                GROUP BY COALESCE(stage, 'unknown')
+                """,
+                (run_id, run_id),
+            ).fetchall()
+        return {
+            row["stage"]: {
+                "calls": row["calls"],
+                "total_tokens": row["total_tokens"],
+                "estimated_cost_usd": row["estimated_cost_usd"],
+            }
+            for row in rows
+        }
 
     def list_events(self, run_id: str) -> list[StageEvent]:
         with self._session() as connection:

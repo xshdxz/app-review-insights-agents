@@ -14,6 +14,7 @@ from app_review_insights.llm.schemas import (
     ConsolidationResult,
     EvidenceAuditResult,
 )
+from app_review_insights.llm.usage import current_run_id, current_stage
 from app_review_insights.models import (
     AnalysisRequest,
     Finding,
@@ -85,6 +86,8 @@ class AnalysisOrchestrator:
         )
         self.repository.save_run(run)
         self._add_event(run, "Analysis run created")
+        # 让模型用量账目能归集到本次运行（provider 从 contextvar 读取）
+        current_run_id.set(run.run_id)
         return self._execute(run, imported_reviews=imported_reviews)
 
     def resume(self, run_id: str) -> RunRecord:
@@ -94,6 +97,7 @@ class AnalysisOrchestrator:
 
         run = self._update_run(run, status=RunStatus.RUNNING, last_error=None)
         self._add_event(run, "Analysis run resumed")
+        current_run_id.set(run.run_id)
         return self._execute(run)
 
     def _execute(
@@ -611,6 +615,8 @@ class AnalysisOrchestrator:
             **updates,
         )
         self._add_event(run, f"Stage started: {stage.value}")
+        # 成本按阶段归集，便于定位开销大头
+        current_stage.set(stage.value)
         return run
 
     def _wait(

@@ -56,7 +56,9 @@ def build_pipeline_services(
     if use_fake_provider or not settings.model_available:
         return PipelineServices(batch_analyzer=None, **common)
 
-    provider = DeepSeekProvider.from_settings(settings)
+    provider = DeepSeekProvider.from_settings(
+        settings, usage_recorder=repository.record_model_usage
+    )
     return PipelineServices(
         batch_analyzer=lambda reviews, goal: analyze_batch(provider, reviews, goal),
         consolidator=lambda results, goal, reviews: consolidate_findings(
@@ -104,7 +106,12 @@ def build_agent_stack(
 
     provider = None
     if not use_fake_provider and settings.model_available:
-        provider = DeepSeekProvider.from_settings(settings)
+        # Agent 侧（Planner/Reviewer/RAG）的模型调用同样计入账目，
+        # 否则成本会漏掉一整条链路。
+        provider = DeepSeekProvider.from_settings(
+            settings,
+            usage_recorder=RunRepository(settings.database_path).record_model_usage,
+        )
 
     # RAG 装配：语料索引/检索/问答；embedding 未配置时退化为纯 FTS5 检索
     # 优先本地模型（无需 API Key），其次 API，最后降级为纯 FTS5

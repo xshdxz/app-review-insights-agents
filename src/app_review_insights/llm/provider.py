@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
 from app_review_insights.errors import RecoverableModelError
+from app_review_insights.llm.usage import ModelUsage, build_usage
+
+logger = logging.getLogger("ari-llm")
 
 if TYPE_CHECKING:
     from app_review_insights.config import Settings
@@ -24,6 +28,7 @@ class DeepSeekProvider:
         max_retries: int = 2,
         retry_delays: Sequence[float] | None = None,
         max_tokens: int = 8192,
+        usage_recorder: Callable[[ModelUsage], None] | None = None,
     ):
         if max_retries < 0:
             raise ValueError("max_retries must be non-negative")
@@ -39,9 +44,37 @@ class DeepSeekProvider:
         self.max_retries = max_retries
         self.retry_delays = delays
         self.max_tokens = max_tokens
+        self.usage_recorder = usage_recorder
+
+    def _report_usage(self, response: Any, started_at: float) -> None:
+        """把本次调用的用量交给 recorder。
+
+        Schema 校验失败也会走到这里——API 已经计费，这笔账不能漏。
+        计量本身失败不能影响主流程，但必须留下告警而不是静默吞掉。
+        """
+        if self.usage_recorder is None:
+            return
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        try:
+            self.usage_recorder(
+                build_usage(
+                    model=self.model,
+                    prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
+                    completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
+                    latency_ms=(time.perf_counter() - started_at) * 1000,
+                )
+            )
+        except Exception:
+            logger.warning("模型用量记录失败（不影响主流程）", exc_info=True)
 
     @classmethod
-    def from_settings(cls, settings: Settings) -> DeepSeekProvider:
+    def from_settings(
+        cls,
+        settings: Settings,
+        usage_recorder: Callable[[ModelUsage], None] | None = None,
+    ) -> DeepSeekProvider:
         return cls(
             client=OpenAI(
                 api_key=settings.effective_model_api_key,
@@ -52,6 +85,7 @@ class DeepSeekProvider:
             model=settings.model_name,
             max_retries=settings.model_max_retries,
             max_tokens=settings.model_max_tokens,
+            usage_recorder=usage_recorder,
         )
 
     def generate(self, system_prompt: str, user_prompt: str, schema: type[T]) -> T:
@@ -70,7 +104,9 @@ class DeepSeekProvider:
             {"role": "user", "content": user_prompt},
         ]
         for attempt in range(self.max_retries + 1):
+            content = "{}"
             try:
+                started_at = time.perf_counter()
                 response = self.client.chat.completions.create(
                     model=self.model,
                     temperature=0.1,
@@ -78,6 +114,7 @@ class DeepSeekProvider:
                     response_format={"type": "json_object"},
                     messages=messages,
                 )
+                self._report_usage(response, started_at)
                 content = response.choices[0].message.content or "{}"
                 return schema.model_validate_json(content)
             except ValidationError as exc:
