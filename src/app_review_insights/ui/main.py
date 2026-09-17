@@ -580,7 +580,11 @@ def main() -> None:
                 _update_live_status(resume_status, resumed)
                 st.rerun()
             else:
-                render_run_status(run, events)
+                render_run_status(
+                    run,
+                    events,
+                    usage=services.repository.model_usage_summary(run_id=run.run_id),
+                )
                 if run.status == RunStatus.WAITING:
                     resume = st.button(
                         "继续分析",

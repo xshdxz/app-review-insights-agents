@@ -138,6 +138,7 @@ python scripts/manual_agent_test.py
 | `MODEL_ENABLED` | `true` | 设为 `false` 强制演示模式。 |
 | `MODEL_NAME` / `MODEL_BASE_URL` | `deepseek-chat` / `https://api.deepseek.com` | OpenAI 兼容端点。 |
 | `MODEL_TIMEOUT_SECONDS` / `MODEL_MAX_RETRIES` / `MODEL_MAX_TOKENS` | `60` / `2` / `8192` | 模型调用行为。 |
+| `MODEL_BUDGET_USD_PER_RUN` / `MODEL_BUDGET_USD_PER_DAY` | `0` / `0` | 费用预算（美元，0 = 不限制）。超限时流水线停在检查点，调高后可用同一 `run_id` 续跑。 |
 | `DATABASE_PATH` | `data/runs/runs.sqlite3` | 流水线检查点库。 |
 | `AGENT_DB_PATH` | `data/agent/agent.sqlite3` | Agent 运行 / 监控任务 / 报告 / 语料（FTS5）。 |
 | `WEBHOOK_TYPE` / `WEBHOOK_URLS` | *(空)* | `feishu` / `dingtalk` / `wecom` / `slack`；多个地址用英文逗号分隔。 |

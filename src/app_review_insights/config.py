@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     model_max_retries: int = Field(default=2, alias="MODEL_MAX_RETRIES")
     model_max_tokens: int = Field(default=8192, alias="MODEL_MAX_TOKENS")
     model_api_key: str = Field(default="", alias="MODEL_API_KEY")
+    # 预算熔断：0 表示不限制。超限时流水线停在检查点，可调高后续跑。
+    model_budget_usd_per_run: float = Field(default=0.0, alias="MODEL_BUDGET_USD_PER_RUN")
+    model_budget_usd_per_day: float = Field(default=0.0, alias="MODEL_BUDGET_USD_PER_DAY")
     database_path: Path = Field(default=Path("data/runs/runs.sqlite3"), alias="DATABASE_PATH")
     default_review_limit: int = Field(default=500, alias="DEFAULT_REVIEW_LIMIT")
     batch_review_limit: int = Field(default=100, alias="BATCH_REVIEW_LIMIT")

@@ -1,6 +1,7 @@
 import json
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -154,8 +155,16 @@ class RunRepository:
                 ),
             )
 
-    def model_usage_summary(self, run_id: str | None = None) -> dict[str, Any]:
-        """汇总调用次数、token 与估算费用；`run_id` 为空时统计全部。"""
+    def model_usage_summary(
+        self,
+        run_id: str | None = None,
+        since: datetime | None = None,
+    ) -> dict[str, Any]:
+        """汇总调用次数、token 与估算费用。
+
+        `run_id` 为空时不限运行；`since` 为空时不限时间（日预算传当日 00:00 UTC）。
+        """
+        since_iso = since.isoformat() if since is not None else None
         with self._session() as connection:
             row = connection.execute(
                 """
@@ -166,8 +175,9 @@ class RunRepository:
                        COALESCE(SUM(estimated_cost_usd), 0.0) AS estimated_cost_usd
                 FROM model_usage
                 WHERE (? IS NULL OR run_id = ?)
+                  AND (? IS NULL OR created_at >= ?)
                 """,
-                (run_id, run_id),
+                (run_id, run_id, since_iso, since_iso),
             ).fetchone()
         return {
             "calls": row["calls"],

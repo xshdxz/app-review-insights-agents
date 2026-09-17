@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from app_review_insights.llm.usage import build_usage
 from app_review_insights.models import (
     AgentRun,
     AgentRunStatus,
@@ -171,3 +172,40 @@ def test_summarize_changes():
     )
     changes = summarize_changes(previous, current)
     assert any("发现数量" in change for change in changes)
+
+
+# ── 成本可见 ────────────────────────────────────────────────────────────────
+
+
+def test_report_shows_model_cost(run_repo, agent_repo):
+    """报告必须带上本次分析的模型成本，否则用量数据攒了也没人看得到。"""
+    run_id = "run-cost"
+    _seed_run_outputs(run_repo, run_id)
+    run_repo.record_model_usage(
+        build_usage(
+            model="deepseek-chat",
+            prompt_tokens=1000,
+            completion_tokens=500,
+            latency_ms=12.0,
+            run_id=run_id,
+            stage="analyze_batches",
+        )
+    )
+
+    report = build_report(_agent_run(run_id), run_repo, agent_repo)
+
+    assert "模型成本" in report.markdown
+    assert "1500 tokens" in report.markdown
+    assert "1 次调用" in report.markdown
+    assert "$" in report.markdown
+    assert "模型成本" in report.summary
+
+
+def test_report_without_model_calls_still_renders(run_repo, agent_repo):
+    run_id = "run-free"
+    _seed_run_outputs(run_repo, run_id)
+
+    report = build_report(_agent_run(run_id), run_repo, agent_repo)
+
+    assert "模型成本" in report.markdown
+    assert "0 次调用" in report.markdown

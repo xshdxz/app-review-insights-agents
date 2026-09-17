@@ -19,6 +19,7 @@ from app_review_insights.agent.tools import (
 from app_review_insights.collectors import AppStoreCollector
 from app_review_insights.config import Settings, load_settings
 from app_review_insights.llm import DeepSeekProvider
+from app_review_insights.llm.budget import make_budget_guard
 from app_review_insights.models import Review, Stage
 from app_review_insights.monitor.webhook import WebhookSender
 from app_review_insights.pipeline.analyze import (
@@ -40,6 +41,17 @@ from app_review_insights.storage import RunRepository
 from app_review_insights.storage.agent_repository import AgentRepository
 
 
+def build_budget_guard(settings: Settings, repository: RunRepository):
+    """按配置构造预算守卫；未配置预算时返回 `None`（不产生额外查询）。"""
+    return make_budget_guard(
+        lambda run_id, since: repository.model_usage_summary(run_id=run_id, since=since)[
+            "estimated_cost_usd"
+        ],
+        per_run_usd=settings.model_budget_usd_per_run,
+        per_day_usd=settings.model_budget_usd_per_day,
+    )
+
+
 def build_pipeline_services(
     settings: Settings,
     use_fake_provider: bool = False,
@@ -57,7 +69,9 @@ def build_pipeline_services(
         return PipelineServices(batch_analyzer=None, **common)
 
     provider = DeepSeekProvider.from_settings(
-        settings, usage_recorder=repository.record_model_usage
+        settings,
+        usage_recorder=repository.record_model_usage,
+        budget_check=build_budget_guard(settings, repository),
     )
     return PipelineServices(
         batch_analyzer=lambda reviews, goal: analyze_batch(provider, reviews, goal),
@@ -108,9 +122,11 @@ def build_agent_stack(
     if not use_fake_provider and settings.model_available:
         # Agent 侧（Planner/Reviewer/RAG）的模型调用同样计入账目，
         # 否则成本会漏掉一整条链路。
+        agent_run_repository = RunRepository(settings.database_path)
         provider = DeepSeekProvider.from_settings(
             settings,
-            usage_recorder=RunRepository(settings.database_path).record_model_usage,
+            usage_recorder=agent_run_repository.record_model_usage,
+            budget_check=build_budget_guard(settings, agent_run_repository),
         )
 
     # RAG 装配：语料索引/检索/问答；embedding 未配置时退化为纯 FTS5 检索

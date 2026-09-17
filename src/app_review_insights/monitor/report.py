@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from app_review_insights.models import (
@@ -28,10 +29,15 @@ def build_report(
     requirements = _load_requirements(run_repository, run.run_id)
     test_cases = _load_test_cases(run_repository, run.run_id)
 
-    markdown = render_report_markdown(agent_run, run, findings, requirements, test_cases)
+    usage = run_repository.model_usage_summary(run_id=run.run_id)
+    markdown = render_report_markdown(
+        agent_run, run, findings, requirements, test_cases, usage=usage
+    )
     summary = (
         f"「{agent_run.goal}」分析完成：发现 {len(findings)} 条、"
         f"需求 {len(requirements)} 条、测试用例 {len(test_cases)} 条。"
+        f"模型成本 ${usage['estimated_cost_usd']:.4f}"
+        f"（{usage['total_tokens']} tokens）。"
         f"数据状态：{'有效' if run.status.value == 'completed' else run.status.value}。"
     )
     if previous is None:
@@ -87,19 +93,33 @@ def _load_test_cases(run_repository: RunRepository, run_id: str) -> list[TestCas
     return [TestCase.model_validate(item) for item in output.get("test_cases", [])]
 
 
+#: 无用量数据时的空账目，保证报告在零调用场景下也能渲染。
+_EMPTY_USAGE: dict[str, Any] = {
+    "calls": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "estimated_cost_usd": 0.0,
+}
+
+
 def render_report_markdown(
     agent_run: AgentRun,
     run,
     findings: list[Finding],
     requirements: list[Requirement],
     test_cases: list[TestCase],
+    usage: dict[str, Any] | None = None,
 ) -> str:
+    usage = usage or _EMPTY_USAGE
     lines = [
         "# 产品情报报告",
         "",
         f"- 目标：{agent_run.goal}",
         f"- App：{agent_run.app_url}",
         f"- 运行：`{run.run_id}`（状态 `{run.status.value}`）",
+        f"- 模型成本：${usage['estimated_cost_usd']:.4f}"
+        f"（{usage['total_tokens']} tokens / {usage['calls']} 次调用）",
         "",
         f"## 发现（{len(findings)}）",
         "",

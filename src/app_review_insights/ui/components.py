@@ -389,7 +389,24 @@ def render_model_status(
         )
 
 
-def render_run_status(run: RunRecord, events: list[StageEvent]) -> None:
+def format_usage_caption(usage: dict[str, Any] | None) -> str | None:
+    """把用量账目渲染成一行说明；没有真实调用时返回 `None`。
+
+    零调用场景（如离线演示档案）显示"成本 $0.0000"只是噪音，直接隐藏。
+    """
+    if not usage or not usage.get("calls"):
+        return None
+    return (
+        f"模型用量 `{usage['total_tokens']} tokens / {usage['calls']} 次调用`"
+        f" · 估算成本 `${usage['estimated_cost_usd']:.4f}`"
+    )
+
+
+def render_run_status(
+    run: RunRecord,
+    events: list[StageEvent],
+    usage: dict[str, Any] | None = None,
+) -> None:
     with st.container(border=True):
         st.subheader("运行状态", anchor=False)
         st.progress(run.coverage_ratio, text=f"分析覆盖率 {run.coverage_ratio:.0%}")
@@ -415,6 +432,10 @@ def render_run_status(run: RunRecord, events: list[StageEvent]) -> None:
             st.write(f"批次检查点：`已完成 {run.current_batch} / {run.total_batches}`")
         else:
             st.write("当前批次：`尚未分批`")
+
+        usage_caption = format_usage_caption(usage)
+        if usage_caption:
+            st.caption(usage_caption)
 
         if run.last_error:
             st.warning(run.last_error, icon=":material/report_problem:")

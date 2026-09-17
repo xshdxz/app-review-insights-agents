@@ -29,6 +29,7 @@ class DeepSeekProvider:
         retry_delays: Sequence[float] | None = None,
         max_tokens: int = 8192,
         usage_recorder: Callable[[ModelUsage], None] | None = None,
+        budget_check: Callable[[], None] | None = None,
     ):
         if max_retries < 0:
             raise ValueError("max_retries must be non-negative")
@@ -45,6 +46,7 @@ class DeepSeekProvider:
         self.retry_delays = delays
         self.max_tokens = max_tokens
         self.usage_recorder = usage_recorder
+        self.budget_check = budget_check
 
     def _report_usage(self, response: Any, started_at: float) -> None:
         """把本次调用的用量交给 recorder。
@@ -74,6 +76,7 @@ class DeepSeekProvider:
         cls,
         settings: Settings,
         usage_recorder: Callable[[ModelUsage], None] | None = None,
+        budget_check: Callable[[], None] | None = None,
     ) -> DeepSeekProvider:
         return cls(
             client=OpenAI(
@@ -86,6 +89,7 @@ class DeepSeekProvider:
             max_retries=settings.model_max_retries,
             max_tokens=settings.model_max_tokens,
             usage_recorder=usage_recorder,
+            budget_check=budget_check,
         )
 
     def generate(self, system_prompt: str, user_prompt: str, schema: type[T]) -> T:
@@ -104,6 +108,9 @@ class DeepSeekProvider:
             {"role": "user", "content": user_prompt},
         ]
         for attempt in range(self.max_retries + 1):
+            # 每次调用前先查预算：超限直接抛，一分钱都不再花
+            if self.budget_check is not None:
+                self.budget_check()
             content = "{}"
             try:
                 started_at = time.perf_counter()

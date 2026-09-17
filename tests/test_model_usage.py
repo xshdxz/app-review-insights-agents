@@ -213,6 +213,30 @@ def test_usage_summary_is_scoped_by_run(tmp_path):
     assert repository.model_usage_summary()["calls"] == 2
 
 
+# ── UI 展示 ──────────────────────────────────────────────────────────────────
+
+
+def test_usage_caption_is_hidden_when_no_calls():
+    """离线演示等零调用场景不该显示"成本 $0.0000"这种噪音。"""
+    from app_review_insights.ui.components import format_usage_caption
+
+    assert format_usage_caption(None) is None
+    assert format_usage_caption({"calls": 0, "total_tokens": 0, "estimated_cost_usd": 0.0}) is None
+
+
+def test_usage_caption_shows_tokens_calls_and_cost():
+    from app_review_insights.ui.components import format_usage_caption
+
+    caption = format_usage_caption(
+        {"calls": 7, "total_tokens": 12_345, "estimated_cost_usd": 0.0123}
+    )
+
+    assert caption is not None
+    assert "12345 tokens" in caption
+    assert "7 次调用" in caption
+    assert "0.0123" in caption
+
+
 def test_usage_summary_by_stage_breaks_down_cost_drivers(tmp_path):
     repository = RunRepository(tmp_path / "runs.sqlite3")
     for stage, prompt in (("analyze_batches", 1000), ("plan", 10)):
