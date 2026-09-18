@@ -208,7 +208,7 @@ Agent 层**包裹在确定性核心之外**：
 | `SOCIAL_X_ENDPOINT` | *(空)* | 可选的 X 舆情搜索端点（返回 JSON 数组）。 |
 | `DEFAULT_REVIEW_LIMIT` / `BATCH_REVIEW_LIMIT` / `BATCH_MAX_CHARACTERS` | `500` / `100` / `60000` | 数量与分批限制。 |
 | `DEMO_MODE` | `auto` | 运行模式：`auto` 配了密钥且未被 `MODEL_ENABLED=false` 禁用时走真实模型，无密钥且录制文件存在时回放录制；`live` 强制真实模型；`replay` 强制回放、不看密钥。 |
-| `MODEL_RECORD_PATH` | *(空)* | 录制输出路径（留空 = 不录制）。`scripts/record_demo.py` 会自动指向 `data/recordings/demo-replay.json`。 |
+| `MODEL_RECORD_PATH` | *(空)* | 录制输出路径（留空 = 不录制）。`scripts/record_demo.py` 会自动指向 `data/recordings/demo-replay.json`。**只在临时导出时设置，不要常驻写进 `.env`**：装配录制必须提供输入指纹，而 worker 与 `pages/` 调用的 `build_agent_stack` 不传指纹，写进 `.env` 会让它们在装配期直接抛 `InputDataError`。 |
 | `DEMO_REPLAY_PATH` | `data/recordings/demo-replay.json` | 回放读取的录制文件（随仓库提交）。不存在时两档表现不同：`DEMO_MODE=auto` 退回「按钮禁用」的降级形态（界面只给模型状态提醒），`DEMO_MODE=replay` 装配失败并抛 `InputDataError`、横幅明说录制文件缺失。 |
 
 密钥处理：密钥只在运行时读入 provider；绝不记录日志、导出或包含进下载；错误信息会脱敏密钥、评论原文与 `.env` 引用。

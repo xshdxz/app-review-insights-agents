@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
@@ -113,9 +114,27 @@ def test_demo_mode_runs_the_whole_pipeline_offline(tmp_path, monkeypatch):
 
     assert not app.exception, f"演示回放不应抛异常，实际：{app.exception}"
     assert [block.value for block in app.error] == [], "演示模式点开始分析不应出现错误提示"
-    run = RunRepository(tmp_path / "runs.sqlite3").get_run(app.session_state["run_id"])
+    repository = RunRepository(tmp_path / "runs.sqlite3")
+    run = repository.get_run(app.session_state["run_id"])
     assert run.status == RunStatus.COMPLETED
     assert run.current_stage == Stage.COMPLETE
+    # 「离线」从推断变成断言：回放的整条流水线一次模型调用都没有（成本恒为 0）
+    assert repository.model_usage_summary(run_id=run.run_id)["calls"] == 0
+    # 回放跑出来的运行照实标注，且四个下载产物都带得走这组标注（页面横幅不算数）
+    from app_review_insights.llm.recording import RECORDING_MODE
+    from app_review_insights.storage.cache import build_downloads
+
+    assert run.mode == RECORDING_MODE and run.is_live is False
+    downloads = build_downloads(repository, run.run_id)
+    assert json.loads(downloads["prd"].decode("utf-8"))["mode"] == RECORDING_MODE
+    assert json.loads(downloads["cleaned_reviews"].decode("utf-8"))["is_live"] is False
+    for name in ("test_cases", "traceability"):
+        assert downloads[name].decode("utf-8-sig").splitlines()[0].endswith(",mode,is_live")
+    # 加了标注的清洗评论仍可重新导入——真实评论记录走一遍完整往返
+    from app_review_insights.input_parsing import import_reviews
+
+    reimported = import_reviews(downloads["cleaned_reviews"], "cleaned-reviews.json", app_id="demo")
+    assert reimported and reimported[0].review_id == "sample-001"
 
 
 def test_live_mode_without_key_renders_instead_of_crashing(tmp_path, monkeypatch):
@@ -156,3 +175,40 @@ def test_missing_recording_disables_start_even_with_a_key(tmp_path, monkeypatch)
     # 前提断言：确实进了降级分支，否则这条用例测的不是它要测的东西。
     assert any("模型装配未完成" in block.value for block in app.warning)
     assert app.button(key="start-analysis").disabled is True
+
+
+def test_tampered_fingerprint_fails_before_any_stage_output(tmp_path, monkeypatch):
+    """录制件的输入指纹与本次输入不是同一份时，必须在跑任何阶段之前失败。
+
+    指纹此前只写不读（10 处命中全在写侧）：把录制件里的 `input_fingerprint` 改掉再跑
+    演示回放，照样 completed 并产出完整结果——设计文档第 212 行与验收标准 4 要求的是
+    「在运行前即失败」。断言分两层：一是页面上出现面向人的错误提示；二是**一条运行记录
+    都没有**，即没有任何阶段输出落盘。只有前者不够——跑到中途才失败（例如输入多一条评论
+    时停在 analyze_batches 的 waiting_for_model）同样会有错误提示，那正是本条要排除的。
+    """
+    from app_review_insights.storage import RunRepository
+
+    assert _RECORDING_PATH.is_file(), "本用例依赖 Task 5 提交的真实录制件"
+    # 只改指纹，entries 一字不动：这样「未命中」不会发生，唯一能拦住它的就是指纹校验。
+    payload = json.loads(_RECORDING_PATH.read_text(encoding="utf-8"))
+    payload["input_fingerprint"] = "0000000000000000"
+    tampered = tmp_path / "tampered-fingerprint.json"
+    tampered.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    database = tmp_path / "runs.sqlite3"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DEMO_MODE", "replay")
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tampered))
+    monkeypatch.setenv("DATABASE_PATH", str(database))
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+
+    app = AppTest.from_file(_APP_PATH).run(timeout=30)
+    app = app.button(key="start-analysis").click().run(timeout=180)
+
+    assert not app.exception, f"指纹不符应给页面提示，不应抛异常：{app.exception}"
+    errors = [block.value for block in app.error]
+    # 前提断言：失败的确实是「录制与当前输入不是同一份」，而不是别的输入错误。
+    assert any("指纹" in message for message in errors), errors
+    # 核验「运行前即失败」：运行记录一条都没有，阶段输出自然也没有。
+    assert RunRepository(database).list_runs() == [], "指纹不符时不得创建运行或落盘任何阶段输出"

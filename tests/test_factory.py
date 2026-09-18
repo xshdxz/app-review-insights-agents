@@ -220,6 +220,24 @@ def test_live_mode_without_key_raises(tmp_path, monkeypatch):
         build_pipeline_services(load_settings())
 
 
+def test_live_mode_message_names_the_real_cause_when_model_is_disabled(tmp_path, monkeypatch):
+    """密钥在场但被 MODEL_ENABLED=false 禁用：消息不能只说「请设置 DEEPSEEK_API_KEY」。
+
+    那条路用户已经走过了，照做无用——照着一条走不通的提示去修，只会以为软件坏了。
+    消息里必须出现真正的开关名。
+    """
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DEMO_MODE", "live")
+    monkeypatch.setenv("MODEL_ENABLED", "false")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-present-but-disabled")
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+
+    # 前提断言：密钥确实在场，所以失败原因只可能是 MODEL_ENABLED。
+    assert load_settings().effective_model_api_key
+    with pytest.raises(InputDataError, match="MODEL_ENABLED"):
+        build_pipeline_services(load_settings())
+
+
 def test_replay_mode_wires_the_replay_provider(tmp_path, monkeypatch):
     path = tmp_path / "rec.json"
     _empty_recording(path)

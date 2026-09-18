@@ -18,6 +18,7 @@ from app_review_insights.factory import (
     build_pipeline_services as _build_pipeline_services,
 )
 from app_review_insights.input_parsing import import_reviews, parse_app_store_url
+from app_review_insights.llm.recording import load_recording, verify_input_fingerprint
 from app_review_insights.models import (
     AnalysisRequest,
     RunRecord,
@@ -132,7 +133,10 @@ def _sync_inputs_to_query_params(
     upload_name = Path(restored).name if restored else None
     if not upload_name and upload is not None and upload.name:
         upload_name = upload.name
-    if upload_name:
+    # upload 只属于导入模式。`restored-upload` 由上传动作写入且从不清理，只看它不看
+    # 当前来源模式的话，从导入切到在线采集后文件名仍会被写回地址栏、刷新时再被种回去
+    # ——与分享链接泄漏是同一族问题，只是换了条触发路径。
+    if upload_name and source_label in ("JSON 导入", "CSV 导入"):
         params["upload"] = upload_name
     else:
         params.pop("upload", None)
@@ -351,7 +355,12 @@ def _prepare_imported_reviews(
     if demo_replay:
         # 演示模式忽略上传与 URL：录制件是在仓库样例上录的，
         # 也**不能**按 review_limit 截断——回放靠输入指纹一致才命中。
-        return import_reviews(SAMPLE_PATH.read_bytes(), SAMPLE_PATH.name, app_id="demo")
+        reviews = import_reviews(SAMPLE_PATH.read_bytes(), SAMPLE_PATH.name, app_id="demo")
+        # 回放前先确认录制件与本次输入是同一份。校验放在这里而不是装配期：
+        # factory 装配时还看不到本次输入，只有这里才知道「这次要回放的到底是哪份输入」。
+        # 放在 _run_analysis 之前，因此失败时连运行记录都不会创建，更不会有阶段输出落盘。
+        verify_input_fingerprint(load_recording(load_settings().demo_replay_path), reviews)
+        return reviews
     if request.source_type == SourceType.ONLINE:
         return None
     if upload is None:
@@ -584,7 +593,8 @@ def main() -> None:
     )
     if demo_replay:
         st.warning(
-            "演示模式：回放一次真实运行的模型输出，不调用外部 API，输入固定为仓库自带样例。",
+            "演示模式：回放一次真实运行的模型输出，不调用外部 API，输入固定为仓库自带样例；"
+            "点「开始分析」可在样例上跑完整条流水线。",
             icon=":material/replay:",
         )
     demo_mode = st.toggle(
@@ -667,6 +677,11 @@ def main() -> None:
             run = services.repository.get_run(run_id)
             events = services.repository.list_events(run_id)
             st.subheader("当前档案", anchor=False)
+            if not run.is_live:
+                # 结果视图沿用同一套 is_live/mode 标注（设计文档 §7）：回放跑出来的结果
+                # 与实时结果在页面上要分得开，下载下来的四件产物也带同一组标注。
+                st.badge("回放运行", color="orange", icon=":material/replay:")
+                st.badge("非实时", color="gray", icon=":material/cloud_off:")
             render_result_tabs(services.repository, run_id, events)
             _render_downloads(
                 build_downloads(services.repository, run_id),

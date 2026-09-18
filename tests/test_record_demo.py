@@ -38,8 +38,8 @@ def test_record_demo_writes_labeled_recording(tmp_path: Path, monkeypatch):
     # 但回放会从缺内容的那一步起全部未命中。
     assert run.status is RunStatus.COMPLETED, "流水线必须跑完"
     # 比「非空」强的是覆盖范围：流水线的每一类模型调用一个都不能少。
-    # 用集合而不是序列——批次数量随批次上限与样例规模变化（样例增长后正确地录出
-    # 6 条），钉死 5 元素序列会对着正确行为变红；调用顺序由 _fake_responses()
+    # 用集合而不是序列——批次数量随批次上限与样例规模变化（样例增长后条目数随之变化），
+    # 钉死元素个数与顺序会对着正确行为变红；调用顺序由 _fake_responses()
     # 的构造顺序表达。
     # 按模块引用 Schema 类而不是直接导入：TestCasePlanResult 这类名字被绑定到
     # 测试模块的命名空间后，pytest 会把它当测试类去收集并报警告。
@@ -55,7 +55,6 @@ def test_record_demo_writes_labeled_recording(tmp_path: Path, monkeypatch):
     assert len(document.entries) == len(_fake_responses()), "每条预置响应都应恰好录成一条条目"
     assert document.mode == RECORDING_MODE
     assert document.is_live is False
-    assert document.entries, "录制文件必须至少含一次模型调用"
     assert document.input_fingerprint
 
 

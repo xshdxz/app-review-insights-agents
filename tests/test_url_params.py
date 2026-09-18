@@ -138,6 +138,35 @@ def test_empty_values_are_not_written(tmp_path, monkeypatch):
     assert "upload" not in app.query_params
 
 
+def test_switching_to_online_collection_drops_the_upload_param(tmp_path, monkeypatch):
+    """导入模式上传过文件、再切到在线采集：upload 键必须从地址栏里消失。
+
+    `restored-upload` 由上传动作写进会话且从不清理，切模式后它仍在场；写参数时只看它、
+    不看当前来源模式的话，文件名会被继续写回 URL，刷新还会被重新种回会话——与 Task 7
+    修掉的分享链接泄漏是同一族问题，只是换了条触发路径。
+    """
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    saved = tmp_path / "reviews.json"
+    saved.write_text("[]", encoding="utf-8")
+
+    app = AppTest.from_function(_app_script)
+    app.session_state["source-mode"] = "JSON 导入"
+    app.session_state["restored-upload"] = str(saved)
+    app = app.run(timeout=30)
+
+    # 前提断言：导入模式下确实会把文件名写进 URL，否则这条用例测的不是它要测的东西。
+    assert _written(app)["upload"] == "reviews.json"
+
+    # 切到在线采集：该键要**删掉**，不能只是不更新（旧值留在地址栏同样会外传）。
+    app.session_state["source-mode"] = "在线采集"
+    app = app.run(timeout=30)
+
+    assert "upload" not in _written(app)
+    # 反向门禁：确实切到了在线采集，且这条路径照旧写它自己的参数。
+    assert _written(app)["mode"] == "在线采集"
+    assert "limit" in _written(app)
+
+
 def test_cleared_input_does_not_come_back_after_reload(tmp_path, monkeypatch):
     """清空字段后旧值不得复活，分享出去的地址也不该再带着它。
 

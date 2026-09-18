@@ -119,6 +119,28 @@ def load_recording(path: Path | str) -> RecordingDocument:
         raise InputDataError(f"录制文件校验失败：{target}（{message}）") from exc
 
 
+def verify_input_fingerprint(document: RecordingDocument, reviews: Sequence[Review]) -> None:
+    """回放开始前校验输入与录制时是否为同一份；不是则抛 InputDataError。
+
+    指纹口径与**写入方**一致：`scripts/record_demo.py` 取的是 `import_reviews` 的输出，
+    即**清洗之前**的输入评论集，因此这里不需要先跑一遍清洗就能比对（设计文档第 82 行；
+    该文档第 133 行写的「与本次清洗后的评论集」是文档自身的措辞错误，以写入方实际行为为准）。
+
+    抛 InputDataError 而不是 ReplayMissError：录制与输入不是同一份属于素材/配置问题，
+    重试同一次运行没有意义，必须在**任何阶段输出落盘之前**就停下来（设计文档第 212 行、
+    验收标准 4）。不校验的后果是静默跑完：`input_fingerprint` 被改动过的录制件照样产出
+    完整结果，看起来与一次真实分析没有区别。
+    """
+    actual = input_fingerprint(reviews)
+    if document.input_fingerprint != actual:
+        raise InputDataError(
+            f"回放输入与录制件不是同一份：录制时指纹 {document.input_fingerprint}，"
+            f"本次输入指纹 {actual}。回放按请求逐条命中，输入不同必然中途失配——"
+            "请确认演示模式用的是仓库自带样例（输入被锁定，通常无需修改），"
+            "或运行 scripts/record_demo.py 在本次输入上重新录制。"
+        )
+
+
 class ReplayMissError(RecoverableModelError):
     """回放未命中：录制里没有这次请求。
 

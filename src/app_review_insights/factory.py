@@ -82,7 +82,8 @@ def _build_model_provider(
     if not settings.model_available:
         raise InputDataError(
             "DEMO_MODE=live 需要可用的模型密钥，当前未配置。"
-            "请设置 DEEPSEEK_API_KEY，或改用 DEMO_MODE=auto/replay。"
+            "请设置 DEEPSEEK_API_KEY，或确认 MODEL_ENABLED 未被设为 false"
+            "（密钥在场也会被它一票否决），或改用 DEMO_MODE=auto/replay。"
         )
 
     provider: Any = DeepSeekProvider.from_settings(
@@ -138,6 +139,8 @@ def build_pipeline_services(
             provider, findings, goal, total
         ),
         test_case_builder=lambda requirements: generate_test_cases(provider, requirements),
+        # provider 是回放层就意味着这次跑出来的结果不是实时结果，运行记录要照实标注
+        replay_run=isinstance(provider, ReplayProvider),
         **common,
     )
 

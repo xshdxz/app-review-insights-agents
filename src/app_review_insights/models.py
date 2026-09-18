@@ -149,11 +149,22 @@ class StageEvent(BaseModel):
     created_at: datetime
 
 
+#: 实时运行的来源标注取值。与 llm/recording.py 的 RECORDING_MODE、storage/cache.py 的
+#: historical_cache_demo 是同一套 mode/is_live 约定。
+LIVE_RUN_MODE = "live"
+
+
 class RunRecord(BaseModel):
     run_id: str
     request: AnalysisRequest
     current_stage: Stage
     status: RunStatus
+    #: 运行来源标注：live/is_live=true 表示本次真的调用了模型；回放一次真实运行的录制则为
+    #: recorded_live_run/is_live=false。标注落在**运行**上而不是只放在界面上——下载产物
+    #: 会离开页面，离开之后仍要能自证不是实时结果（AGENTS.md 设计约束第 4 条）。
+    #: 旧运行记录里没有这两个键，反序列化时按默认值（实时）补齐。
+    mode: str = LIVE_RUN_MODE
+    is_live: bool = True
     current_batch: int = 0
     total_batches: int = 0
     coverage_ratio: float = Field(default=0, ge=0, le=1)

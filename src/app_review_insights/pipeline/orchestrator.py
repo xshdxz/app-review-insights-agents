@@ -15,6 +15,7 @@ from app_review_insights.errors import (
     RecoverableModelError,
     RunDeadlineExceeded,
 )
+from app_review_insights.llm.recording import RECORDING_MODE
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
     ConsolidationResult,
@@ -22,6 +23,7 @@ from app_review_insights.llm.schemas import (
 )
 from app_review_insights.llm.usage import current_run_id, current_stage
 from app_review_insights.models import (
+    LIVE_RUN_MODE,
     AnalysisRequest,
     Finding,
     Requirement,
@@ -64,6 +66,9 @@ class PipelineServices:
     traceability_validator: TraceabilityValidator | None = None
     batch_size: int = 100
     batch_max_characters: int = 60_000
+    #: 本次装配是否以回放方式跑（由 factory 按 DEMO_MODE 判定）。置位时新建的运行
+    #: 记录带 mode=recorded_live_run / is_live=false，结果视图与下载产物据此标注。
+    replay_run: bool = False
 
 
 class AnalysisOrchestrator:
@@ -101,6 +106,10 @@ class AnalysisOrchestrator:
             request=request,
             current_stage=Stage.SCOPE,
             status=RunStatus.PENDING,
+            # 来源标注在运行**创建时**定格，之后不再依赖当前页面配置：产物与运行记录
+            # 无论何时被读取，都能自证是不是回放（含换配置后重新打开旧运行的场景）。
+            mode=RECORDING_MODE if self.services.replay_run else LIVE_RUN_MODE,
+            is_live=not self.services.replay_run,
             created_at=now,
             updated_at=now,
         )

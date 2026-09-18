@@ -17,6 +17,7 @@ from app_review_insights.llm.recording import (
     input_fingerprint,
     load_recording,
     recording_key,
+    verify_input_fingerprint,
     write_recording,
 )
 from app_review_insights.llm.schemas import BatchAnalysisResult, RequirementPlanResult
@@ -72,6 +73,30 @@ def test_input_fingerprint_ignores_order_but_not_content():
     assert input_fingerprint([first]) != input_fingerprint([_review("r-1", "改过的正文")])
 
 
+def _document_with_fingerprint(reviews: list[Review]) -> RecordingDocument:
+    return RecordingDocument.model_validate(_document(input_fingerprint=input_fingerprint(reviews)))
+
+
+def test_input_fingerprint_check_accepts_the_recorded_input():
+    reviews = [_review("r-1", "免费内容变少了"), _review("r-2", "试用期直接扣费")]
+    # 顺序无关：回放方与录制方拿到同一份输入即可，不要求逐字同一顺序
+    verify_input_fingerprint(_document_with_fingerprint(reviews), list(reversed(reviews)))
+
+
+def test_input_fingerprint_check_rejects_a_different_input():
+    recorded = [_review("r-1", "免费内容变少了")]
+    other = [_review("r-1", "免费内容变少了"), _review("r-2", "多出来的一条")]
+    with pytest.raises(InputDataError) as excinfo:
+        verify_input_fingerprint(_document_with_fingerprint(recorded), other)
+
+    message = str(excinfo.value)
+    # 消息要能让人知道怎么办：说明「不是同一份」、给出两边指纹、指出下一步
+    assert "不是同一份" in message
+    assert input_fingerprint(recorded) in message
+    assert input_fingerprint(other) in message
+    assert "record_demo.py" in message
+
+
 def test_load_recording_accepts_valid_document(tmp_path: Path):
     path = tmp_path / "rec.json"
     path.write_text(json.dumps(_document(), ensure_ascii=False), encoding="utf-8")
@@ -92,6 +117,21 @@ def test_load_recording_rejects_live_true(tmp_path: Path):
     path = tmp_path / "rec.json"
     path.write_text(json.dumps(_document(is_live=True)), encoding="utf-8")
     with pytest.raises(InputDataError, match="is_live"):
+        load_recording(path)
+
+
+def test_load_recording_rejects_missing_file(tmp_path: Path):
+    # 文件不存在与「读不出来」分开报：前者是配置指错了路径，后者是文件本身有问题，
+    # 提示不同用户才知道该去改哪一个。
+    with pytest.raises(InputDataError, match="录制文件不存在"):
+        load_recording(tmp_path / "not-there.json")
+
+
+def test_load_recording_rejects_json_that_is_not_an_object(tmp_path: Path):
+    # 合法 JSON 但不是对象（数组/标量）：直接说清期望的形状，而不是抛 pydantic 的英文报错
+    path = tmp_path / "rec.json"
+    path.write_text(json.dumps([{"mode": RECORDING_MODE}]), encoding="utf-8")
+    with pytest.raises(InputDataError, match="JSON 对象"):
         load_recording(path)
 
 
@@ -165,6 +205,31 @@ def test_replay_rejects_recording_from_a_different_schema():
     provider = _provider_with_one_entry()
     with pytest.raises(ReplayMissError, match="Schema"):
         provider.generate("系统提示", "用户提示", RequirementPlanResult)
+
+
+def test_replay_rejects_response_that_does_not_match_the_schema():
+    """键命中了、但录下的内容不符合本次请求的 Schema：必须报未命中而不是把脏数据放过去。
+
+    与 test_replay_rejects_recording_from_a_different_schema 的区别：那条走的是
+    「同一请求录的是别的 Schema」分支，这条走的是「键命中但 response 校验失败」分支。
+    后果同样严重——放过去就等于把未经校验的内容当成模型输出交给流水线。
+    """
+    system, user = "系统提示", "用户提示"
+    document = RecordingDocument.model_validate(
+        _document(
+            entries=[
+                {
+                    "key": recording_key(BatchAnalysisResult.__name__, system, user),
+                    "schema_name": BatchAnalysisResult.__name__,
+                    "request": {"system": system, "user": user},
+                    # findings 的类型不对：Schema 校验必然失败
+                    "response": {"findings": "这不是一个列表"},
+                }
+            ]
+        )
+    )
+    with pytest.raises(ReplayMissError, match="不匹配"):
+        ReplayProvider(document).generate(system, user, BatchAnalysisResult)
 
 
 class _StubInner:
