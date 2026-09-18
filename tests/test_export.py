@@ -352,6 +352,11 @@ def test_demo_archive_downloads_are_labeled_non_live(tmp_path):
     assert json.loads(downloads["prd"].decode("utf-8"))["mode"] == "historical_cache_demo"
     assert json.loads(downloads["cleaned_reviews"].decode("utf-8"))["is_live"] is False
     assert _csv_header(downloads["traceability"]).endswith(",mode,is_live")
+    # 第 4 个下载（测试用例 CSV）不能漏：表头要有标注列，数据行也要有取值
+    assert _csv_header(downloads["test_cases"]).endswith(",mode,is_live"), "test_cases 缺标注列"
+    assert "historical_cache_demo" in downloads["test_cases"].decode("utf-8-sig"), (
+        "test_cases 数据行缺标注取值"
+    )
 
 
 def test_export_demo_run_writes_non_live_pipeline_outputs(tmp_path):

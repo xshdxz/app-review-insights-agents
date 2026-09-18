@@ -85,6 +85,11 @@ uv.lock → Pipfile → environment.yml → requirements.txt → pyproject.toml 
 文件会被拒绝加载；请求在录制里没有对应键时抛 `ReplayMissError`、停在检查点、状态
 `waiting_for_model`，原因都会显示在界面上。
 
+**下载的产物带同一套标注**：回放与历史档案的四个下载，两个 JSON 各内嵌 `mode` / `is_live`
+两个键、两个 CSV 各加同名的两列（回放取 `recorded_live_run`，历史档案取
+`historical_cache_demo`，`is_live` 均为 `false`）；**实时运行的产物不带** —— 它本来就是
+本次调用的结果，盖章会把实时结果伪装成回放。
+
 「查看历史缓存演示」开关仍然保留，它打开的是另一份离线档案（`data/cache/demo-run.json`），
 与上面的回放互不影响。
 
@@ -100,7 +105,9 @@ uv.lock → Pipfile → environment.yml → requirements.txt → pyproject.toml 
 
 脚本在同一个样例上跑一次完整分析，把每次模型调用的请求与响应写进
 `data/recordings/demo-replay.json`（原子写：先落临时文件再替换）。**换了样例、改了 Prompt
-或 Schema 都要重新录制**，否则回放会未命中；演示模式本身不需要密钥。
+或 Schema 都要重新录制**：换了样例时，回放在**跑任何阶段之前**就因输入指纹不符而失败
+（不创建运行记录、不落盘任何阶段输出）；改了 Prompt 或 Schema 时，请求逐条未命中、抛
+`ReplayMissError` 停在检查点。演示模式本身不需要密钥。
 
 > 回放覆盖的是**分析流水线**（工作台主页面）。Agent 侧（产品情报问答 / 监控任务）仍然要求
 > 配置密钥，无密钥时按既有的降级路径处理。

@@ -218,8 +218,8 @@ Agent 层**包裹在确定性核心之外**：
 ## 测试与评测
 
 ```powershell
-# 全量测试（当前 503 项，覆盖率 93%）
-# 503 是 pytest 的收集数，不是 grep `def test_` 的行数（那是 488）。两者差 15：
+# 全量测试（当前 514 项，覆盖率 94%）
+# 514 是 pytest 的收集数，不是 grep `def test_` 的行数（那是 499）。两者差 15：
 # 6 处 parametrize 把 6 个函数展开成 22 例（+16），另有一个嵌套在测试内部的局部
 # 辅助函数 test_case_builder 被 grep 计入而 pytest 不收集（-1）。
 .\.venv\Scripts\python -m pytest
