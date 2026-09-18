@@ -335,7 +335,10 @@ def _provider_with_one_entry() -> ReplayProvider:
                     "key": recording_key(BatchAnalysisResult.__name__, system, user),
                     "schema_name": BatchAnalysisResult.__name__,
                     "request": {"system": system, "user": user},
-                    "response": {"summaries": [], "findings": []},
+                    "response": {
+                        "findings": [],
+                        "review_summaries": [{"review_id": "r1", "summary_zh": "试用期扣费不透明"}],
+                    },
                 }
             ]
         )
@@ -347,6 +350,11 @@ def test_replay_returns_response_validated_against_requested_schema():
     provider = _provider_with_one_entry()
     result = provider.generate("系统提示", "用户提示", BatchAnalysisResult)
     assert isinstance(result, BatchAnalysisResult)
+    # 只断言类型是不够的：BatchAnalysisResult 的 findings 有默认值、Schema 未设 extra 策略，
+    # 一个把录制内容整个丢掉、直接返回空结果的实现同样能通过 isinstance。
+    # 必须钉住录制里的具体内容确实抵达了调用方。
+    assert result.review_summaries[0].review_id == "r1"
+    assert result.review_summaries[0].summary_zh == "试用期扣费不透明"
 
 
 def test_replay_exposes_recorded_model_name():
@@ -483,7 +491,7 @@ class _StubInner:
 
 
 def test_recording_provider_passes_through_result(tmp_path: Path):
-    inner = _StubInner([{"summaries": [], "findings": []}])
+    inner = _StubInner([{"findings": []}])
     provider = RecordingProvider(
         inner, tmp_path / "rec.json", input_fingerprint="fp1", model="deepseek-chat"
     )
@@ -494,7 +502,7 @@ def test_recording_provider_passes_through_result(tmp_path: Path):
 
 def test_recording_provider_writes_loadable_document(tmp_path: Path):
     destination = tmp_path / "rec.json"
-    inner = _StubInner([{"summaries": [], "findings": []}])
+    inner = _StubInner([{"findings": []}])
     provider = RecordingProvider(inner, destination, input_fingerprint="fp1", model="deepseek-chat")
     provider.generate("s", "u", BatchAnalysisResult)
 
@@ -507,7 +515,7 @@ def test_recording_provider_writes_loadable_document(tmp_path: Path):
 
 def test_recording_provider_output_can_be_replayed(tmp_path: Path):
     destination = tmp_path / "rec.json"
-    inner = _StubInner([{"summaries": [], "findings": []}])
+    inner = _StubInner([{"findings": []}])
     RecordingProvider(inner, destination, input_fingerprint="fp1", model="deepseek-chat").generate(
         "s", "u", BatchAnalysisResult
     )
@@ -530,7 +538,7 @@ def test_recording_provider_failure_to_write_does_not_break_the_call(tmp_path: P
     # 用一个「是文件不是目录」的路径让写盘必定失败
     blocked = tmp_path / "blocked"
     blocked.write_text("我是文件不是目录", encoding="utf-8")
-    inner = _StubInner([{"summaries": [], "findings": []}])
+    inner = _StubInner([{"findings": []}])
     provider = RecordingProvider(inner, blocked / "rec.json", input_fingerprint="fp1", model="m")
     result = provider.generate("s", "u", BatchAnalysisResult)
     assert isinstance(result, BatchAnalysisResult)
