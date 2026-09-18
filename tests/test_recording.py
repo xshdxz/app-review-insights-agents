@@ -124,7 +124,10 @@ def _provider_with_one_entry() -> ReplayProvider:
                     "key": recording_key(BatchAnalysisResult.__name__, system, user),
                     "schema_name": BatchAnalysisResult.__name__,
                     "request": {"system": system, "user": user},
-                    "response": {"summaries": [], "findings": []},
+                    "response": {
+                        "findings": [],
+                        "review_summaries": [{"review_id": "r1", "summary_zh": "试用期扣费不透明"}],
+                    },
                 }
             ]
         )
@@ -136,6 +139,11 @@ def test_replay_returns_response_validated_against_requested_schema():
     provider = _provider_with_one_entry()
     result = provider.generate("系统提示", "用户提示", BatchAnalysisResult)
     assert isinstance(result, BatchAnalysisResult)
+    # 只断言类型是不够的：BatchAnalysisResult 的 findings 有默认值、Schema 未设 extra 策略，
+    # 一个把录制内容整个丢掉、直接返回空结果的实现同样能通过 isinstance。
+    # 必须钉住录制里的具体内容确实抵达了调用方。
+    assert result.review_summaries[0].review_id == "r1"
+    assert result.review_summaries[0].summary_zh == "试用期扣费不透明"
 
 
 def test_replay_exposes_recorded_model_name():
