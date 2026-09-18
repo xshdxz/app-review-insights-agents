@@ -40,6 +40,9 @@ def test_build_services_without_key_keeps_repository_available(tmp_path, monkeyp
     database_path = tmp_path / "runs.sqlite3"
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
     monkeypatch.setenv("DATABASE_PATH", str(database_path))
+    # 隔离录制文件：默认路径上一旦有录制，无密钥也会装配出回放 provider，
+    # 这条用例要验的是「无密钥且无录制时没有模型」，不能依赖磁盘上有没有那个文件
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))
 
     services = build_services()
 

@@ -10,6 +10,11 @@ from app_review_insights.export import (
 )
 from app_review_insights.models import Finding, Requirement, Stage, TestCase
 
+#: 仓库自带的样例评论。演示模式与录制脚本共用这一处定义。
+#: 放在包内而不是 scripts/：界面（ui/main.py）也要用它，
+#: 让 src 反过来依赖 scripts 是分层倒置。
+SAMPLE_PATH = Path(__file__).resolve().parents[3] / "data" / "samples" / "reviews-sample.json"
+
 _DEMO_STAGES = (
     Stage.CLEAN,
     Stage.VALIDATE_FINDINGS,
