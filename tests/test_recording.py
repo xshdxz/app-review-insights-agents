@@ -93,3 +93,18 @@ def test_load_recording_rejects_malformed_json(tmp_path: Path):
     path.write_text("{ not json", encoding="utf-8")
     with pytest.raises(InputDataError, match="JSON"):
         load_recording(path)
+
+
+def test_load_recording_rejects_directory_path(tmp_path: Path):
+    directory = tmp_path / "recording-dir"
+    directory.mkdir()
+    with pytest.raises(InputDataError, match="无法读取"):
+        load_recording(directory)
+
+
+def test_load_recording_rejects_non_utf8_file(tmp_path: Path):
+    # Windows 记事本存成 "Unicode" 编码就是这么个文件：不是合法 UTF-8
+    path = tmp_path / "rec.json"
+    path.write_bytes(b"\xff\xfe not utf8")
+    with pytest.raises(InputDataError, match="无法读取"):
+        load_recording(path)

@@ -84,7 +84,11 @@ class RecordingDocument(BaseModel):
 
 
 def load_recording(path: Path | str) -> RecordingDocument:
-    """读取并校验录制文件；标注不正确就拒绝加载。
+    """读取并校验录制文件；读不出来或标注不正确都拒绝加载。
+
+    读不出来一律是 InputDataError：文件不存在、路径指向目录、无读权限、不是
+    UTF-8 文本（Windows 记事本存成「Unicode」就是这种文件），都转成同一种域内
+    错误，调用方（UI / 流水线装配）拿到的是中文消息而不是英文 traceback。
 
     抛 InputDataError 而不是 RecoverableModelError：文件缺失或标错属于配置与素材
     问题，应当在运行开始前暴露，重试没有意义。
@@ -94,6 +98,9 @@ def load_recording(path: Path | str) -> RecordingDocument:
         raw = target.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         raise InputDataError(f"录制文件不存在：{target}") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        # UnicodeDecodeError 继承自 ValueError 而非 OSError，两者必须都列出来
+        raise InputDataError(f"录制文件无法读取：{target}（{exc}）") from exc
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
