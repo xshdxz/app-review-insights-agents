@@ -107,19 +107,26 @@ def _sync_inputs_to_query_params(
 ) -> None:
     """把当前输入写进 URL 查询参数，用于浏览器刷新后恢复。
 
-    两种情况下不写：
-    - 演示模式：输入被锁定为样例，恢复机制没有意义，而分享链接会连带把填写者
-      当次的输入带出去；
-    - 空值：空参数只让链接变长，url= 这类空值尤其容易被误读为「有一个地址」。
+    三种情况下不写：
+    - 演示模式：输入被锁定为样例，恢复机制没有意义；带参数进来的访客（例如别人分享
+      的普通模式链接）会把参数继续挂在地址栏上外传，所以就地清干净；
+    - 空值：空参数只让链接变长，url= 这类空值尤其容易被误读为「有一个地址」；
+    - 条件写入的键在条件不成立时**删除**而不仅仅是不写：旧值留在键里会让用户已经
+      清空的内容在刷新后复活，分享出去的链接也仍然带着他已经删掉的内容。
     """
-    if demo_replay:
-        return
     params = st.query_params
+    if demo_replay:
+        params.clear()
+        return
     params["mode"] = source_label
     if source_label == "在线采集" and app_url:
         params["url"] = app_url
+    else:
+        params.pop("url", None)
     if goal:
         params["goal"] = goal
+    else:
+        params.pop("goal", None)
     params["limit"] = str(review_limit)
     restored = st.session_state.get("restored-upload")
     upload_name = Path(restored).name if restored else None
@@ -127,6 +134,8 @@ def _sync_inputs_to_query_params(
         upload_name = upload.name
     if upload_name:
         params["upload"] = upload_name
+    else:
+        params.pop("upload", None)
 
 
 def _persist_upload(upload) -> None:

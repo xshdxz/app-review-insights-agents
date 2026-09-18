@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from streamlit.testing.v1 import AppTest
 
+from app_review_insights.storage.cache import DEMO_ANALYSIS_GOAL
 from tests.conftest import _recording_at
 
 
@@ -21,25 +22,38 @@ def _app_script() -> None:
 
     from app_review_insights.ui.main import main
 
+    # 跑了多少次：判定「清参数是否引发重跑循环」用的就是它。
+    st.session_state["script-runs"] = st.session_state.get("script-runs", 0) + 1
+    # 进来的参数：模拟「访客带着别人的链接进来」或「上一轮留在地址栏里的输入」。
+    st.session_state["incoming-query-params"] = dict(st.query_params)
+
     main()
-    written = dict(st.query_params)
-    # 活性对照：本通道必须看得见「值为空」的参数。下面两条用例的缺席断言
-    # （url/upload 不在写入记录里）全都依赖这一点；通道哪天丢了空值，那些断言会
-    # 静默变回恒真，所以把「看得见空值」本身也断言下来。
+
+    # 快照与活性对照取自**同一次读取**：对照断言「这次读到的字典里看得见一个值为空的
+    # 参数」，而快照就是这个字典本身。两者同源，不可能各自漂移——把读取换成会丢空值的
+    # 写法，对照立刻为假，而不是让缺席断言安静地恒真。
     st.query_params["blank-probe"] = ""
-    st.session_state["blank-param-visible"] = dict(st.query_params).get("blank-probe") == ""
+    written = dict(st.query_params)
+    st.session_state["blank-param-visible"] = written.get("blank-probe") == ""
+    written.pop("blank-probe")
     del st.query_params["blank-probe"]
     st.session_state["written-query-params"] = written
 
 
-def _run_app(tmp_path, monkeypatch) -> AppTest:
-    """在隔离环境里跑一次首页，并带回查询参数的原始写入记录。"""
+def _run_app(tmp_path, monkeypatch, *, query_params: dict | None = None) -> AppTest:
+    """在隔离环境里跑一次首页，并带回查询参数的原始写入记录。
+
+    query_params 用来模拟「访客带着别人的链接进来」或「上一轮留在地址栏里的输入」。
+    """
     monkeypatch.chdir(tmp_path)
     # 两个密钥别名都要删：chdir 只挡得住项目根 .env，挡不住 shell 导出的环境变量；
     # 只要有一个在场，界面就进入「已配置密钥」态并对真实 DeepSeek 发一次连通性探测。
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
-    return AppTest.from_function(_app_script).run(timeout=30)
+    app = AppTest.from_function(_app_script)
+    if query_params:
+        app.query_params = query_params
+    return app.run(timeout=30)
 
 
 def _written(app: AppTest) -> dict[str, str]:
@@ -65,10 +79,46 @@ def test_demo_mode_writes_no_query_params(tmp_path, monkeypatch):
     assert dict(app.query_params) == {}
 
 
-def test_empty_values_are_not_written(tmp_path, monkeypatch):
-    """普通模式照旧写参数，但空值不写。
+def test_demo_mode_clears_the_params_it_arrived_with(tmp_path, monkeypatch):
+    """带着别人的链接进来也要清干净，而不是只清自己新写的那部分。
 
-    空参数只让链接变长，`url=` 这类空值尤其容易被误读为「这里有一个地址」。
+    演示模式只读不清的话，访客从地址栏复制出去的仍然是别人链接里那串参数——本任务
+    就是来堵分享泄漏的，不能只堵「新写入」而放走「残留的旧值」。
+    """
+    recording = _recording_at(tmp_path / "demo-replay.json")
+    monkeypatch.setenv("DEMO_MODE", "replay")
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(recording))
+    foreign = "https://apps.apple.com/us/app/example/id123456789"
+
+    app = _run_app(
+        tmp_path,
+        monkeypatch,
+        query_params={
+            "mode": ["在线采集"],
+            "url": [foreign],
+            "goal": ["别人填的分析目标"],
+            "limit": ["777"],
+        },
+    )
+
+    # 前提断言：参数确实带进来了，否则这条用例测的不是它要测的东西。
+    assert app.session_state["incoming-query-params"] == {
+        "mode": "在线采集",
+        "url": foreign,
+        "goal": "别人填的分析目标",
+        "limit": "777",
+    }
+    assert _written(app) == {}
+    assert dict(app.query_params) == {}
+    # 清参数不得引发重跑循环：本机实测 st.query_params.pop/clear 都不会，这里钉住。
+    assert app.session_state["script-runs"] == 1
+
+
+def test_empty_values_are_not_written(tmp_path, monkeypatch):
+    """普通模式照旧写参数，但空值不写（键要被删掉，不能只是不写）。
+
+    空参数只让链接变长，`url=` 这类空值尤其容易被误读为「这里有一个地址」；而旧值
+    留在键里会以另一种方式泄漏——见下面那条用例。
     """
     monkeypatch.delenv("DEMO_MODE", raising=False)
 
@@ -86,3 +136,37 @@ def test_empty_values_are_not_written(tmp_path, monkeypatch):
     # URL 层的弱确认：AppTest 的收尾解析会丢空值，判断以 written 为准。
     assert "url" not in app.query_params
     assert "upload" not in app.query_params
+
+
+def test_cleared_input_does_not_come_back_after_reload(tmp_path, monkeypatch):
+    """清空字段后旧值不得复活，分享出去的地址也不该再带着它。
+
+    条件写入的键如果不删除，旧的非空值会一直留在 URL 里：刷新会把它恢复回表单
+    （用户已经清掉的内容自己回来了），复制地址栏分享时也仍然带着他已经删掉的内容。
+    """
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    old_url = "https://apps.apple.com/us/app/example/id123456789"
+    app = _run_app(
+        tmp_path,
+        monkeypatch,
+        query_params={"mode": ["在线采集"], "url": [old_url], "goal": ["旧的分析目标"]},
+    )
+
+    # 前提断言：第一轮确实带着旧值，界面也把它写回了 URL（否则测的不是它要测的）。
+    assert app.session_state["input-app-url"] == old_url
+    assert _written(app)["url"] == old_url
+    assert _written(app)["goal"] == "旧的分析目标"
+
+    # 用户把两个字段都清空。
+    app = app.text_input(key="input-app-url").set_value("").run(timeout=30)
+    app = app.text_area(key="input-goal").set_value("").run(timeout=30)
+
+    written = _written(app)
+    assert "url" not in written
+    assert "goal" not in written
+
+    # 刷新：新会话只带清空后的地址栏参数回来。旧值不得复活——地址回到空，目标回到
+    # 表单默认值，而不是用户删掉的那一句。
+    reloaded = _run_app(tmp_path, monkeypatch, query_params=dict(app.query_params))
+    assert reloaded.session_state["input-app-url"] == ""
+    assert reloaded.session_state["input-goal"] == DEMO_ANALYSIS_GOAL
