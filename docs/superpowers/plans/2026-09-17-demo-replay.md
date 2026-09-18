@@ -1197,11 +1197,27 @@ git commit -m "feat: 样例分析录制脚本与录制产物"
 
 **Files:**
 - Modify: `src/app_review_insights/ui/main.py`（输入表单 `_render_input_form`、模式判定与渲染段、`_prepare_imported_reviews`）
+- Modify: `tests/test_app_smoke.py`（隔离 `DEMO_REPLAY_PATH`，见下）
 - Test: `tests/test_demo_mode.py`
 
 **Interfaces:**
 - Consumes: `Settings.demo_replay_active`、`Settings.demo_replay_path`
 - Produces: `_render_input_form(settings, model_ready, *, demo_replay=False)`、`_prepare_imported_reviews(request, upload, *, demo_replay=False)`
+
+**本任务会暴露一批既有测试的环境耦合（执行时已处理，此处记录以免后人重踩）。**
+本任务把 `model_ready` 从「只看 `settings.model_available`」改成「或上回放可用」，于是
+`tests/test_app_smoke.py` 里三条未隔离 `DEMO_REPLAY_PATH` 的用例立刻失败：
+`test_streamlit_page_starts_without_model_key`、
+`test_explicit_model_disable_overrides_configured_key`、
+`test_waiting_run_keeps_saved_output_visible_without_model_key`
+——它们断言按钮禁用，而默认路径上已有录制件，`demo_replay_active and demo_replay_path.exists()`
+为真、按钮被启用。**修法是隔离（在那三条的 monkeypatch 段各补
+`monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))`），不是改断言**：
+断言改成「禁用或启用都行」会让它们退化成什么都验不了。
+
+本计划里同类「测试依赖环境里碰巧有什么」的缺陷共出现六处（三条配置用例、`test_app_smoke` 一条、
+`test_offline_ui` 两处），根因都是 pydantic-settings 在环境变量被删后**回落读 `.env`**，
+以及默认路径上存在录制件。**新增 AppTest 用例时，凡涉及模型可用性或按钮状态，都要显式构造前提。**
 
 - [ ] **Step 1: 写失败测试**
 
