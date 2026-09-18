@@ -280,6 +280,12 @@ def load_recording(path: Path | str) -> RecordingDocument:
         raise InputDataError(f"录制文件校验失败：{target}（{message}）") from exc
 ```
 
+> **执行偏差（Task 1 已按此落地）**：上面的导入区列了 `os`、`UTC`、`TypeVar`、
+> `RecoverableModelError`，但它们要到 Task 2、Task 3 才用得上。按 R1 裁定（每个 Task
+> 结束必须 ruff 双绿，未使用的导入过不了），**Task 1 只导入了自己用得到的名字**，
+> 上面这四个名字以及模块级的 `T = TypeVar("T", bound=BaseModel)` 均未落地。
+> 因此 Task 2 与 Task 3 必须各自补齐自己用到的导入——见各自 Task 末尾的说明。
+
 - [ ] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_recording.py -q`
@@ -408,7 +414,13 @@ class ReplayProvider:
             ) from exc
 ```
 
-`TypeVar` 与 `RecoverableModelError` 已在 Task 1 的顶部导入区中，无需再加。
+**Task 2 必须自行补入导入。** 按 Task 1 的 R1 裁定，`TypeVar` 与 `RecoverableModelError`
+并未被预置（Task 1 只导入了它自己用得到的名字）。请把这两个名字并入文件顶部的导入区，
+并在模块级补回 `T = TypeVar("T", bound=BaseModel)`。
+
+这不是格式偏好：上面代码块里的 `class ReplayMissError(RecoverableModelError)` 在**定义期**
+求值基类，缺导入会直接 `NameError`，模块根本导入不了。代码块里的 `type[T]` 不受影响
+（文件顶部有 `from __future__ import annotations`，注解被推迟求值）。
 
 - [ ] **Step 4: 运行测试确认通过**
 
@@ -591,6 +603,11 @@ def write_recording(document: RecordingDocument, path: Path | str) -> None:
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, target)
 ```
+
+**Task 3 必须自行补入导入。** 上面的代码块用到 `datetime.now(UTC)`（`_recorded_at`）与
+`os.replace`，而按 R1 裁定这两个名字都没被 Task 1 预置：请把 `import os` 与 `UTC`
+（`from datetime import UTC, datetime` 或补进已有的 datetime 导入）并入文件顶部的导入区。
+`Path`、`json`、`Any`、`logger` 已由 Task 1 导入，无需重复。
 
 - [ ] **Step 4: 运行测试确认通过**
 
