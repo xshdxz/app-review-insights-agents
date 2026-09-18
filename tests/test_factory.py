@@ -188,8 +188,14 @@ def _empty_recording(path) -> None:
 def test_auto_without_key_and_without_recording_yields_no_analyzer(tmp_path, monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "auto")
     monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "missing.json"))
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    # 隔离项目根目录下的本地 .env（gitignore，含真实 DEEPSEEK_API_KEY）：
+    # 不隔离的话 load_settings() 会从 .env 读到 key，「无密钥」这个前提就不成立，
+    # 用例会在一台配好密钥的开发机上无端变红（CI 无 .env，反而看不出问题）。
+    # chdir 之后所有相对路径都以 tmp_path 为基准，故上面的路径一律显式指过去。
+    monkeypatch.chdir(tmp_path)
     assert build_pipeline_services(load_settings()).batch_analyzer is None
 
 
@@ -202,11 +208,14 @@ def test_replay_mode_without_recording_raises(tmp_path, monkeypatch):
         build_pipeline_services(load_settings())
 
 
-def test_live_mode_without_key_raises(monkeypatch):
+def test_live_mode_without_key_raises(tmp_path, monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "live")
     monkeypatch.setenv("MODEL_ENABLED", "true")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    # 同 test_auto_without_key_and_without_recording_yields_no_analyzer：隔离项目根 .env
+    monkeypatch.chdir(tmp_path)
     with pytest.raises(InputDataError, match="需要可用的模型密钥"):
         build_pipeline_services(load_settings())
 

@@ -110,10 +110,13 @@ def test_blank_record_path_becomes_none(monkeypatch):
     assert load_settings().model_record_path is None
 
 
-def test_demo_replay_active_follows_mode_and_key(monkeypatch):
+def test_demo_replay_active_follows_mode_and_key(monkeypatch, tmp_path):
     monkeypatch.setenv("DEMO_MODE", "auto")
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    # 隔离项目根目录下的本地 .env（gitignore，含真实 DEEPSEEK_API_KEY），
+    # 否则 load_settings() 会从 .env 读到 key 导致本测试不可复现。
+    monkeypatch.chdir(tmp_path)
     assert load_settings().demo_replay_active is True
 
     monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
