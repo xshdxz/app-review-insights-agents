@@ -21,12 +21,10 @@ from app_review_insights.input_parsing import import_reviews
 from app_review_insights.llm.recording import input_fingerprint
 from app_review_insights.models import AnalysisRequest, RunRecord, SourceType
 from app_review_insights.pipeline.orchestrator import AnalysisOrchestrator, PipelineServices
-from app_review_insights.storage.cache import SAMPLE_PATH
+from app_review_insights.storage.cache import DEMO_ANALYSIS_GOAL, SAMPLE_PATH
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DESTINATION = PROJECT_ROOT / "data" / "recordings" / "demo-replay.json"
-
-ANALYSIS_GOAL = "识别影响用户体验与产品增长的核心问题，并形成可追溯需求"
 
 
 def _recording_settings(settings: Settings, destination: Path) -> Settings:
@@ -60,7 +58,7 @@ def record_demo(
 
     request = AnalysisRequest(
         source_type=SourceType.JSON,
-        analysis_goal=ANALYSIS_GOAL,
+        analysis_goal=DEMO_ANALYSIS_GOAL,
         # 样例只有 20 条，而 review_limit 的下限是 100
         review_limit=max(100, len(reviews)),
     )

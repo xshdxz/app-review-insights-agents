@@ -15,6 +15,10 @@ from app_review_insights.models import Finding, Requirement, Stage, TestCase
 #: 让 src 反过来依赖 scripts 是分层倒置。
 SAMPLE_PATH = Path(__file__).resolve().parents[3] / "data" / "samples" / "reviews-sample.json"
 
+#: 演示模式固定使用的分析目标。录制脚本与界面共用这一处定义——
+#: 它进 prompt，改了就会导致回放未命中，因此必须是同一个来源。
+DEMO_ANALYSIS_GOAL = "识别影响用户体验与产品增长的核心问题，并形成可追溯需求"
+
 _DEMO_STAGES = (
     Stage.CLEAN,
     Stage.VALIDATE_FINDINGS,

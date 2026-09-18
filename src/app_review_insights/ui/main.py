@@ -9,7 +9,11 @@ from pathlib import Path
 import streamlit as st
 
 from app_review_insights.config import Settings, load_settings
-from app_review_insights.errors import ConcurrentRunError, InputDataError
+from app_review_insights.errors import (
+    AppReviewInsightsError,
+    ConcurrentRunError,
+    InputDataError,
+)
 from app_review_insights.factory import (
     build_pipeline_services as _build_pipeline_services,
 )
@@ -28,6 +32,8 @@ from app_review_insights.pipeline.orchestrator import (
 )
 from app_review_insights.storage import RunRepository
 from app_review_insights.storage.cache import (
+    DEMO_ANALYSIS_GOAL,
+    SAMPLE_PATH,
     build_demo_downloads,
     build_downloads,
     load_demo_run,
@@ -45,7 +51,6 @@ EventWriter = Callable[[object], None]
 
 _SOURCE_OPTIONS = ("在线采集", "JSON 导入", "CSV 导入")
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_SAMPLE_PATH = _PROJECT_ROOT / "data" / "samples" / "reviews-sample.json"
 _DEMO_PATH = _PROJECT_ROOT / "data" / "cache" / "demo-run.json"
 _UPLOAD_DIR = _PROJECT_ROOT / "data" / "uploads"
 
@@ -128,6 +133,19 @@ def _persist_upload(upload) -> None:
 
 def build_services(use_fake_provider: bool = False) -> PipelineServices:
     return _build_pipeline_services(load_settings(), use_fake_provider=use_fake_provider)
+
+
+def _build_services_or_degrade() -> tuple[PipelineServices, str | None]:
+    """装配失败不抛到 UI：退化成无模型的流水线，由页面说明原因。
+
+    配置错误（例如 DEMO_MODE=live 却没密钥）是用户能在页面上看懂并修好的，
+    不该以整页 traceback 的形式呈现——这是设计约束「降级不崩溃」的直接落实。
+    """
+    try:
+        return build_services(), None
+    except AppReviewInsightsError as exc:
+        fallback = _build_pipeline_services(load_settings(), use_fake_provider=True)
+        return fallback, str(exc)
 
 
 def _initialize_session_state(repository: RunRepository) -> None:
@@ -243,7 +261,19 @@ def _build_request(
     analysis_goal: str,
     review_limit: int,
     upload_name: str | None,
+    *,
+    demo_replay: bool = False,
 ) -> AnalysisRequest:
+    if demo_replay:
+        # 演示模式没有数据来源可选（表单里被锁成「演示样例」），走 JSON 分支：
+        # 录制脚本就是用 SourceType.JSON 录的，评论集由 _prepare_imported_reviews
+        # 直接读样例，不再经过上传校验。
+        return AnalysisRequest(
+            source_type=SourceType.JSON,
+            app_url=None,
+            analysis_goal=analysis_goal.strip(),
+            review_limit=review_limit,
+        )
     source_type = _source_type(source_label, upload_name)
     normalized_url = app_url.strip()
     if source_type == SourceType.ONLINE:
@@ -291,7 +321,16 @@ def _resume_analysis(
     ).resume(run_id)
 
 
-def _prepare_imported_reviews(request: AnalysisRequest, upload):
+def _prepare_imported_reviews(
+    request: AnalysisRequest,
+    upload,
+    *,
+    demo_replay: bool = False,
+):
+    if demo_replay:
+        # 演示模式忽略上传与 URL：录制件是在仓库样例上录的，
+        # 也**不能**按 review_limit 截断——回放靠输入指纹一致才命中。
+        return import_reviews(SAMPLE_PATH.read_bytes(), SAMPLE_PATH.name, app_id="demo")
     if request.source_type == SourceType.ONLINE:
         return None
     if upload is None:
@@ -311,21 +350,33 @@ def _update_live_status(status, run: RunRecord) -> None:
         status.update(label="运行已保存", state="complete", expanded=False)
 
 
-def _render_input_form(settings: Settings, model_ready: bool):
+def _render_input_form(settings: Settings, model_ready: bool, *, demo_replay: bool = False):
     with st.container(border=True):
         st.subheader("新建审阅档案", anchor=False)
-        source_label = st.segmented_control(
-            "数据来源",
-            _SOURCE_OPTIONS,
-            default="在线采集",
-            required=True,
-            width="stretch",
-            key="source-mode",
-        )
-        # 控件直接渲染（带 key 即时写入 session_state），
-        # 页面刷新后输入保持，避免回到默认表单。
         app_url = ""
         upload = None
+        if demo_replay:
+            # 演示模式锁死数据来源：回放命中的前提是输入与录制时逐字一致
+            st.selectbox(
+                "数据来源",
+                ["演示样例"],
+                disabled=True,
+                help="演示模式回放的是样例上的运行结果；换成别的输入将无法命中录制。",
+                key="source-mode-locked",
+            )
+            st.caption(f"样例文件：{SAMPLE_PATH.name}")
+            source_label = "演示样例"
+        else:
+            source_label = st.segmented_control(
+                "数据来源",
+                _SOURCE_OPTIONS,
+                default="在线采集",
+                required=True,
+                width="stretch",
+                key="source-mode",
+            )
+        # 控件直接渲染（带 key 即时写入 session_state），
+        # 页面刷新后输入保持，避免回到默认表单。
         if source_label == "在线采集":
             app_url = st.text_input(
                 "App 地址（URL）",
@@ -333,12 +384,24 @@ def _render_input_form(settings: Settings, model_ready: bool):
                 help="在线采集支持任意区 App Store（区域取自链接中的区号，如 /us/、/gb/）。",
                 key="input-app-url",
             )
-        analysis_goal = st.text_area(
-            "分析目标",
-            value="识别影响用户体验与产品增长的核心问题，并形成可追溯需求",
-            height=100,
-            key="input-goal",
-        )
+        if demo_replay:
+            # 分析目标同样进 prompt：锁成录制时那一句，且用独立 key——
+            # 否则 URL 参数（input-goal）能把它改成别的值，回放就全量未命中了。
+            analysis_goal = st.text_area(
+                "分析目标",
+                value=DEMO_ANALYSIS_GOAL,
+                height=100,
+                disabled=True,
+                help="演示模式回放的是这句话下的运行结果；改动目标将无法命中录制。",
+                key="goal-locked",
+            )
+        else:
+            analysis_goal = st.text_area(
+                "分析目标",
+                value=DEMO_ANALYSIS_GOAL,
+                height=100,
+                key="input-goal",
+            )
         maximum_limit = 1000
         review_limit = st.slider(
             "评论数量",
@@ -371,6 +434,7 @@ def _render_input_form(settings: Settings, model_ready: bool):
             icon=":material/play_arrow:",
             disabled=not model_ready,
             width="stretch",
+            key="start-analysis",
         )
     _sync_inputs_to_query_params(source_label, app_url, analysis_goal, review_limit, upload)
     return submitted, source_label, app_url, analysis_goal, review_limit, upload
@@ -461,15 +525,20 @@ def main() -> None:
     )
 
     settings = load_settings()
-    services = build_services()
+    services, wiring_error = _build_services_or_degrade()
     # 计划书规定：按钮禁用条件 = 显式禁用 或 未配置密钥；
     # 密钥已填写（无论有效无效）即可开始，无效密钥在模型环节失败后
     # 保留检查点，换回有效密钥后同一 run_id 续跑。
-    model_ready = settings.model_available
+    # 演示模式（回放）同样可以开始——这是无密钥部署的默认形态。
+    demo_replay = settings.demo_replay_active and settings.demo_replay_path.exists()
+    model_ready = settings.model_available or demo_replay
     _initialize_session_state(services.repository)
     # 浏览器刷新会清空 session_state：从 URL 参数恢复输入，保持中断前的页面。
     _restore_inputs_from_query_params()
     model_state = _model_state(settings)
+
+    if wiring_error:
+        st.warning(f"模型装配未完成：{wiring_error}", icon=":material/key_off:")
 
     st.title("证据审阅工作台", anchor=False)
     st.caption(
@@ -480,6 +549,11 @@ def main() -> None:
         model_state,
         _model_key_source(settings),
     )
+    if demo_replay:
+        st.warning(
+            "演示模式：回放一次真实运行的模型输出，不调用外部 API，输入固定为仓库自带样例。",
+            icon=":material/replay:",
+        )
     demo_mode = st.toggle(
         "查看历史缓存演示",
         help="无需模型密钥；始终明确标记为历史缓存和非实时结果。",
@@ -512,11 +586,11 @@ def main() -> None:
     left, right = st.columns([3, 1], gap="large", vertical_alignment="top")
     with left:
         submitted, source_label, app_url, goal, limit, upload = _render_input_form(
-            settings, model_ready
+            settings, model_ready, demo_replay=demo_replay
         )
         st.download_button(
             "下载样例评论 JSON",
-            _SAMPLE_PATH.read_bytes(),
+            SAMPLE_PATH.read_bytes(),
             "reviews-sample.json",
             mime="application/json",
             icon=":material/download:",
@@ -534,8 +608,11 @@ def main() -> None:
                         goal,
                         limit,
                         upload.name if upload else None,
+                        demo_replay=demo_replay,
                     )
-                    imported_reviews = _prepare_imported_reviews(request, upload)
+                    imported_reviews = _prepare_imported_reviews(
+                        request, upload, demo_replay=demo_replay
+                    )
                 except (InputDataError, ConcurrentRunError, ValueError) as exc:
                     st.error(str(exc), icon=":material/input:")
                 else:

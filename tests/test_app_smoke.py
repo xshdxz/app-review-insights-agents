@@ -130,13 +130,19 @@ def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):
     app_path = Path(__file__).parents[1] / "app.py"
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    # 隔离回放录制件：默认路径上有录制时，无密钥会进入演示模式（Task 6：按钮可点、
+    # 输入锁到样例），那是既定行为；本条要验的是「无密钥且**无录制**」这一条件。
+    # 与 Task 5 Step 6 对 test_build_services_without_key_... 的处理同一原理：
+    # 隔离前提，不改断言。
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))
 
     app = AppTest.from_file(str(app_path)).run(timeout=30)
 
     assert not app.exception
     assert any("证据审阅工作台" in title.value for title in app.title)
     start_button = next(button for button in app.button if button.label == "开始分析")
-    # 计划书规定：未配置密钥时按钮禁用（所有模式）。
+    # 计划书规定：未配置密钥时按钮禁用；Task 6 起，默认路径上存在录制文件时
+    # 无密钥部署进入演示模式（按钮可点、输入锁到样例），见 tests/test_demo_mode.py。
     assert start_button.disabled is True
     review_limit = next(slider for slider in app.slider if slider.label == "评论数量")
     assert review_limit.min == 100
@@ -199,6 +205,11 @@ def test_explicit_model_disable_overrides_configured_key(tmp_path, monkeypatch):
     monkeypatch.setenv("MODEL_ENABLED", "false")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "configured-but-disabled")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    # 隔离回放录制件：默认路径上有录制时，无密钥会进入演示模式（Task 6：按钮可点、
+    # 输入锁到样例），那是既定行为；本条要验的是「无密钥且**无录制**」这一条件。
+    # 与 Task 5 Step 6 对 test_build_services_without_key_... 的处理同一原理：
+    # 隔离前提，不改断言。
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))
 
     app = AppTest.from_file(str(app_path)).run(timeout=30)
     start_button = next(button for button in app.button if button.label == "开始分析")
@@ -332,6 +343,11 @@ def test_waiting_run_keeps_saved_output_visible_without_model_key(tmp_path, monk
     database_path = tmp_path / "runs.sqlite3"
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
     monkeypatch.setenv("DATABASE_PATH", str(database_path))
+    # 隔离回放录制件：默认路径上有录制时，无密钥会进入演示模式（Task 6：按钮可点、
+    # 输入锁到样例），那是既定行为；本条要验的是「无密钥且**无录制**」这一条件。
+    # 与 Task 5 Step 6 对 test_build_services_without_key_... 的处理同一原理：
+    # 隔离前提，不改断言。
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))
     repository = RunRepository(database_path)
     now = datetime.now(UTC)
     run = RunRecord(
