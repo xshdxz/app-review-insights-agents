@@ -102,19 +102,31 @@ def _sync_inputs_to_query_params(
     goal: str,
     review_limit: int,
     upload,
+    *,
+    demo_replay: bool = False,
 ) -> None:
-    """Persist current input values into URL query params for reload survival."""
+    """把当前输入写进 URL 查询参数，用于浏览器刷新后恢复。
+
+    两种情况下不写：
+    - 演示模式：输入被锁定为样例，恢复机制没有意义，而分享链接会连带把填写者
+      当次的输入带出去；
+    - 空值：空参数只让链接变长，url= 这类空值尤其容易被误读为「有一个地址」。
+    """
+    if demo_replay:
+        return
     params = st.query_params
     params["mode"] = source_label
-    if source_label == "在线采集":
-        params["url"] = app_url or ""
-    params["goal"] = goal
+    if source_label == "在线采集" and app_url:
+        params["url"] = app_url
+    if goal:
+        params["goal"] = goal
     params["limit"] = str(review_limit)
     restored = st.session_state.get("restored-upload")
-    if restored:
-        params["upload"] = Path(restored).name
-    elif upload is not None and upload.name:
-        params["upload"] = upload.name
+    upload_name = Path(restored).name if restored else None
+    if not upload_name and upload is not None and upload.name:
+        upload_name = upload.name
+    if upload_name:
+        params["upload"] = upload_name
 
 
 def _persist_upload(upload) -> None:
@@ -409,9 +421,16 @@ def _render_input_form(settings: Settings, model_ready: bool, *, demo_replay: bo
             max_value=maximum_limit,
             value=min(settings.default_review_limit, maximum_limit),
             step=1,
+            # 演示模式锁死：回放不按 review_limit 截断，能拖动却什么都不发生的控件
+            # 比禁用的控件更糟——它会教访客「这个应用会忽略我的输入」。
+            disabled=demo_replay,
             help=(
-                "在线采集与文件导入统一支持 100–1000 条；"
-                "在线采集实际条数以 Apple 接口为准，不足部分会在运行局限中披露。"
+                "演示模式回放的是录制时那一次运行，评论条数不参与回放，因此锁定。"
+                if demo_replay
+                else (
+                    "在线采集与文件导入统一支持 100–1000 条；"
+                    "在线采集实际条数以 Apple 接口为准，不足部分会在运行局限中披露。"
+                )
             ),
             key=f"review-limit-{source_label}",
         )
@@ -436,7 +455,9 @@ def _render_input_form(settings: Settings, model_ready: bool, *, demo_replay: bo
             width="stretch",
             key="start-analysis",
         )
-    _sync_inputs_to_query_params(source_label, app_url, analysis_goal, review_limit, upload)
+    _sync_inputs_to_query_params(
+        source_label, app_url, analysis_goal, review_limit, upload, demo_replay=demo_replay
+    )
     return submitted, source_label, app_url, analysis_goal, review_limit, upload
 
 
@@ -530,8 +551,11 @@ def main() -> None:
     # 密钥已填写（无论有效无效）即可开始，无效密钥在模型环节失败后
     # 保留检查点，换回有效密钥后同一 run_id 续跑。
     # 演示模式（回放）同样可以开始——这是无密钥部署的默认形态。
+    # 装配失败（wiring_error）时流水线是无模型的降级形态：此时即使 model_available
+    # 为真（例如 DEMO_MODE=replay 但录制件缺失），点下去也只会停在
+    # 「请先配置 DEEPSEEK_API_KEY」，而真因在横幅里——按钮必须禁用。
     demo_replay = settings.demo_replay_active and settings.demo_replay_path.exists()
-    model_ready = settings.model_available or demo_replay
+    model_ready = (settings.model_available or demo_replay) and wiring_error is None
     _initialize_session_state(services.repository)
     # 浏览器刷新会清空 session_state：从 URL 参数恢复输入，保持中断前的页面。
     _restore_inputs_from_query_params()

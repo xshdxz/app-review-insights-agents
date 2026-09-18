@@ -17,6 +17,9 @@ SAMPLE_PATH = Path(__file__).resolve().parents[3] / "data" / "samples" / "review
 
 #: 演示模式固定使用的分析目标。录制脚本与界面共用这一处定义——
 #: 它进 prompt，改了就会导致回放未命中，因此必须是同一个来源。
+#: 它同时充当普通表单的分析目标默认值（ui/main.py）：为产品原因调整这个默认值，
+#: 会一并改掉演示目标、静默作废已提交的录制件 data/recordings/demo-replay.json，
+#: 演示随即停在 waiting_for_model，而重新录制要再花一次真实的模型费用。
 DEMO_ANALYSIS_GOAL = "识别影响用户体验与产品增长的核心问题，并形成可追溯需求"
 
 _DEMO_STAGES = (

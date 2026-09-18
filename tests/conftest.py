@@ -1,4 +1,13 @@
+from datetime import UTC, datetime
+from pathlib import Path
+
 import pytest
+
+from app_review_insights.llm.recording import (
+    RECORDING_MODE,
+    RecordingDocument,
+    write_recording,
+)
 
 
 class SchemaFakeProvider:
@@ -15,3 +24,23 @@ class SchemaFakeProvider:
 @pytest.fixture
 def fake_provider_factory():
     return SchemaFakeProvider
+
+
+def _recording_at(path: Path) -> Path:
+    """写一份最小合法录制件到 path 并返回该路径（演示模式用例的公共前置）。
+
+    放在 conftest 而不是某个测试模块里：tests/test_demo_mode.py 与
+    tests/test_url_params.py 都要用它，从另一测试模块导入会让测试模块互相依赖。
+    """
+    write_recording(
+        RecordingDocument(
+            mode=RECORDING_MODE,
+            is_live=False,
+            recorded_at=datetime(2026, 9, 17, tzinfo=UTC),
+            model="deepseek-chat",
+            input_fingerprint="fp",
+            entries=[],
+        ),
+        path,
+    )
+    return path
