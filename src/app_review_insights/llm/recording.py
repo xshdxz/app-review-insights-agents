@@ -18,11 +18,11 @@ import logging
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
-from app_review_insights.errors import InputDataError
+from app_review_insights.errors import InputDataError, RecoverableModelError
 from app_review_insights.models import Review
 
 logger = logging.getLogger("ari-llm")
@@ -33,6 +33,9 @@ RECORDING_MODE = "recorded_live_run"
 
 #: 请求三段之间的分隔符，避免「前一段结尾拼上后一段开头」撞出同一个键。
 _FIELD_SEP = chr(0)
+
+#: 录制与回放共用的返回类型：按请求的 Schema 反序列化。
+T = TypeVar("T", bound=BaseModel)
 
 
 def recording_key(schema_name: str, system_prompt: str, user_prompt: str) -> str:
@@ -113,3 +116,53 @@ def load_recording(path: Path | str) -> RecordingDocument:
         first = exc.errors()[0]
         message = first.get("msg", "校验失败")
         raise InputDataError(f"录制文件校验失败：{target}（{message}）") from exc
+
+
+class ReplayMissError(RecoverableModelError):
+    """回放未命中：录制里没有这次请求。
+
+    继承 RecoverableModelError 是为了复用既有的失败语义——流水线停在检查点、
+    状态转为 waiting_for_model、可用同一 run_id 续跑。重新录制后再续跑即可。
+    """
+
+
+class ReplayProvider:
+    """按录制回放模型响应，不发起任何外部调用。"""
+
+    def __init__(self, document: RecordingDocument) -> None:
+        self.document = document
+        self._by_key = {entry.key: entry for entry in document.entries}
+        # 同一个 (system, user) 可能被不同 Schema 各录一次，所以记集合而不是单条
+        self._schemas_by_request: dict[tuple[str, str], set[str]] = {}
+        for entry in document.entries:
+            request = (entry.request.system, entry.request.user)
+            self._schemas_by_request.setdefault(request, set()).add(entry.schema_name)
+
+    @property
+    def model(self) -> str:
+        return self.document.model
+
+    def generate(self, system_prompt: str, user_prompt: str, schema: type[T]) -> T:
+        """按键取回录制响应并按请求的 Schema 反序列化，未命中抛 ReplayMissError。"""
+        key = recording_key(schema.__name__, system_prompt, user_prompt)
+        entry = self._by_key.get(key)
+        if entry is None:
+            recorded = self._schemas_by_request.get((system_prompt, user_prompt))
+            if recorded and schema.__name__ not in recorded:
+                recorded_names = "、".join(sorted(recorded))
+                raise ReplayMissError(
+                    f"回放未命中：同一请求在录制里用的是 Schema {recorded_names}，"
+                    f"本次请求的是 {schema.__name__}；请确认调用方与录制时一致。"
+                )
+            raise ReplayMissError(
+                f"回放未命中：录制中没有 {schema.__name__} 对应的响应（键 {key}）。"
+                "常见原因是输入评论集或 prompt 与录制时不一致；"
+                "请运行 scripts/record_demo.py 重新录制。"
+            )
+        try:
+            return schema.model_validate(entry.response)
+        except ValidationError as exc:
+            raise ReplayMissError(
+                f"回放内容与 {schema.__name__} 不匹配（键 {key}）："
+                "录制文件可能来自旧版本的 Schema；请重新录制。"
+            ) from exc

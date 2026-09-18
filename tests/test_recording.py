@@ -6,13 +6,17 @@ from pathlib import Path
 
 import pytest
 
-from app_review_insights.errors import InputDataError
+from app_review_insights.errors import InputDataError, RecoverableModelError
 from app_review_insights.llm.recording import (
     RECORDING_MODE,
+    RecordingDocument,
+    ReplayMissError,
+    ReplayProvider,
     input_fingerprint,
     load_recording,
     recording_key,
 )
+from app_review_insights.llm.schemas import BatchAnalysisResult, RequirementPlanResult
 from app_review_insights.models import Review
 
 
@@ -108,3 +112,45 @@ def test_load_recording_rejects_non_utf8_file(tmp_path: Path):
     path.write_bytes(b"\xff\xfe not utf8")
     with pytest.raises(InputDataError, match="无法读取"):
         load_recording(path)
+
+
+def _provider_with_one_entry() -> ReplayProvider:
+    """构造只含一次 BatchAnalysisResult 调用的回放 provider。"""
+    system, user = "系统提示", "用户提示"
+    document = RecordingDocument.model_validate(
+        _document(
+            entries=[
+                {
+                    "key": recording_key(BatchAnalysisResult.__name__, system, user),
+                    "schema_name": BatchAnalysisResult.__name__,
+                    "request": {"system": system, "user": user},
+                    "response": {"summaries": [], "findings": []},
+                }
+            ]
+        )
+    )
+    return ReplayProvider(document)
+
+
+def test_replay_returns_response_validated_against_requested_schema():
+    provider = _provider_with_one_entry()
+    result = provider.generate("系统提示", "用户提示", BatchAnalysisResult)
+    assert isinstance(result, BatchAnalysisResult)
+
+
+def test_replay_exposes_recorded_model_name():
+    assert _provider_with_one_entry().model == "deepseek-chat"
+
+
+def test_replay_miss_raises_recoverable_error():
+    provider = _provider_with_one_entry()
+    with pytest.raises(ReplayMissError) as excinfo:
+        provider.generate("系统提示", "换过的用户提示", BatchAnalysisResult)
+    assert isinstance(excinfo.value, RecoverableModelError)
+    assert "回放未命中" in str(excinfo.value)
+
+
+def test_replay_rejects_recording_from_a_different_schema():
+    provider = _provider_with_one_entry()
+    with pytest.raises(ReplayMissError, match="Schema"):
+        provider.generate("系统提示", "用户提示", RequirementPlanResult)
