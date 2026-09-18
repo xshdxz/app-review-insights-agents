@@ -1466,12 +1466,26 @@ git commit -m "feat: 演示模式输入锁定与界面标注"
 ### Task 7: 输入状态的 URL 参数
 
 **Files:**
-- Modify: `src/app_review_insights/ui/main.py`（`_sync_inputs_to_query_params` 及其调用处）
+- Modify: `src/app_review_insights/ui/main.py`（`_sync_inputs_to_query_params` 及其调用处；另见下面前三项）
+- Modify: `src/app_review_insights/storage/cache.py`（常量 docstring，见第 4 项）
+- Modify: `tests/conftest.py`（搬入 `_recording_at`，见第 2 项）
+- Modify: `tests/test_demo_mode.py`（改为从 conftest 导入；锁滑块后补断言，见第 2、3 项）
 - Test: `tests/test_url_params.py`
 
 **Interfaces:**
 - Consumes: Task 6 的 `demo_replay` 布尔量
 - Produces: `_sync_inputs_to_query_params(..., *, demo_replay: bool = False)`
+
+**本任务同时承载 Task 6 复核归口的三项（各自独立，逐项验收）。** 归到这里而不是另开一轮，是因为前两项落在 Task 7 本就要改的同一文件与同一族测试上，一次复核面覆盖：
+
+1. **`model_ready` 未纳入 `wiring_error`**（`ui/main.py:534`）。可达组合：显式 `DEMO_MODE=replay` + 录制件缺失 + 已配置密钥 → 降级返回无模型流水线并置 `wiring_error`，但 `model_available` 为真使按钮可点；点下去运行停在 `WAITING` 并提示「请先配置 DEEPSEEK_API_KEY」，而真正原因是录制件缺失（横幅已说明）。修法一行：
+   `model_ready = (settings.model_available or demo_replay) and wiring_error is None`。
+
+2. **`_recording_at` 搬进 `tests/conftest.py`**（预检裁定 R3，此前只记了台账未改进计划，Task 6 按任务书留在本地属照章办事）。两处测试都改为从 conftest 导入，消除测试模块互相导入。搬完 `tests/test_demo_mode.py` 与 `tests/test_url_params.py` 都从 conftest 取。
+
+3. **演示模式下「评论数量」滑块仍可编辑 —— 要锁**。它虽对回放无影响（演示分支不按 `review_limit` 截断，这是对的），但**一个访客能拖动却什么都不会发生的控件，比禁用的控件更糟**：它教给访客的是「这个应用会忽略我的输入」，会侵蚀他对页面其余部分的信任。spec 的要求是「演示模式下必须锁死输入」，这属于没做完的部分。
+
+4. **`DEMO_ANALYSIS_GOAL` 的 docstring 需显式化耦合**（`storage/cache.py:20`）：该常量同时充当普通表单的默认分析目标（`ui/main.py:401`）。今天两者相同是合理的去重，但将来谁为产品原因改这个默认值，就会**同时改掉演示目标、静默作废已提交的录制件**并让演示停在 `waiting_for_model`。docstring 补一句「此值同时作为普通表单默认目标，改动即需重录」。
 
 - [ ] **Step 1: 写失败测试**
 
