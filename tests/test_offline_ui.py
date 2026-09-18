@@ -5,7 +5,11 @@ from streamlit.testing.v1 import AppTest
 
 def _app(tmp_path, monkeypatch) -> AppTest:
     app_path = Path(__file__).parents[1] / "app.py"
+    # 两个密钥别名都要删：MODEL_API_KEY 优先于 DEEPSEEK_API_KEY（config.effective_model_api_key），
+    # 只删后者时，shell 环境的 MODEL_API_KEY 仍会让界面进入「已配置密钥」态并发起真实探测
+    # ——chdir 只挡 .env，挡不住真实环境变量。
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
     # 隔离回放录制件：默认路径上一旦有录制，无密钥时每次脚本运行都会去解析它（CI 即如此）。
     # 本文件的两条用例都不走回放路径，指向一个不存在的路径即可，结果不再取决于磁盘状态。
