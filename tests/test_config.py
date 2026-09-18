@@ -98,3 +98,26 @@ def test_model_available_reflects_key_and_enabled_flag(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     settings = load_settings()
     assert settings.model_available is False
+
+
+def test_demo_mode_defaults_to_auto(monkeypatch):
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    assert load_settings().demo_mode == "auto"
+
+
+def test_blank_record_path_becomes_none(monkeypatch):
+    monkeypatch.setenv("MODEL_RECORD_PATH", "   ")
+    assert load_settings().model_record_path is None
+
+
+def test_demo_replay_active_follows_mode_and_key(monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "auto")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    assert load_settings().demo_replay_active is True
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    assert load_settings().demo_replay_active is False
+
+    monkeypatch.setenv("DEMO_MODE", "replay")
+    assert load_settings().demo_replay_active is True

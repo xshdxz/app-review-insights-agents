@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     # 预算熔断：0 表示不限制。超限时流水线停在检查点，可调高后续跑。
     model_budget_usd_per_run: float = Field(default=0.0, alias="MODEL_BUDGET_USD_PER_RUN")
     model_budget_usd_per_day: float = Field(default=0.0, alias="MODEL_BUDGET_USD_PER_DAY")
+    # 演示模式：auto=有密钥用真实模型、无密钥回放录制；live=强制真实模型；replay=强制回放
+    demo_mode: Literal["auto", "live", "replay"] = Field(default="auto", alias="DEMO_MODE")
+    # 录制输出路径（留空 = 不录制；仅供 scripts/record_demo.py 使用）
+    model_record_path: Path | None = Field(default=None, alias="MODEL_RECORD_PATH")
+    # 回放读取的录制文件
+    demo_replay_path: Path = Field(
+        default=Path("data/recordings/demo-replay.json"), alias="DEMO_REPLAY_PATH"
+    )
     database_path: Path = Field(default=Path("data/runs/runs.sqlite3"), alias="DATABASE_PATH")
     default_review_limit: int = Field(default=500, alias="DEFAULT_REVIEW_LIMIT")
     batch_review_limit: int = Field(default=100, alias="BATCH_REVIEW_LIMIT")
@@ -65,6 +73,14 @@ class Settings(BaseSettings):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
+    @field_validator("model_record_path", mode="before")
+    @classmethod
+    def _blank_path_is_none(cls, value: Any) -> Any:
+        """空字符串等同于未配置——.env 里留空是最常见的写法。"""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        return value
+
     @property
     def effective_model_api_key(self) -> str:
         return self.model_api_key or self.deepseek_api_key
@@ -72,6 +88,17 @@ class Settings(BaseSettings):
     @property
     def model_available(self) -> bool:
         return self.model_enabled and bool(self.effective_model_api_key)
+
+    @property
+    def demo_replay_active(self) -> bool:
+        """是否以回放方式运行。
+
+        auto 且无密钥时走回放——这是无密钥部署的默认形态；
+        replay 则无视密钥强制回放，供现场演示避免网络与模型波动。
+        """
+        if self.demo_mode == "replay":
+            return True
+        return self.demo_mode == "auto" and not self.model_available
 
 
 _ENV_FILE = Path(".env")

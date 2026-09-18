@@ -1,7 +1,15 @@
 from datetime import UTC, datetime
 
+import pytest
+
 from app_review_insights.config import load_settings
+from app_review_insights.errors import InputDataError
 from app_review_insights.factory import build_agent_stack, build_pipeline_services
+from app_review_insights.llm.recording import (
+    RECORDING_MODE,
+    RecordingDocument,
+    write_recording,
+)
 from app_review_insights.models import Review
 from app_review_insights.pipeline.orchestrator import PipelineServices
 from app_review_insights.rag.answer import RagAnswerer
@@ -161,3 +169,64 @@ def test_index_run_cleaned_with_embeddings(tmp_path, monkeypatch):
     assert count == 1
     hits = stack.agent_repository.search_embeddings([1.0, 0.0, 0.0], app_ids=None, limit=10)
     assert hits and hits[0]["review_id"] == "v1"
+
+
+def _empty_recording(path) -> None:
+    write_recording(
+        RecordingDocument(
+            mode=RECORDING_MODE,
+            is_live=False,
+            recorded_at=datetime(2026, 9, 17, tzinfo=UTC),
+            model="deepseek-chat",
+            input_fingerprint="fp",
+            entries=[],
+        ),
+        path,
+    )
+
+
+def test_auto_without_key_and_without_recording_yields_no_analyzer(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "auto")
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "missing.json"))
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    assert build_pipeline_services(load_settings()).batch_analyzer is None
+
+
+def test_replay_mode_without_recording_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "replay")
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "missing.json"))
+    # 断言的是 factory 自己抛的那条消息；load_recording 的「录制文件不存在」
+    # 在此路径上不可达（factory 先做了 .exists() 检查）
+    with pytest.raises(InputDataError, match="需要录制文件"):
+        build_pipeline_services(load_settings())
+
+
+def test_live_mode_without_key_raises(monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "live")
+    monkeypatch.setenv("MODEL_ENABLED", "true")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    with pytest.raises(InputDataError, match="需要可用的模型密钥"):
+        build_pipeline_services(load_settings())
+
+
+def test_replay_mode_wires_the_replay_provider(tmp_path, monkeypatch):
+    path = tmp_path / "rec.json"
+    _empty_recording(path)
+    monkeypatch.setenv("DEMO_MODE", "replay")
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(path))
+
+    services = build_pipeline_services(load_settings())
+
+    assert services.batch_analyzer is not None
+    assert services.consolidator is not None
+    assert services.evidence_auditor is not None
+
+
+def test_recording_requires_input_fingerprint(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEMO_MODE", "live")
+    monkeypatch.setenv("MODEL_RECORD_PATH", str(tmp_path / "rec.json"))
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    with pytest.raises(InputDataError, match="输入指纹"):
+        build_pipeline_services(load_settings())

@@ -195,6 +195,9 @@ Agent 层**包裹在确定性核心之外**：
 | `EMBEDDING_MODEL` / `EMBEDDING_BASE_URL` / `EMBEDDING_API_KEY` | `text-embedding-3-small` / … | API 向量检索配置（本地路径为空时使用）。 |
 | `SOCIAL_X_ENDPOINT` | *(空)* | 可选的 X 舆情搜索端点（返回 JSON 数组）。 |
 | `DEFAULT_REVIEW_LIMIT` / `BATCH_REVIEW_LIMIT` / `BATCH_MAX_CHARACTERS` | `500` / `100` / `60000` | 数量与分批限制。 |
+| `DEMO_MODE` | `auto` | 运行模式：`auto` 有密钥用真实模型、无密钥回放录制；`live` 强制真实模型；`replay` 强制回放。 |
+| `MODEL_RECORD_PATH` | *(空)* | 录制输出路径（留空 = 不录制；仅供 `scripts/record_demo.py` 使用）。 |
+| `DEMO_REPLAY_PATH` | `data/recordings/demo-replay.json` | 回放读取的录制文件。 |
 
 密钥处理：密钥只在运行时读入 provider；绝不记录日志、导出或包含进下载；错误信息会脱敏密钥、评论原文与 `.env` 引用。
 

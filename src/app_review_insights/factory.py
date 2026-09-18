@@ -18,8 +18,14 @@ from app_review_insights.agent.tools import (
 )
 from app_review_insights.collectors import AppStoreCollector
 from app_review_insights.config import Settings, load_settings
+from app_review_insights.errors import InputDataError
 from app_review_insights.llm import DeepSeekProvider
 from app_review_insights.llm.budget import make_budget_guard
+from app_review_insights.llm.recording import (
+    RecordingProvider,
+    ReplayProvider,
+    load_recording,
+)
 from app_review_insights.models import Review, Stage
 from app_review_insights.monitor.webhook import WebhookSender
 from app_review_insights.pipeline.analyze import (
@@ -52,9 +58,58 @@ def build_budget_guard(settings: Settings, repository: RunRepository):
     )
 
 
+def _build_model_provider(
+    settings: Settings,
+    repository: RunRepository,
+    *,
+    input_fingerprint: str | None,
+) -> Any | None:
+    """按 DEMO_MODE 选择 provider；返回 None 表示当前没有可用的模型。
+
+    回放分支放在最前面：replay 模式即使配了密钥也走回放。
+    """
+    if settings.demo_replay_active:
+        if not settings.demo_replay_path.exists():
+            if settings.demo_mode == "replay":
+                raise InputDataError(
+                    f"DEMO_MODE=replay 需要录制文件，未找到：{settings.demo_replay_path}。"
+                    "请先运行 scripts/record_demo.py 生成。"
+                )
+            # auto 且尚无录制文件：维持既有行为，界面禁用实时分析
+            return None
+        return ReplayProvider(load_recording(settings.demo_replay_path))
+
+    if not settings.model_available:
+        raise InputDataError(
+            "DEMO_MODE=live 需要可用的模型密钥，当前未配置。"
+            "请设置 DEEPSEEK_API_KEY，或改用 DEMO_MODE=auto/replay。"
+        )
+
+    provider: Any = DeepSeekProvider.from_settings(
+        settings,
+        usage_recorder=repository.record_model_usage,
+        budget_check=build_budget_guard(settings, repository),
+    )
+    if settings.model_record_path is not None:
+        if not input_fingerprint:
+            raise InputDataError(
+                "启用录制（MODEL_RECORD_PATH）时必须提供输入指纹，"
+                "否则录制文件无法在回放时校验输入是否一致。"
+            )
+        provider = RecordingProvider(
+            provider,
+            settings.model_record_path,
+            input_fingerprint=input_fingerprint,
+            model=settings.model_name,
+        )
+    return provider
+
+
 def build_pipeline_services(
     settings: Settings,
     use_fake_provider: bool = False,
+    *,
+    input_fingerprint: str | None = None,
 ) -> PipelineServices:
     repository = RunRepository(settings.database_path)
     common = {
@@ -65,14 +120,12 @@ def build_pipeline_services(
         "batch_size": settings.batch_review_limit,
         "batch_max_characters": settings.batch_max_characters,
     }
-    if use_fake_provider or not settings.model_available:
+    if use_fake_provider:
         return PipelineServices(batch_analyzer=None, **common)
 
-    provider = DeepSeekProvider.from_settings(
-        settings,
-        usage_recorder=repository.record_model_usage,
-        budget_check=build_budget_guard(settings, repository),
-    )
+    provider = _build_model_provider(settings, repository, input_fingerprint=input_fingerprint)
+    if provider is None:
+        return PipelineServices(batch_analyzer=None, **common)
     return PipelineServices(
         batch_analyzer=lambda reviews, goal: analyze_batch(provider, reviews, goal),
         consolidator=lambda results, goal, reviews: consolidate_findings(
