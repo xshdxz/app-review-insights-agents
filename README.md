@@ -4,6 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
+**在线演示（免安装、免密钥）：** <https://xsh-review-insights.streamlit.app/>
+
+打开上面的地址即可使用：不配置密钥时它回放一次真实运行的模型输出，「开始分析」可点，
+在自带样例上跑完整条流水线，全程不调用外部 API。
+
 **把 App Store / Google Play / 社交评论，变成有证据支撑的产品发现、分版本 PRD 需求与可追溯测试用例。**
 
 把评论丢给大模型写一份报告，得到的是无法验证的文字：引用可能是编的、计数可能是错的、
@@ -26,8 +31,9 @@ Copy-Item .env.example .env      # 填 DEEPSEEK_API_KEY；留空则进入离线�
 .\.venv\Scripts\streamlit run app.py
 ```
 
-打开 <http://localhost:8501>。**没有 API Key 也能启动**：界面可浏览附带的离线演示档案，
-"开始分析"按钮会禁用并说明原因 —— 绝不把历史缓存伪装成实时结果。
+打开 <http://localhost:8501>。**没有 API Key 也能启动**：应用进入演示模式，输入锁定为自带样例，
+点「开始分析」就能回放一次真实运行的模型输出、跑完整条流水线（全程不调用外部 API）；
+「查看历史缓存演示」开关则用于浏览附带的离线档案 —— 两者都明确标注，绝不伪装成实时结果。
 
 ---
 
@@ -39,7 +45,7 @@ Copy-Item .env.example .env      # 填 DEEPSEEK_API_KEY；留空则进入离线�
 | 引用看着合理就行 | 引用的 `review_id` 必须真实存在；计数、置信度、优先级由程序**重算**，不采信模型给的数字 |
 | 失败就从头再来 | 每个阶段先落盘检查点；模型失败可用**同一 `run_id`** 续跑，已完成批次不重跑 |
 | 效果凭感觉 | 30 例 / 120 条评论的黄金评测集 + CI 门禁，指标跨版本可比 |
-| 上线才知道花多少钱 | 每次模型调用都计量 token 与费用，可按阶段拆解；支持单次/每日预算熔断 |
+| 上线才知道花多少钱 | 每次模型调用都计量 token 与费用，可按阶段拆解；单次预算硬熔断，每日上限的计数存在本地库、随容器重建归零 |
 
 ### 证据链长什么样
 
@@ -61,7 +67,8 @@ F-001 免费内容大幅减少，付费墙限制基本功能   ← 15 条支持�
 
 - **在线采集**：App Store（任意区，RSS 最多 500 条/区）+ Google Play（尽力而为）+ Reddit/X 社交舆情
 - **JSON/CSV 导入**：自有评论文件（格式见 `docs/data-format.md`）
-- **离线演示**：附带的历史缓存，无 API Key 也能演示界面
+- **离线演示模式**：无密钥时自动回放 `data/recordings/demo-replay.json`（一次真实付费运行的
+  录制），「开始分析」可点、跑完整条流水线且不调用外部 API；另有附带的历史缓存档案可浏览
 
 ### 分析流水线
 
@@ -153,7 +160,9 @@ Agent 层**包裹在确定性核心之外**：
 免费公开 demo，访客**无需安装**即可使用 —— 详见 [`docs/deploy-streamlit-cloud.md`](docs/deploy-streamlit-cloud.md)。
 
 要点：Cloud 走 `requirements.txt`（`-e .`）安装依赖；Python 版本在部署对话框的 Advanced settings 里选 **3.11**；
-不配密钥即进入离线演示模式，配密钥时**务必同时设 `MODEL_BUDGET_USD_PER_DAY`**（公开 demo 需要预算上限）。
+**公开 demo 不挂密钥**，应用停在演示模式即可点着跑，没有成本面。确要给受控范围内的部署配密钥时，
+至少设 `MODEL_BUDGET_USD_PER_RUN`（按运行统计的硬上限）；`MODEL_BUDGET_USD_PER_DAY` 的当日计数
+存在容器内的 SQLite 里，重启或重新部署即归零，不能当兜底。
 
 ### Agent CLI
 
@@ -196,8 +205,8 @@ Agent 层**包裹在确定性核心之外**：
 | `SOCIAL_X_ENDPOINT` | *(空)* | 可选的 X 舆情搜索端点（返回 JSON 数组）。 |
 | `DEFAULT_REVIEW_LIMIT` / `BATCH_REVIEW_LIMIT` / `BATCH_MAX_CHARACTERS` | `500` / `100` / `60000` | 数量与分批限制。 |
 | `DEMO_MODE` | `auto` | 运行模式：`auto` 有密钥用真实模型、无密钥回放录制；`live` 强制真实模型；`replay` 强制回放。 |
-| `MODEL_RECORD_PATH` | *(空)* | 录制输出路径（留空 = 不录制；仅供 `scripts/record_demo.py` 使用）。 |
-| `DEMO_REPLAY_PATH` | `data/recordings/demo-replay.json` | 回放读取的录制文件。 |
+| `MODEL_RECORD_PATH` | *(空)* | 录制输出路径（留空 = 不录制）。`scripts/record_demo.py` 会自动指向 `data/recordings/demo-replay.json`。 |
+| `DEMO_REPLAY_PATH` | `data/recordings/demo-replay.json` | 回放读取的录制文件；不存在时演示模式退回「按钮禁用」的旧行为。 |
 
 密钥处理：密钥只在运行时读入 provider；绝不记录日志、导出或包含进下载；错误信息会脱敏密钥、评论原文与 `.env` 引用。
 
@@ -206,7 +215,7 @@ Agent 层**包裹在确定性核心之外**：
 ## 测试与评测
 
 ```powershell
-# 全量测试（当前 459 项，覆盖率 93%）
+# 全量测试（当前 503 项，覆盖率 93%）
 .\.venv\Scripts\python -m pytest
 
 # 覆盖率报告
@@ -261,6 +270,7 @@ scripts/
 ├── run_eval.py         # Prompt 评测 + 数据集完整性校验
 ├── run_real_validation.py  # 端到端验证
 ├── manual_agent_test.py    # 离线冒烟测试
+├── record_demo.py          # 录制一次真实运行，供演示模式回放
 ├── setup.ps1           # 一键本机安装
 └── deploy.ps1          # 一键 Docker 部署
 
