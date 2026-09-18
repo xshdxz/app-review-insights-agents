@@ -53,12 +53,21 @@ uv.lock → Pipfile → environment.yml → requirements.txt → pyproject.toml 
 不配置任何密钥时，应用进入**演示模式**：在自带的 20 条样例评论上回放一次真实运行的模型
 输出，**不发起任何外部 API 调用**，而「开始分析」是活的。
 
-三个条件同时成立才进入演示模式：
+进入演示模式的条件按 `DEMO_MODE` 分两档（`config.py` 的 `demo_replay_active`）：
 
-- `DEMO_MODE` 保持默认的 `auto`（或显式设为 `replay`）；
-- 没有可用密钥 —— `DEEPSEEK_API_KEY` / `MODEL_API_KEY` 均为空，或 `MODEL_ENABLED=false`；
-- 录制文件存在（`DEMO_REPLAY_PATH`，默认 `data/recordings/demo-replay.json`，随仓库提交）。
-  录制文件缺失时退回旧行为：按钮禁用，并在横幅里说明原因。
+- **`auto`（默认）**：下面三条**同时**成立 ——
+  1. `DEMO_MODE` 保持默认的 `auto`；
+  2. 没有可用密钥 —— `DEEPSEEK_API_KEY` / `MODEL_API_KEY` 均为空，**或** `MODEL_ENABLED=false`；
+  3. 录制文件存在（`DEMO_REPLAY_PATH`，默认 `data/recordings/demo-replay.json`，随仓库提交）。
+- **`replay`（显式）**：**只**要求录制文件存在。这一档直接判定为回放，根本不看密钥 ——
+  配了密钥也照样走回放（`factory.py` 里回放分支排在密钥判断之前）。
+
+录制文件缺失时，两档的界面表现不同：
+
+- `replay` 档装配失败并抛 `InputDataError`，界面在「模型装配未完成」横幅里**明说录制文件缺失**
+  （文案给出 `DEMO_REPLAY_PATH` 的路径与 `scripts/record_demo.py`），开始分析按钮禁用。
+- `auto` 档退回旧行为：装出一个没有模型的降级流水线，按钮禁用，界面出现的是**模型状态提醒**
+  （「未配置 MODEL_API_KEY…」或「已显式禁用（MODEL_ENABLED=false）…」），**不会提到录制文件缺失**。
 
 界面呈现为：
 
@@ -109,21 +118,31 @@ DEEPSEEK_API_KEY = "sk-..."
 
 **预算上限的真实边界**：
 
-| 变量 | 是不是硬上限 | 依据 |
-|---|---|---|
-| `MODEL_BUDGET_USD_PER_RUN` | **是** | 按当前 `run_id` 汇总用量，超限即停在检查点 |
-| `MODEL_BUDGET_USD_PER_DAY` | **不是** | 当日计数存在容器内的 SQLite 里，容器一换就归零 |
+两个变量读的是**同一张 `model_usage` 表**（`factory.py` 里由同一个回调供给），该表位于
+`data/runs/runs.sqlite3`。它们的区别不在「数据存在哪儿」，而在**约束的是什么**：
 
-`MODEL_BUDGET_USD_PER_DAY` 由 `llm/budget.py` 以 `spent_usd(None, start_of_today_utc())`
-从 `model_usage` 表读取，而该表位于 `data/runs/runs.sqlite3`。Streamlit Community Cloud
-的容器文件系统不是持久存储 —— 重启、休眠唤醒与重新部署之后，写在那里的用量记录不再保留，
-当日计数随之归零。把它当成公开部署的兜底，得到的只是虚假安全感。
+| 变量 | 约束的是什么 | 依据 |
+|---|---|---|
+| `MODEL_BUDGET_USD_PER_RUN` | **单次运行**的花费：按当前 `run_id` 汇总 | `llm/budget.py`：`spent_usd(current_run_id.get(), None)` |
+| `MODEL_BUDGET_USD_PER_DAY` | **当日累计**花费：按 UTC 当日窗口汇总 | `llm/budget.py`：`spent_usd(None, start_of_today_utc())` |
+
+守卫挂在**每次模型调用之前**（`llm/provider.py` 的 `generate`），所以准确的边界是
+「超限后不再发起新的模型调用」，而不是「总额绝不超过上限」—— 跨过阈值的那一刻，
+已经在途的那一笔调用仍会完成并计入。
+
+这个库**不是持久存储**：Streamlit Community Cloud 的容器文件系统在重启、休眠唤醒与
+重新部署之后不再保留写在里面的记录。这一条对两个计数都成立，影响要分开说：
+
+- `MODEL_BUDGET_USD_PER_DAY`：当日计数与容器同生共死，容器一换就归零。
+  把它当成公开部署的兜底，得到的只是虚假安全感。
+- `MODEL_BUDGET_USD_PER_RUN`：计数同样存在这个库、同样会随容器归零 —— 但**这次运行本身也已经没了**，
+  续跑要从头开始，不存在「换个容器接着花上一轮额度」这回事。它管住的是单次运行的开销面，
+  不是一份能跨容器累计的账。
 
 **公开部署的正确做法是不挂密钥、留在演示模式**（本节开头那一档）：没有密钥就没有成本面，
 不需要靠预算上限兜底。
 
-确实要给受控范围内的部署配密钥时，至少设 `MODEL_BUDGET_USD_PER_RUN` —— 它按运行统计，
-重建容器不会丢：
+确实要给受控范围内的部署配密钥时，至少设 `MODEL_BUDGET_USD_PER_RUN`：
 
 ```toml
 DEEPSEEK_API_KEY = "sk-..."
@@ -139,11 +158,13 @@ MODEL_BUDGET_USD_PER_RUN = "0.2"
 | 检查项 | 预期 |
 |---|---|
 | 页面能打开 | 出现「证据审阅工作台」标题 |
-| 无密钥时 | 出现「模型状态：未配置 MODEL_API_KEY…」与「演示模式：回放一次真实运行…」两条提醒；数据来源锁为「演示样例」，开始分析按钮**可点** |
+| 无密钥时（`DEMO_MODE=auto` 且录制文件存在） | 出现「演示模式：回放一次真实运行…」提醒；「模型状态」那条按原因二选一 —— 密钥为空 →「未配置 MODEL_API_KEY…」，`MODEL_ENABLED=false` →「已显式禁用（MODEL_ENABLED=false）…」。数据来源锁为「演示样例」，开始分析按钮**可点** |
 | 演示模式下点「开始分析」 | 跑完整条流水线并给出结果；地址栏不出现任何查询参数 |
 | 打开「查看历史缓存演示」 | 显示档案，且明确标注「历史缓存演示 / 非实时」 |
 | 四个下载按钮 | 清洗评论 JSON / PRD JSON / 测试用例 CSV / 证据链 CSV 均可下载 |
-| 配了密钥时 | 「模型状态」提醒消失，开始分析按钮可点，走真实模型调用 |
+| 配了密钥且密钥有效（`MODEL_ENABLED=true`，`DEMO_MODE` 为 `auto`/`live`） | 「模型状态」提醒消失，开始分析按钮可点，走真实模型调用 |
+| 配了密钥但校验没通过 | 「模型状态」提醒**不消失**：认证失败 →「DeepSeek 密钥无效（认证失败）…」，连不上模型服务 →「暂时无法连接模型服务…」。按钮仍可点，但分析会停在模型环节并保留检查点，修正后可用同一 `run_id` 续跑 |
+| 配了密钥但 `DEMO_MODE=replay` | 仍走回放、不是真实调用 —— `replay` 档不看密钥（见「两种运行模式」） |
 
 ---
 
