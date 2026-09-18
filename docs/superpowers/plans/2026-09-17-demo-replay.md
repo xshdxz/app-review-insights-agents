@@ -1327,13 +1327,88 @@ def _prepare_imported_reviews(request: AnalysisRequest, upload, *, demo_replay: 
 **`app_review_insights.storage.cache`** 导入（Task 5 已把它放进包内）——**不要**从
 `scripts.record_demo` 导入：那会让 src 依赖 scripts，是分层倒置。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [ ] **Step 4: 让界面在装配失败时降级，而不是整页报错**
+
+Task 4 的复核发现（Important，plan-mandated）：`factory._build_model_provider` 在
+`DEMO_MODE=live` 且无可用密钥时抛 `InputDataError`（这是刻意的——显式选了 live 就该
+响亮地失败，而不是悄悄回放）。但 `ui/main.py:464` 是在**页面渲染路径**上无保护地调
+`build_services()` 的，于是该配置下：
+
+- 改动前：页面正常渲染，按钮禁用并说明原因；
+- 改动后：整页抛异常。
+
+这违反两条既有承诺——`AGENTS.md` 的「没有密钥也能启动……按钮保持禁用并说明原因」，
+以及设计约束 #3「降级不崩溃，不能把异常抛到 UI」。
+
+**裁定**：`factory` 保留抛出（live 的语义就是别静默降级，Task 4 的测试不动）；
+**界面**负责兜底降级。`monitor/worker.py:131` **不兜底**——常驻服务在显式配置错误下
+拒绝启动是对的（fail fast），只有交互式页面才该渲染出来解释原因。这个不对称是刻意的。
+
+**Step 4a：写失败测试**
+
+```python
+# tests/test_demo_mode.py（追加）
+def test_live_mode_without_key_renders_instead_of_crashing(tmp_path, monkeypatch):
+    """显式选了 live 却没密钥：页面要能渲染并说明原因，不能整页报错。"""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DEMO_MODE", "live")
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+
+    app = AppTest.from_file("app.py").run()
+
+    assert not app.exception, f"页面不应抛异常，实际：{app.exception}"
+    messages = [block.value for block in app.warning] + [block.value for block in app.error]
+    assert any("密钥" in message for message in messages)
+```
+
+**Step 4b：确认失败** —— Run: `python -m pytest tests/test_demo_mode.py::test_live_mode_without_key_renders_instead_of_crashing -q`
+Expected: FAIL（页面抛 `InputDataError`）
+
+**Step 4c：实现兜底**
+
+```python
+# src/app_review_insights/ui/main.py —— 替换 main() 里的 services = build_services()
+    settings = load_settings()
+    services, wiring_error = _build_services_or_degrade()
+```
+
+```python
+# 新增：装配失败时降级成「无模型」的流水线，把原因交给页面显示
+def _build_services_or_degrade() -> tuple[PipelineServices, str | None]:
+    """装配失败不抛到 UI：退化成无模型的流水线，由页面说明原因。
+
+    配置错误（例如 DEMO_MODE=live 却没密钥）是用户能在页面上看懂并修好的，
+    不该以整页 traceback 的形式呈现——这是设计约束「降级不崩溃」的直接落实。
+    """
+    try:
+        return build_services(), None
+    except AppReviewInsightsError as exc:
+        fallback = _build_pipeline_services(load_settings(), use_fake_provider=True)
+        return fallback, str(exc)
+```
+
+在 `st.title(...)` 之前渲染这段原因（复用既有警告样式）：
+
+```python
+    if wiring_error:
+        st.warning(f"模型装配未完成：{wiring_error}", icon=":material/key_off:")
+```
+
+`AppReviewInsightsError` 已由 `errors.py` 提供，是 `InputDataError` 的基类，
+**不要**为它新增异常类。
+
+**Step 4d：确认通过** —— Run: `python -m pytest tests/test_demo_mode.py tests/test_app_smoke.py tests/test_offline_ui.py -q`
+Expected: PASS
+
+- [ ] **Step 5: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_demo_mode.py tests/test_app_smoke.py tests/test_offline_ui.py -q`
 
 Expected: PASS
 
-- [ ] **Step 5: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
 git add src/app_review_insights/ui/main.py tests/test_demo_mode.py
