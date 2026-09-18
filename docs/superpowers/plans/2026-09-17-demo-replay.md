@@ -1219,6 +1219,36 @@ git commit -m "feat: 样例分析录制脚本与录制产物"
 `test_offline_ui` 两处），根因都是 pydantic-settings 在环境变量被删后**回落读 `.env`**，
 以及默认路径上存在录制件。**新增 AppTest 用例时，凡涉及模型可用性或按钮状态，都要显式构造前提。**
 
+**本任务执行中暴露的第二处计划缺陷：测试全绿而功能不成立。** 原 Step 3 只改了
+`_prepare_imported_reviews` 与输入表单，**没改 `_build_request`**。演示模式下
+`source_label="演示样例"`、`upload=None`，`_source_type()` 直接抛
+「请选择与导入模式对应的 JSON 或 CSV 评论文件。」——请求根本没构造出来，
+点「开始分析」只弹一条输入错误、`run_id` 始终为 None。而原 Step 1 的 4 条测试**全部通过**，
+因为 `disabled is False` 只断言按钮不是灰的，**没有断言它点下去真的会发生什么**。
+
+修法：`_build_request(..., *, demo_replay=False)`，演示模式返回
+`source_type=SourceType.JSON`、`app_url=None` 的请求（与 `record_demo.py` 的
+`AnalysisRequest` 同构）；调用处传 `demo_replay`。
+
+**并补第 5 条测试** `test_demo_mode_runs_the_whole_pipeline_offline`：用**仓库真实录制件**
+跑完整条回放，断言无异常、无错误块、`run_id` 存在、`status=completed`、`stage=complete`。
+变异验证：把调用处的 `demo_replay` 改回 False → 该用例变红并报出那条输入错误。
+
+> **教训（本计划第四次「断言其实什么都没断言」，也是后果最重的一次）**：
+> 前三处影响的是测试强度，这一处差点交付一个**功能完全不成立**的演示模式，
+> 而全套测试会替它签字通过。**断言「控件可用」不等于断言「功能可用」**——
+> 演示模式这类端到端行为，必须有一条真的把它跑一遍的测试。
+
+**同轮的第三处缺口：分析目标未锁定。** spec 要求「演示模式下必须锁死输入」，
+但只想到了数据来源，漏了分析目标——它也进 prompt，访客改一下就会全量回放未命中、
+停在 `waiting_for_model`（提示清晰，但访客会以为应用坏了）。
+
+修法与 R2 同构，避免两处事实来源：把那句目标提到包内
+（`src/app_review_insights/storage/cache.py` 的 `DEMO_ANALYSIS_GOAL`），
+`scripts/record_demo.py` 改为从包里导入（删掉脚本内自己的 `ANALYSIS_GOAL`），
+UI 在演示模式下把分析目标输入框禁用并显示该值。
+**字符串必须与录制时逐字相同**，否则已有录制件作废、需要重录（花钱）。
+
 - [ ] **Step 1: 写失败测试**
 
 ```python
