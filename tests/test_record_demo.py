@@ -7,9 +7,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from app_review_insights.batching import make_review_batches
 from app_review_insights.cleaning import clean_reviews
 from app_review_insights.config import Settings, load_settings
+from app_review_insights.errors import InputDataError
 from app_review_insights.input_parsing import import_reviews
 from app_review_insights.llm import schemas as llm_schemas
 from app_review_insights.llm.recording import RECORDING_MODE, load_recording
@@ -84,6 +87,27 @@ def test_record_demo_refuses_without_usable_key(tmp_path: Path, monkeypatch):
     assert _artifact_state() == state_before, "拒绝路径不得写出或改写录制文件"
     # CWD 之下（chdir 到 tmp_path 后）同样不许冒出任何文件
     assert not (tmp_path / "data" / "recordings" / "demo-replay.json").exists()
+
+
+def test_record_demo_reports_unreadable_sample_in_chinese(tmp_path: Path):
+    """样例素材读不出来时必须是域内中文错误，而不是英文 traceback。
+
+    素材问题不该让 FileNotFoundError / PermissionError 这类英文异常冒到调用方——
+    这与 load_recording 对「录制文件无法读取」的处理是同一套约定。
+    """
+    # 用目录冒充样例文件（Windows 上是 PermissionError，POSIX 上是 IsADirectoryError），
+    # 以及一个不存在的路径：两种 OSError 都要收敛成同一条中文错误。
+    directory = tmp_path / "sample-is-a-directory"
+    directory.mkdir()
+
+    with pytest.raises(InputDataError, match="样例文件无法读取"):
+        record_demo(sample_path=directory)
+
+    with pytest.raises(InputDataError, match="样例文件无法读取"):
+        record_demo(sample_path=tmp_path / "missing-sample.json")
+
+    # 仓库里那份真样例自始至终没被碰过
+    assert SAMPLE_PATH.is_file()
 
 
 def _cleaned_sample_reviews() -> list[Review]:
