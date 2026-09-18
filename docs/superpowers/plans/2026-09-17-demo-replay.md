@@ -1607,7 +1607,26 @@ git commit -m "fix: 演示模式不写 URL 参数，空值不再落入分享链�
 
 - [ ] **Step 3: 更新 README 与 CHANGELOG**
 
-README：功能一览补「离线演示模式」一条；配置表补 `DEMO_MODE` / `MODEL_RECORD_PATH` /
+**README 首屏加在线 demo 链接（本变更最有价值的一条，位置比措辞重要）。** 地址是：
+
+```text
+https://xsh-review-insights.streamlit.app/
+```
+
+放在第一屏、徽章下方、主截图之上或紧邻——**访客第一眼就该看到一个能点开的地址**。
+必须用**不带查询参数的裸链接**（本任务刚修的正是「分享链接会带上填写者内容」，
+文档里自己再放一条带参数的链接就成了反面示范）。
+
+旧地址 `app-review-insights-agents-ylz8emjwzkiyetpquuu778.streamlit.app` **已 404**，
+不得出现在任何文档里。
+
+> **顺序事实（写文档时必须心里有数）**：这个地址指向的是 `main` 分支的部署，
+> 而演示模式在 `feat/demo-replay` 上。**合并到 main 之前，线上跑的还是旧版**
+> ——能渲染、能浏览档案，但「开始分析」仍是灰的。因此本 Step 写下的描述
+> **以「合并后成立」为准**；若最终决定不合并，README 与部署文档必须同步回退，
+> 否则就是文档撒谎。
+
+README 另需：功能一览补「离线演示模式」一条；配置表补 `DEMO_MODE` / `MODEL_RECORD_PATH` /
 `DEMO_REPLAY_PATH`（Task 4 已加，此处核对是否遗漏）。
 CHANGELOG：新增一条，写清演示模式、模型层录制回放与 URL 参数修复。
 
