@@ -1,25 +1,6 @@
 from pathlib import Path
 
-import pytest
 from streamlit.testing.v1 import AppTest
-
-
-@pytest.fixture(autouse=True)
-def _no_live_key_validation(monkeypatch):
-    """让 AppTest 全程离线：把一次性的密钥连通性探测打桩为 valid。
-
-    删掉环境变量里的 DEEPSEEK_API_KEY 只挡住了环境变量这一路；项目根只要有 .env，
-    load_settings() 仍然读得到密钥，ui/main.py 首次脚本运行就会真的发一次探测请求
-    （provider 超时 60s > 本文件的 30s AppTest 超时，网络一慢就假红）。
-    写法与 tests/test_app_smoke.py 的同名 fixture 一致。
-    """
-    import app_review_insights.ui.main as ui_main
-
-    monkeypatch.setattr(
-        ui_main,
-        "_validate_model_key",
-        lambda settings, session_state=None: "valid",
-    )
 
 
 def _app(tmp_path, monkeypatch) -> AppTest:
@@ -29,6 +10,11 @@ def _app(tmp_path, monkeypatch) -> AppTest:
     # 隔离回放录制件：默认路径上一旦有录制，无密钥时每次脚本运行都会去解析它（CI 即如此）。
     # 本文件的两条用例都不走回放路径，指向一个不存在的路径即可，结果不再取决于磁盘状态。
     monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))
+    # 隔离项目根 .env（CWD 相对）：只删环境变量挡不住 .env 里的 DEEPSEEK_API_KEY，
+    # 那会让界面进入「已配置密钥」态并真的发一次连通性探测（provider 超时 60s >
+    # 本文件的 30s AppTest 超时，网络一慢就假红）。chdir 之后是真实的无密钥状态，
+    # 与用例名（..._without_model_key）相符，且界面用到的是 __file__ 推出的绝对路径。
+    monkeypatch.chdir(tmp_path)
     # 30s：15s 在负载高时会假红（曾导致一次全量误报）
     return AppTest.from_file(str(app_path)).run(timeout=30)
 
