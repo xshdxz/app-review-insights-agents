@@ -15,8 +15,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -166,3 +167,62 @@ class ReplayProvider:
                 f"回放内容与 {schema.__name__} 不匹配（键 {key}）："
                 "录制文件可能来自旧版本的 Schema；请重新录制。"
             ) from exc
+
+
+class RecordingProvider:
+    """包装真实 provider，把每次成功调用写进录制文件。
+
+    写盘是尽力而为：录制不该影响主流程，失败只记 warning——与 provider 处理用量
+    计量失败的方式一致。
+    """
+
+    def __init__(
+        self,
+        inner: Any,
+        path: Path | str,
+        *,
+        input_fingerprint: str,
+        model: str,
+    ) -> None:
+        self.inner = inner
+        self.path = Path(path)
+        self.input_fingerprint = input_fingerprint
+        self.model = model
+        self._recorded_at = datetime.now(UTC)
+        self.entries: list[RecordingEntry] = []
+
+    def generate(self, system_prompt: str, user_prompt: str, schema: type[T]) -> T:
+        result = self.inner.generate(system_prompt, user_prompt, schema)
+        self.entries.append(
+            RecordingEntry(
+                key=recording_key(schema.__name__, system_prompt, user_prompt),
+                schema_name=schema.__name__,
+                request=RecordingRequest(system=system_prompt, user=user_prompt),
+                response=result.model_dump(mode="json"),
+            )
+        )
+        try:
+            write_recording(self.document(), self.path)
+        except Exception:
+            logger.warning("录制写入失败（不影响主流程）：%s", self.path, exc_info=True)
+        return result
+
+    def document(self) -> RecordingDocument:
+        return RecordingDocument(
+            mode=RECORDING_MODE,
+            is_live=False,
+            recorded_at=self._recorded_at,
+            model=self.model,
+            input_fingerprint=self.input_fingerprint,
+            entries=list(self.entries),
+        )
+
+
+def write_recording(document: RecordingDocument, path: Path | str) -> None:
+    """原子写：先落临时文件再替换，避免中途失败留下半个 JSON。"""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = document.model_dump(mode="json")
+    tmp = target.with_name(target.name + ".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, target)

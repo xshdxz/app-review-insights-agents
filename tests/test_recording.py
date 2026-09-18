@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -10,11 +11,13 @@ from app_review_insights.errors import InputDataError, RecoverableModelError
 from app_review_insights.llm.recording import (
     RECORDING_MODE,
     RecordingDocument,
+    RecordingProvider,
     ReplayMissError,
     ReplayProvider,
     input_fingerprint,
     load_recording,
     recording_key,
+    write_recording,
 )
 from app_review_insights.llm.schemas import BatchAnalysisResult, RequirementPlanResult
 from app_review_insights.models import Review
@@ -162,3 +165,79 @@ def test_replay_rejects_recording_from_a_different_schema():
     provider = _provider_with_one_entry()
     with pytest.raises(ReplayMissError, match="Schema"):
         provider.generate("系统提示", "用户提示", RequirementPlanResult)
+
+
+class _StubInner:
+    """替身 provider：按顺序返回预置响应，不做任何外部调用。"""
+
+    def __init__(self, results: list[Any]) -> None:
+        self.results = list(results)
+        self.calls: list[tuple[str, str]] = []
+
+    def generate(self, system_prompt: str, user_prompt: str, schema):
+        self.calls.append((system_prompt, user_prompt))
+        return schema.model_validate(self.results.pop(0))
+
+
+def test_recording_provider_passes_through_result(tmp_path: Path):
+    inner = _StubInner([{"findings": []}])
+    provider = RecordingProvider(
+        inner, tmp_path / "rec.json", input_fingerprint="fp1", model="deepseek-chat"
+    )
+    result = provider.generate("s", "u", BatchAnalysisResult)
+    assert isinstance(result, BatchAnalysisResult)
+    assert inner.calls == [("s", "u")]
+
+
+def test_recording_provider_writes_loadable_document(tmp_path: Path):
+    destination = tmp_path / "rec.json"
+    inner = _StubInner([{"findings": []}])
+    provider = RecordingProvider(inner, destination, input_fingerprint="fp1", model="deepseek-chat")
+    provider.generate("s", "u", BatchAnalysisResult)
+
+    document = load_recording(destination)
+    assert document.input_fingerprint == "fp1"
+    assert document.model == "deepseek-chat"
+    assert len(document.entries) == 1
+    assert document.entries[0].schema_name == BatchAnalysisResult.__name__
+
+
+def test_recording_provider_output_can_be_replayed(tmp_path: Path):
+    destination = tmp_path / "rec.json"
+    inner = _StubInner([{"findings": []}])
+    RecordingProvider(inner, destination, input_fingerprint="fp1", model="deepseek-chat").generate(
+        "s", "u", BatchAnalysisResult
+    )
+
+    replayed = ReplayProvider(load_recording(destination)).generate("s", "u", BatchAnalysisResult)
+    assert isinstance(replayed, BatchAnalysisResult)
+
+
+def test_recording_provider_does_not_swallow_inner_failure(tmp_path: Path):
+    class _Boom:
+        def generate(self, system_prompt, user_prompt, schema):
+            raise RuntimeError("模型调用失败")
+
+    provider = RecordingProvider(_Boom(), tmp_path / "rec.json", input_fingerprint="fp1", model="m")
+    with pytest.raises(RuntimeError, match="模型调用失败"):
+        provider.generate("s", "u", BatchAnalysisResult)
+
+
+def test_recording_provider_failure_to_write_does_not_break_the_call(tmp_path: Path):
+    # 用一个「是文件不是目录」的路径让写盘必定失败
+    blocked = tmp_path / "blocked"
+    blocked.write_text("我是文件不是目录", encoding="utf-8")
+    inner = _StubInner([{"findings": []}])
+    provider = RecordingProvider(inner, blocked / "rec.json", input_fingerprint="fp1", model="m")
+    result = provider.generate("s", "u", BatchAnalysisResult)
+    assert isinstance(result, BatchAnalysisResult)
+
+
+def test_write_recording_replaces_previous_content_atomically(tmp_path: Path):
+    destination = tmp_path / "rec.json"
+    destination.write_text("旧内容", encoding="utf-8")
+    write_recording(
+        RecordingDocument.model_validate(_document(input_fingerprint="fp2")), destination
+    )
+    assert load_recording(destination).input_fingerprint == "fp2"
+    assert not list(tmp_path.glob("*.tmp")), "临时文件必须被替换掉"
