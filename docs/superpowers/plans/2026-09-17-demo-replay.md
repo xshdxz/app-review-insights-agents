@@ -950,6 +950,7 @@ git commit -m "feat: 演示模式配置与按模式装配 provider"
 **Files:**
 - Create: `scripts/record_demo.py`
 - Modify: `src/app_review_insights/storage/cache.py`（新增样例路径常量）
+- Modify: `tests/test_app_smoke.py`（隔离 DEMO_REPLAY_PATH，见 Step 6）
 - Test: `tests/test_record_demo.py`
 
 **Interfaces:**
@@ -1159,10 +1160,33 @@ Run: `python scripts/record_demo.py`
 Expected: 打印 run_id 与输出路径；`data/recordings/demo-replay.json` 生成且 `entries` 非空。
 产物提交进仓库，演示模式据此工作。
 
-- [ ] **Step 6: 提交**
+- [ ] **Step 6: 让全量测试在「录制文件已入库」的前提下仍然全绿**
+
+录制文件一进仓库，**任何断言「无密钥时没有模型」的既有测试都会失效**——因为
+`DEMO_MODE=auto` 且默认路径上存在录制时，`build_pipeline_services` 现在返回回放 provider。
+Task 4 已实测确认（把合法录制放到默认路径后跑两遍全量）：**恰好一条失败，其余全过**——
+
+`tests/test_app_smoke.py::test_build_services_without_key_keeps_repository_available`
+第 48 行 `assert services.batch_analyzer is None`，该用例没有隔离 `DEMO_REPLAY_PATH`。
+
+修法是**隔离**而不是改断言：该用例要验的是「无密钥且无录制时没有模型」，那就把环境收干净。
+在它已有的 monkeypatch 段里补一行：
+
+```python
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))
+```
+
+不要改成断言回放存在——那会让这条用例的结果取决于磁盘上有没有那个文件，
+从确定性测试退化成环境依赖测试。
+
+改完**带着录制文件**再跑一次全量，确认 487 + 本任务新增项全绿：
+
+Run: `python -m pytest -q`，随后再跑一次裸 `pytest.exe -q`（CI 等价）。
+
+- [ ] **Step 7: 提交**
 
 ```bash
-git add scripts/record_demo.py tests/test_record_demo.py data/recordings/demo-replay.json
+git add scripts/record_demo.py tests/test_record_demo.py tests/test_app_smoke.py data/recordings/demo-replay.json
 git commit -m "feat: 样例分析录制脚本与录制产物"
 ```
 
