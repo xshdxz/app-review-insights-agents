@@ -15,6 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from app_review_insights.config import Settings, load_settings
+from app_review_insights.errors import InputDataError
 from app_review_insights.factory import build_pipeline_services
 from app_review_insights.input_parsing import import_reviews
 from app_review_insights.llm.recording import input_fingerprint
@@ -42,7 +43,13 @@ def record_demo(
 ) -> RunRecord:
     """在样例上跑一次分析并把模型调用录下来。"""
     base = settings or load_settings()
-    reviews = import_reviews(sample_path.read_bytes(), sample_path.name, app_id="demo")
+    try:
+        raw = sample_path.read_bytes()
+    except OSError as exc:
+        # 与 load_recording 同一套处理：素材读不出来属于域内配置/素材问题，一律抛
+        # 中文 InputDataError，不让 FileNotFoundError 的英文 traceback 冒到调用方
+        raise InputDataError(f"样例文件无法读取：{sample_path}（{exc}）") from exc
+    reviews = import_reviews(raw, sample_path.name, app_id="demo")
     recording_settings = _recording_settings(base, destination)
     fingerprint = input_fingerprint(reviews)
 

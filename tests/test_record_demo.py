@@ -34,15 +34,22 @@ def test_record_demo_writes_labeled_recording(tmp_path: Path, monkeypatch):
     # 只断言「非空」不够：半途停在 waiting_for_model 的录制同样非空，
     # 但回放会从缺内容的那一步起全部未命中。
     assert run.status is RunStatus.COMPLETED, "流水线必须跑完"
-    # 按模块引用而不是直接导入 Schema 类：TestCasePlanResult 这类名字被绑定到
+    # 比「非空」强的是覆盖范围：流水线的每一类模型调用一个都不能少。
+    # 用集合而不是序列——批次数量随批次上限与样例规模变化（样例增长后正确地录出
+    # 6 条），钉死 5 元素序列会对着正确行为变红；调用顺序由 _fake_responses()
+    # 的构造顺序表达。
+    # 按模块引用 Schema 类而不是直接导入：TestCasePlanResult 这类名字被绑定到
     # 测试模块的命名空间后，pytest 会把它当测试类去收集并报警告。
-    assert [entry.schema_name for entry in document.entries] == [
+    assert {entry.schema_name for entry in document.entries} == {
         llm_schemas.BatchAnalysisResult.__name__,
         llm_schemas.ConsolidationResult.__name__,
         llm_schemas.EvidenceAuditResult.__name__,
         llm_schemas.RequirementPlanResult.__name__,
         llm_schemas.TestCasePlanResult.__name__,
-    ], "录制必须覆盖流水线的每一次模型调用，否则回放中途未命中"
+    }, "录制必须覆盖流水线的每一次模型调用，否则回放中途未命中"
+    # 集合看不出「漏录一条」或「多录一条」，再用替身条数钉一遍：
+    # 排队的预置响应必须一条不剩地被消费并落盘
+    assert len(document.entries) == len(_fake_responses()), "每条预置响应都应恰好录成一条条目"
     assert document.mode == RECORDING_MODE
     assert document.is_live is False
     assert document.entries, "录制文件必须至少含一次模型调用"
@@ -55,9 +62,28 @@ def test_record_demo_refuses_without_usable_key(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("MODEL_ENABLED", "true")
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
-    from scripts.record_demo import main
+    from scripts.record_demo import DEFAULT_DESTINATION, main
 
+    # 前提断言必须先于 main()：这条用例的全部意义是「没有密钥就不花钱」，
+    # 少了它，守护一旦失效，表现是花掉真钱而不是变红。
+    assert load_settings().model_available is False
+
+    # 这次运行真会写的是 DEFAULT_DESTINATION（绝对路径，指向仓库 data/recordings/），
+    # 不是 CWD 下的相对路径。故断言「本次没有写出或改写录制文件」而不是「该文件不存在」——
+    # Step 5 的真实录制件合法地住在那个路径上，写成 not exists 会反过来变红。
+    # 用 (存在, 大小, mtime) 三元组而不是单看存在性：录制件已在仓库里时，
+    # 「被一次真实运行整份覆盖」不改变存在性，只有三元组能发现。
+    def _artifact_state() -> tuple[bool, int, int]:
+        if not DEFAULT_DESTINATION.exists():
+            return (False, 0, 0)
+        info = DEFAULT_DESTINATION.stat()
+        return (True, info.st_size, info.st_mtime_ns)
+
+    state_before = _artifact_state()
     assert main([]) == 1
+    assert _artifact_state() == state_before, "拒绝路径不得写出或改写录制文件"
+    # CWD 之下（chdir 到 tmp_path 后）同样不许冒出任何文件
+    assert not (tmp_path / "data" / "recordings" / "demo-replay.json").exists()
 
 
 def _cleaned_sample_reviews() -> list[Review]:
