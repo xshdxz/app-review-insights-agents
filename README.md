@@ -45,7 +45,7 @@ Copy-Item .env.example .env      # 填 DEEPSEEK_API_KEY；留空则进入离线�
 | 引用看着合理就行 | 引用的 `review_id` 必须真实存在；计数、置信度、优先级由程序**重算**，不采信模型给的数字 |
 | 失败就从头再来 | 每个阶段先落盘检查点；模型失败可用**同一 `run_id`** 续跑，已完成批次不重跑 |
 | 效果凭感觉 | 30 例 / 120 条评论的黄金评测集 + CI 门禁，指标跨版本可比 |
-| 上线才知道花多少钱 | 每次模型调用都计量 token 与费用，可按阶段拆解；单次预算硬熔断，每日上限的计数存在本地库、随容器重建归零 |
+| 上线才知道花多少钱 | 每次模型调用都计量 token 与费用，可按阶段拆解；单次运行与当日累计两个预算都在每次调用前检查，超限即停在检查点；两个计数存在同一个库里、随容器重建一同归零 |
 
 ### 证据链长什么样
 
@@ -67,8 +67,9 @@ F-001 免费内容大幅减少，付费墙限制基本功能   ← 15 条支持�
 
 - **在线采集**：App Store（任意区，RSS 最多 500 条/区）+ Google Play（尽力而为）+ Reddit/X 社交舆情
 - **JSON/CSV 导入**：自有评论文件（格式见 `docs/data-format.md`）
-- **离线演示模式**：无密钥时自动回放 `data/recordings/demo-replay.json`（一次真实付费运行的
-  录制），「开始分析」可点、跑完整条流水线且不调用外部 API；另有附带的历史缓存档案可浏览
+- **离线演示模式**：无密钥且录制文件存在时自动回放 `data/recordings/demo-replay.json`
+  （一次真实付费运行的录制），「开始分析」可点、跑完整条流水线且不调用外部 API；
+  另有附带的历史缓存档案可浏览
 
 ### 分析流水线
 
@@ -161,8 +162,10 @@ Agent 层**包裹在确定性核心之外**：
 
 要点：Cloud 走 `requirements.txt`（`-e .`）安装依赖；Python 版本在部署对话框的 Advanced settings 里选 **3.11**；
 **公开 demo 不挂密钥**，应用停在演示模式即可点着跑，没有成本面。确要给受控范围内的部署配密钥时，
-至少设 `MODEL_BUDGET_USD_PER_RUN`（按运行统计的硬上限）；`MODEL_BUDGET_USD_PER_DAY` 的当日计数
-存在容器内的 SQLite 里，重启或重新部署即归零，不能当兜底。
+至少设 `MODEL_BUDGET_USD_PER_RUN` —— 它约束的是**单次运行**的花费，与 `MODEL_BUDGET_USD_PER_DAY`
+读的是**同一张用量表**（`model_usage`，位于容器内的 SQLite）；守卫挂在**每次模型调用之前**，
+所以边界是「超限后不再发起新的调用」，跨过阈值时已在途的那一笔仍会完成并计入。两个计数都随
+容器重建归零，区别不在「存在哪儿」，而在**约束的是什么**（完整边界见部署文档的「预算上限的真实边界」）。
 
 ### Agent CLI
 
@@ -184,7 +187,7 @@ Agent 层**包裹在确定性核心之外**：
 |---|---|---|
 | `DEEPSEEK_API_KEY` | *(空)* | DeepSeek API 密钥。绝不提交真实密钥；`.env` 已被 git 忽略。 |
 | `MODEL_API_KEY` | *(空)* | 可切换的模型密钥（留空回退 `DEEPSEEK_API_KEY`）。 |
-| `MODEL_ENABLED` | `true` | 设为 `false` 强制演示模式。 |
+| `MODEL_ENABLED` | `true` | 设为 `false` 视为没有可用模型：`auto` 档走演示回放，`live` 档装配失败。 |
 | `MODEL_NAME` / `MODEL_BASE_URL` | `deepseek-chat` / `https://api.deepseek.com` | OpenAI 兼容端点。 |
 | `MODEL_TIMEOUT_SECONDS` / `MODEL_MAX_RETRIES` / `MODEL_MAX_TOKENS` | `60` / `2` / `8192` | 模型调用行为。 |
 | `MODEL_BUDGET_USD_PER_RUN` / `MODEL_BUDGET_USD_PER_DAY` | `0` / `0` | 费用预算（美元，0 = 不限制）。超限时流水线停在检查点，调高后可用同一 `run_id` 续跑。 |
@@ -204,9 +207,9 @@ Agent 层**包裹在确定性核心之外**：
 | `EMBEDDING_MODEL` / `EMBEDDING_BASE_URL` / `EMBEDDING_API_KEY` | `text-embedding-3-small` / … | API 向量检索配置（本地路径为空时使用）。 |
 | `SOCIAL_X_ENDPOINT` | *(空)* | 可选的 X 舆情搜索端点（返回 JSON 数组）。 |
 | `DEFAULT_REVIEW_LIMIT` / `BATCH_REVIEW_LIMIT` / `BATCH_MAX_CHARACTERS` | `500` / `100` / `60000` | 数量与分批限制。 |
-| `DEMO_MODE` | `auto` | 运行模式：`auto` 有密钥用真实模型、无密钥回放录制；`live` 强制真实模型；`replay` 强制回放。 |
+| `DEMO_MODE` | `auto` | 运行模式：`auto` 配了密钥且未被 `MODEL_ENABLED=false` 禁用时走真实模型，无密钥且录制文件存在时回放录制；`live` 强制真实模型；`replay` 强制回放、不看密钥。 |
 | `MODEL_RECORD_PATH` | *(空)* | 录制输出路径（留空 = 不录制）。`scripts/record_demo.py` 会自动指向 `data/recordings/demo-replay.json`。 |
-| `DEMO_REPLAY_PATH` | `data/recordings/demo-replay.json` | 回放读取的录制文件；不存在时演示模式退回「按钮禁用」的旧行为。 |
+| `DEMO_REPLAY_PATH` | `data/recordings/demo-replay.json` | 回放读取的录制文件（随仓库提交）。不存在时两档表现不同：`DEMO_MODE=auto` 退回「按钮禁用」的降级形态（界面只给模型状态提醒），`DEMO_MODE=replay` 装配失败并抛 `InputDataError`、横幅明说录制文件缺失。 |
 
 密钥处理：密钥只在运行时读入 provider；绝不记录日志、导出或包含进下载；错误信息会脱敏密钥、评论原文与 `.env` 引用。
 

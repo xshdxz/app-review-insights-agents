@@ -72,7 +72,8 @@ uv.lock → Pipfile → environment.yml → requirements.txt → pyproject.toml 
 界面呈现为：
 
 - 顶部黄色提醒：**「演示模式：回放一次真实运行的模型输出，不调用外部 API，输入固定为仓库自带样例。」**
-  （旁边那条「模型状态：未配置 MODEL_API_KEY…」说的是实时模型调用不可用，与回放互不影响）
+  （旁边那条「模型状态」提醒说的是实时模型调用不可用，与回放互不影响：密钥为空 →「未配置 MODEL_API_KEY…」，
+  `MODEL_ENABLED=false` →「已显式禁用（MODEL_ENABLED=false）…」）
 - 「数据来源」锁为**演示样例**，「分析目标」与「评论数量」禁用 —— 回放按请求指纹命中，
   改动任一项都会全量未命中，所以干脆不给改；
 - 「开始分析」**可点**：跑完整条流水线（十一个阶段）到 `completed`，给出发现 / PRD 需求 /
@@ -104,7 +105,7 @@ uv.lock → Pipfile → environment.yml → requirements.txt → pyproject.toml 
 > 回放覆盖的是**分析流水线**（工作台主页面）。Agent 侧（产品情报问答 / 监控任务）仍然要求
 > 配置密钥，无密钥时按既有的降级路径处理。
 
-### 配密钥（可选，能真实跑分析）
+### 配密钥（可选）：密钥有效且未被 `MODEL_ENABLED=false` 禁用时才走真实模型
 
 在 app 的 **Settings → Secrets** 里填入（TOML 格式）：
 
