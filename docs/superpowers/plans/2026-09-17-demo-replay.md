@@ -623,6 +623,18 @@ def write_recording(document: RecordingDocument, path: Path | str) -> None:
     os.replace(tmp, target)
 ```
 
+**先给 `src/app_review_insights/storage/cache.py` 追加一行**（该模块已经拥有离线素材，
+`load_demo_run` 就在里面）：
+
+```python
+#: 仓库自带的样例评论。演示模式与录制脚本共用这一处定义。
+#: 放在包内而不是 scripts/，因为界面（ui/main.py）也要用它——
+#: 让 src 反过来依赖 scripts 是分层倒置。
+SAMPLE_PATH = Path(__file__).resolve().parents[3] / "data" / "samples" / "reviews-sample.json"
+```
+
+`Path` 已在 cache.py 顶部导入，无需新增。然后脚本从包里导入它，不再自定义。
+
 **Task 3 必须自行补入导入。** 上面的代码块用到 `datetime.now(UTC)`（`_recorded_at`）与
 `os.replace`，而按 R1 裁定这两个名字都没被 Task 1 预置：请把 `import os` 与 `UTC`
 （`from datetime import UTC, datetime` 或补进已有的 datetime 导入）并入文件顶部的导入区。
@@ -731,7 +743,9 @@ def test_auto_without_key_and_without_recording_yields_no_analyzer(tmp_path, mon
 def test_replay_mode_without_recording_raises(tmp_path, monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "replay")
     monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "missing.json"))
-    with pytest.raises(InputDataError, match="录制文件不存在"):
+    # 断言的是 factory 自己抛的那条消息；load_recording 的「录制文件不存在」
+    # 在此路径上不可达（factory 先做了 .exists() 检查）
+    with pytest.raises(InputDataError, match="需要录制文件"):
         build_pipeline_services(load_settings())
 
 
@@ -935,14 +949,28 @@ git commit -m "feat: 演示模式配置与按模式装配 provider"
 
 **Files:**
 - Create: `scripts/record_demo.py`
+- Modify: `src/app_review_insights/storage/cache.py`（新增样例路径常量）
 - Test: `tests/test_record_demo.py`
 
 **Interfaces:**
 - Consumes: `build_pipeline_services`、`input_fingerprint`、`AnalysisOrchestrator`、`import_reviews`
 - Produces:
-  - `SAMPLE_PATH: Path`、`DEFAULT_DESTINATION: Path`
+  - `app_review_insights.storage.cache.SAMPLE_PATH: Path`（**放在包内，不放在 scripts/**）
+  - `DEFAULT_DESTINATION: Path`
   - `record_demo(*, sample_path=SAMPLE_PATH, destination=DEFAULT_DESTINATION, settings=None, services_factory=None) -> RunRecord`
   - `main(argv: list[str] | None = None) -> int`
+
+**先给 `src/app_review_insights/storage/cache.py` 追加一行。** 该模块已经拥有离线素材
+（`load_demo_run` 就在里面），样例路径放这里最自然：
+
+```python
+#: 仓库自带的样例评论。演示模式与录制脚本共用这一处定义。
+#: 放在包内而不是 scripts/：界面（ui/main.py）也要用它，
+#: 让 src 反过来依赖 scripts 是分层倒置。
+SAMPLE_PATH = Path(__file__).resolve().parents[3] / "data" / "samples" / "reviews-sample.json"
+```
+
+`Path` 已在 cache.py 顶部导入，无需新增。脚本从包里导入它，不再自定义。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -953,7 +981,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from app_review_insights.llm.recording import RECORDING_MODE, load_recording
-from scripts.record_demo import SAMPLE_PATH, record_demo
+from app_review_insights.storage.cache import SAMPLE_PATH
+from scripts.record_demo import record_demo
 
 
 def test_record_demo_writes_labeled_recording(tmp_path: Path, monkeypatch):
@@ -1064,9 +1093,9 @@ from app_review_insights.input_parsing import import_reviews
 from app_review_insights.llm.recording import input_fingerprint
 from app_review_insights.models import AnalysisRequest, RunRecord, SourceType
 from app_review_insights.pipeline.orchestrator import AnalysisOrchestrator, PipelineServices
+from app_review_insights.storage.cache import SAMPLE_PATH
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SAMPLE_PATH = PROJECT_ROOT / "data" / "samples" / "reviews-sample.json"
 DEFAULT_DESTINATION = PROJECT_ROOT / "data" / "recordings" / "demo-replay.json"
 
 ANALYSIS_GOAL = "识别影响用户体验与产品增长的核心问题，并形成可追溯需求"
@@ -1271,7 +1300,8 @@ def _prepare_imported_reviews(request: AnalysisRequest, upload, *, demo_replay: 
 
 调用处同步改为 `_render_input_form(settings, model_ready, demo_replay=demo_replay)` 与
 `_prepare_imported_reviews(request, upload, demo_replay=demo_replay)`。`SAMPLE_PATH` 从
-`scripts.record_demo` 导入，避免两处各写一份路径。
+**`app_review_insights.storage.cache`** 导入（Task 5 已把它放进包内）——**不要**从
+`scripts.record_demo` 导入：那会让 src 依赖 scripts，是分层倒置。
 
 - [ ] **Step 4: 运行测试确认通过**
 
