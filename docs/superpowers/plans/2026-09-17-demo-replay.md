@@ -422,11 +422,22 @@ class ReplayProvider:
 求值基类，缺导入会直接 `NameError`，模块根本导入不了。代码块里的 `type[T]` 不受影响
 （文件顶部有 `from __future__ import annotations`，注解被推迟求值）。
 
+**本任务已执行的实现补充（计划自身的矛盾，以此为最终形态）。** 上面代码块里的通用未命中消息
+不含子串 `Schema`，而 Step 1 的 test 4 断言 `pytest.raises(ReplayMissError, match="Schema")`——
+按代码块原样实现，test 4 必然失败；若反过来把 `Schema` 塞进通用消息，test 4 又因为所有未命中
+都含该词而失去鉴别力。
+
+最终实现（提交 f9ff613）保留了上述通用消息**逐字不变**（由 test 3 覆盖），并在其之前增加一条
+**仅在「同一个 (system, user) 在录制里用过别的 Schema」时触发**的分支，其消息为
+`回放未命中：同一请求在录制里用的是 Schema {recorded_names}，本次请求的是 {schema.__name__}；…`。
+索引因此从「键 → 条目」扩展为同时记录「(system, user) → 用过的 Schema 名集合」。
+test 4 走这条分支，`match="Schema"` 由此获得真实约束力。
+
 - [ ] **Step 4: 运行测试确认通过**
 
 Run: `python -m pytest tests/test_recording.py -q`
 
-Expected: PASS（13 项）
+Expected: PASS（14 项 —— Task 1 留下 10 项，本任务新增 4 项）
 
 - [ ] **Step 5: 提交**
 
