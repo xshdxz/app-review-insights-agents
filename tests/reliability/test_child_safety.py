@@ -14,19 +14,44 @@ from __future__ import annotations
 import child
 import pytest
 
+#: 钉死失效时自检可能给出的拒绝理由。**不能只断言其中一个**：没有密钥时
+#: demo_replay_active 本来就是真（auto + 无密钥），于是拦下它的是数据库路径那一项，
+#: 而不是"不是回放模式"那一项——只认一种理由会让这条用例依赖开发机的 .env，
+#: 在 CI（没有 .env）上变红。
+PINNING_FAILURE_REASONS = frozenset(
+    {"not_replay", "database_not_taken_over", "not_replay_pipeline"}
+)
+
+_KEY_ENVIRONMENTS = [
+    pytest.param(
+        {"DEEPSEEK_API_KEY": "sk-fake-key-for-pinning-test", "MODEL_API_KEY": ""},
+        id="with-key",
+    ),
+    pytest.param({"DEEPSEEK_API_KEY": "", "MODEL_API_KEY": ""}, id="without-key"),
+]
+
 
 @pytest.mark.reliability
-def test_child_refuses_to_run_when_replay_pinning_is_bypassed(tmp_path):
-    """钉死失效时子进程必须拒绝运行——放行会造成真实付费调用。"""
-    result = child.spawn(tmp_path / "runs.sqlite3", extra_env={"ARI_PIN_BYPASS": "1"})
+@pytest.mark.parametrize("key_env", _KEY_ENVIRONMENTS)
+def test_child_refuses_to_run_when_replay_pinning_is_bypassed(tmp_path, key_env):
+    """钉死失效时子进程必须拒绝运行——放行会造成真实付费调用。
+
+    两种密钥环境都要覆盖：有密钥时自检失败于"不是回放模式"，没有密钥时失败于
+    "数据库没被接管"。要守的性质是**拒绝运行**，不是某个具体理由。
+    """
+    result = child.spawn(
+        tmp_path / "runs.sqlite3",
+        extra_env={"ARI_PIN_BYPASS": "1", **key_env},
+    )
 
     assert result.guarded, (
         f"护栏未生效：returncode={result.returncode}\n"
         f"stdout={result.stdout[-1500:]}\nstderr={result.stderr[-1500:]}"
     )
     assert result.summary is not None
-    # 断言机器可读的 reason，不依赖中文（控制台编码无关）
-    assert result.summary["reason"] == "not_replay"
+    assert result.summary["reason"] in PINNING_FAILURE_REASONS, (
+        f"拒绝理由不在预期集合内：{result.summary['reason']}"
+    )
     assert result.summary["error"].strip(), "护栏必须给出给人看的说明"
 
 

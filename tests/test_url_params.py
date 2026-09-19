@@ -40,16 +40,28 @@ def _app_script() -> None:
     st.session_state["written-query-params"] = written
 
 
+def _isolate(tmp_path, monkeypatch) -> None:
+    """把用例与开发机的 .env / 密钥彻底隔离。
+
+    chdir 挡得住项目根的 .env（Settings 的 env_file 是相对路径），挡不住 shell 导出的
+    环境变量；两个密钥别名都要删。少了任何一步，用例的行为就会随"这台机器有没有配密钥"
+    而变——有密钥时是普通模式，没有时应用会进演示模式（输入被锁死、一个参数都不写），
+    同一条用例于是**本地绿、CI 红**。
+
+    这个函数存在，是因为这套隔离曾经被抄漏过一次：见
+    test_switching_to_online_collection_drops_the_upload_param。
+    """
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+
+
 def _run_app(tmp_path, monkeypatch, *, query_params: dict | None = None) -> AppTest:
     """在隔离环境里跑一次首页，并带回查询参数的原始写入记录。
 
     query_params 用来模拟「访客带着别人的链接进来」或「上一轮留在地址栏里的输入」。
     """
-    monkeypatch.chdir(tmp_path)
-    # 两个密钥别名都要删：chdir 只挡得住项目根 .env，挡不住 shell 导出的环境变量；
-    # 只要有一个在场，界面就进入「已配置密钥」态并对真实 DeepSeek 发一次连通性探测。
-    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    _isolate(tmp_path, monkeypatch)
     app = AppTest.from_function(_app_script)
     if query_params:
         app.query_params = query_params
@@ -146,6 +158,7 @@ def test_switching_to_online_collection_drops_the_upload_param(tmp_path, monkeyp
     修掉的分享链接泄漏是同一族问题，只是换了条触发路径。
     """
     monkeypatch.delenv("DEMO_MODE", raising=False)
+    _isolate(tmp_path, monkeypatch)
     saved = tmp_path / "reviews.json"
     saved.write_text("[]", encoding="utf-8")
 
