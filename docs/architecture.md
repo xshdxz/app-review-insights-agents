@@ -44,7 +44,8 @@ Streamlit 用户界面
 | `llm/provider.py` | DeepSeek 客户端：JSON Schema 校验、有限重试、`max_tokens` 上限、错误脱敏。 |
 | `llm/prompts.py` | 各阶段 Prompt 与评论渲染。 |
 | `llm/schemas.py` | 模型草稿 Schema（Pydantic）。 |
-| `storage/repository.py` | SQLite 仓库：runs / stage_outputs / events，连接使用提交+关闭的会话上下文。 |
+| `storage/repository.py` | SQLite 仓库：runs / stage_outputs / events，连接使用提交+关闭的会话上下文。占用互斥走 `BEGIN IMMEDIATE` 原子事务（`acquire_run`），接管走 `take_over`。 |
+| `storage/lease.py` | 运行租约：持有者身份（`host:pid:token`）、进程存活判定、"能否接管"的规则。进程被硬杀后靠它立即恢复；判不出来时退回心跳窗口。 |
 | `storage/cache.py` | 离线演示档案的严格加载（必须带 `historical_cache_demo` / `is_live=false` 标签）与导出、下载构造。 |
 | `export.py` | 证据链 CSV / JSON 下载内容构造。 |
 
@@ -55,6 +56,9 @@ Streamlit 用户界面
 阶段顺序：`scope → collect → clean → analyze_batches → consolidate → audit_evidence → validate_findings → plan → generate_tests → validate_traceability → complete`。
 
 - `waiting_for_model`：模型阶段抛 `RecoverableModelError`，保存检查点，可沿用同一 `run_id` 续跑。
+- `running` **但持有者进程已不存在**（崩溃、容器重启）：同样可以接管续跑——这是 `storage/lease.py`
+  的判定，界面与编排器共用它。`waiting_for_model` 的运行不受租约限制，随时可续。
+  崩溃一致性的实测证据见 `docs/reliability.md`。
 - `failed`：采集失败等不可恢复错误。
 - `partial`：追溯校验未通过，结果不可作为正式交付物。
 - `completed`：追溯链有效，所有阶段输出齐全。

@@ -120,6 +120,7 @@ def build_pipeline_services(
         "traceability_validator": validate_traceability,
         "batch_size": settings.batch_review_limit,
         "batch_max_characters": settings.batch_max_characters,
+        "lease_timeout_seconds": settings.lease_timeout_seconds,
     }
     if use_fake_provider:
         return PipelineServices(batch_analyzer=None, **common)

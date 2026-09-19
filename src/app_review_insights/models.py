@@ -165,6 +165,11 @@ class RunRecord(BaseModel):
     #: 旧运行记录里没有这两个键，反序列化时按默认值（实时）补齐。
     mode: str = LIVE_RUN_MODE
     is_live: bool = True
+    #: 运行租约：持有者身份（host:pid:token）与最近心跳。进程被硬杀后，靠"持有者进程
+    #: 是否还在"判定能否接管——没有它就只能退回心跳超时，而崩溃刚发生时心跳是新鲜的，
+    #: 用户得白等一个窗口才能续跑。旧记录没有这两个键，反序列化时按 None 补齐。
+    lease_owner: str | None = None
+    heartbeat_at: datetime | None = None
     current_batch: int = 0
     total_batches: int = 0
     coverage_ratio: float = Field(default=0, ge=0, le=1)

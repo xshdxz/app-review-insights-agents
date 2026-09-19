@@ -636,8 +636,58 @@ def test_resume_analysis_passes_the_existing_run_id(monkeypatch):
     orchestrator_factory.assert_called_once()
     assert orchestrator_factory.call_args.args == (services,)
     assert orchestrator_factory.call_args.kwargs["on_event"] is event_writer
-    orchestrator.resume.assert_called_once_with("existing-run")
+    # 断言性质而不是精确调用形态：续跑多带一个可选参数（imported_reviews）不该让守卫变红，
+    # 该守的性质是"续的是同一个 run_id"。
+    orchestrator.resume.assert_called_once()
+    assert orchestrator.resume.call_args.args == ("existing-run",)
     assert result.run_id == "existing-run"
+
+
+def test_reviews_for_resume_only_reimports_when_checkpoint_has_no_reviews(tmp_path):
+    """采集完成前中断的运行才需要重新提供文件；检查点里已有评论就不该再要求上传。"""
+    import pytest
+
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.errors import InputDataError
+    from app_review_insights.models import (
+        AnalysisRequest,
+        RunRecord,
+        RunStatus,
+        SourceType,
+        Stage,
+    )
+    from app_review_insights.pipeline.orchestrator import PipelineServices
+    from app_review_insights.storage import RunRepository
+
+    repository = RunRepository(tmp_path / "runs.sqlite3")
+    now = datetime.now(UTC)
+
+    def _saved(run_id: str, source_type: SourceType) -> RunRecord:
+        record = RunRecord(
+            run_id=run_id,
+            request=AnalysisRequest(source_type=source_type, analysis_goal="分析订阅转化"),
+            current_stage=Stage.COLLECT,
+            status=RunStatus.RUNNING,
+            created_at=now,
+            updated_at=now,
+        )
+        repository.save_run(record)
+        return record
+
+    services = PipelineServices(repository=repository, batch_analyzer=None)
+
+    # 1) 检查点里没有评论、也没有文件 ⇒ 明确要求重新选择，而不是续跑后崩在采集阶段
+    imported_run = _saved("imported", SourceType.CSV)
+    with pytest.raises(InputDataError):
+        ui_main._reviews_for_resume(services, imported_run, None)
+
+    # 2) 在线来源可以重新采集，不需要文件
+    online_run = _saved("online", SourceType.ONLINE)
+    assert ui_main._reviews_for_resume(services, online_run, None) is None
+
+    # 3) 采集已经落盘 ⇒ 评论就在检查点里，不该再要求上传
+    repository.save_output("imported", Stage.COLLECT, {"reviews": []})
+    assert ui_main._reviews_for_resume(services, imported_run, None) is None
 
 
 def test_root_entrypoint_still_exposes_callable_main():

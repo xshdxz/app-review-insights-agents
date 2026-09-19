@@ -90,6 +90,20 @@ class Settings(BaseSettings):
         return self.model_enabled and bool(self.effective_model_api_key)
 
     @property
+    def lease_timeout_seconds(self) -> float:
+        """运行租约的兜底超时（秒）。
+
+        只在**判不出持有者进程是否存活**时才用得上（跨主机、或没有租约信息的旧记录）。
+        下界取"单次模型调用最坏耗时"的 2 倍：正在跑的批次绝不能因为心跳一时没刷新
+        就被判成孤儿，否则会出现两个执行者同时写同一份检查点。
+
+        刻意做成派生值而不是新环境变量：单机部署没有调参场景，而新增配置要同步
+        config/.env.example/README 三处，多一个漂移点。
+        """
+        worst_call = self.model_timeout_seconds * (self.model_max_retries + 1)
+        return max(300.0, worst_call * 2)
+
+    @property
     def demo_replay_active(self) -> bool:
         """是否以回放方式运行。
 

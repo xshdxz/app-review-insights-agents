@@ -7,6 +7,7 @@ from typing import Any
 
 from app_review_insights.llm.usage import ModelUsage
 from app_review_insights.models import RunRecord, RunStatus, Stage, StageEvent
+from app_review_insights.storage import lease
 from app_review_insights.storage.migrations import RUNS_MIGRATIONS, apply_migrations
 from app_review_insights.storage.sqlite import connect
 
@@ -27,6 +28,26 @@ class RunRepository:
         try:
             with connection:
                 yield connection
+        finally:
+            connection.close()
+
+    @contextmanager
+    def _immediate_session(self):
+        """立即事务：进入即取写锁，供"检查 + 占用"这类不能有竞态的路径使用。
+
+        `BEGIN IMMEDIATE` 必须是本会话的**第一条**语句：此前跑过 DML 的话 sqlite3
+        已经隐式开了事务，再发它会抛 "cannot start a transaction within a transaction"
+        （Step 0 的 S-1b 实测）。因此这里自开连接、不走 `_session`。
+        """
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                yield connection
+            except BaseException:
+                connection.rollback()
+                raise
+            connection.commit()
         finally:
             connection.close()
 
@@ -81,6 +102,88 @@ class RunRepository:
                 """,
                 (run_id, stage.value, batch_index, payload_json),
             )
+
+    def acquire_run(
+        self,
+        run: RunRecord,
+        *,
+        timeout_seconds: float,
+        now: datetime | None = None,
+    ) -> RunRecord | None:
+        """原子地"确认该 App 没有活跃运行 + 写入新运行"。
+
+        检查与写入必须在同一个 `BEGIN IMMEDIATE` 事务里完成：此前的写法是
+        `find_active_run()` 之后再 `save_run()`，两步之间的空档里另一个进程可以
+        插进来，于是同一个 App 被分析两遍、模型额度烧两份。
+
+        返回新写入的运行；已有活跃运行则返回 `None`。
+        """
+        moment = now or datetime.now(UTC)
+        cutoff = (moment - timedelta(seconds=timeout_seconds)).isoformat()
+        with self._immediate_session() as connection:
+            rows = connection.execute(
+                "SELECT payload_json FROM runs WHERE updated_at >= ? ORDER BY updated_at DESC",
+                (cutoff,),
+            ).fetchall()
+            for row in rows:
+                existing = RunRecord.model_validate_json(row["payload_json"])
+                if existing.request.app_url != run.request.app_url:
+                    continue
+                if lease.blocks_new_run(existing, moment, timeout_seconds):
+                    return None
+            connection.execute(
+                """
+                INSERT INTO runs(run_id, payload_json, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(run_id) DO UPDATE SET
+                    payload_json = excluded.payload_json,
+                    updated_at = excluded.updated_at
+                """,
+                (run.run_id, run.model_dump_json(), run.updated_at.isoformat()),
+            )
+        return run
+
+    def take_over(
+        self,
+        run_id: str,
+        *,
+        owner: str,
+        timeout_seconds: float,
+        now: datetime | None = None,
+    ) -> RunRecord | None:
+        """原子地把一个**无人持有**的运行接管过来；仍被活着的进程持有则返回 `None`。
+
+        返回 `None` 是正常的竞态结果（另一个进程刚好抢先接管），调用方应当就此打住，
+        绝不能继续跑——两个执行者写同一份检查点会把结果搅坏。
+        """
+        moment = now or datetime.now(UTC)
+        with self._immediate_session() as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(run_id)
+            record = RunRecord.model_validate_json(row["payload_json"])
+            if lease.is_held(record, moment, timeout_seconds):
+                return None
+            taken = record.model_copy(
+                update={"lease_owner": owner, "heartbeat_at": moment, "updated_at": moment}
+            )
+            connection.execute(
+                "UPDATE runs SET payload_json = ?, updated_at = ? WHERE run_id = ?",
+                (taken.model_dump_json(), moment.isoformat(), run_id),
+            )
+        return taken
+
+    def can_resume(
+        self,
+        run: RunRecord,
+        *,
+        timeout_seconds: float,
+        now: datetime | None = None,
+    ) -> bool:
+        """这个运行现在能不能接管续跑（UI 的按钮条件与编排器共用同一判定）。"""
+        return lease.can_resume(run, now or datetime.now(UTC), timeout_seconds)
 
     def get_output(self, run_id: str, stage: Stage, batch_index: int = -1) -> dict[str, Any] | None:
         with self._session() as connection:
@@ -192,13 +295,15 @@ class RunRepository:
         stale_after_minutes: int = 60,
         now: datetime | None = None,
     ) -> RunRecord | None:
-        """返回该 App 上仍在进行中的运行；没有则返回 `None`。
+        """返回该 App 上仍在进行中的运行；没有则返回 `None`。返回最近更新的一条。
 
-        超过 `stale_after_minutes` 未更新的运行视为进程崩溃留下的孤儿，
-        不参与互斥——否则一次崩溃就会永久卡死这个 App 的后续分析。
-        返回最近更新的一条。
+        判定走 `lease.blocks_new_run`：有租约时看**持有者进程是否还活着**，判不出来
+        才退回"最近一次更新是否在窗口内"。原先只看 `updated_at` 的写法有个语义漏洞——
+        更新得早不等于没人拥有它；而一次崩溃留下的孤儿运行也确实不能永久卡死这个 App。
         """
-        cutoff = ((now or datetime.now(UTC)) - timedelta(minutes=stale_after_minutes)).isoformat()
+        moment = now or datetime.now(UTC)
+        timeout_seconds = stale_after_minutes * 60
+        cutoff = (moment - timedelta(seconds=timeout_seconds)).isoformat()
         with self._session() as connection:
             rows = connection.execute(
                 "SELECT payload_json FROM runs WHERE updated_at >= ? ORDER BY updated_at DESC",
@@ -208,7 +313,7 @@ class RunRepository:
             run = RunRecord.model_validate_json(row["payload_json"])
             if run.request.app_url != app_url:
                 continue
-            if run.status.value in self.RESUMABLE_STATUSES:
+            if lease.blocks_new_run(run, moment, timeout_seconds):
                 return run
         return None
 

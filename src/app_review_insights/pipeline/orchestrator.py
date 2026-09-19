@@ -39,6 +39,7 @@ from app_review_insights.models import (
 from app_review_insights.pipeline.analyze import apply_review_summaries
 from app_review_insights.pipeline.traceability import validate_traceability
 from app_review_insights.pipeline.validate import validate_finding_drafts
+from app_review_insights.storage.lease import make_owner
 from app_review_insights.storage.repository import RunRepository
 
 BatchAnalyzer = Callable[[list[Review], str], BatchAnalysisResult]
@@ -69,6 +70,8 @@ class PipelineServices:
     #: 本次装配是否以回放方式跑（由 factory 按 DEMO_MODE 判定）。置位时新建的运行
     #: 记录带 mode=recorded_live_run / is_live=false，结果视图与下载产物据此标注。
     replay_run: bool = False
+    #: 运行租约的兜底超时；只在判不出持有者进程存活与否时才用得上。见 config 的派生规则。
+    lease_timeout_seconds: float = 300.0
 
 
 class AnalysisOrchestrator:
@@ -81,6 +84,10 @@ class AnalysisOrchestrator:
         self.services = services
         self.repository = services.repository
         self.on_event = on_event
+        #: 本次编排的租约身份。按进程缓存（见 storage/lease.make_owner），
+        #: 同一个进程里新建的编排器仍是同一个持有者。
+        self.owner = make_owner()
+        self.lease_timeout_seconds = services.lease_timeout_seconds
         #: 整轮运行的墙钟上限；None 表示不限制
         self.max_duration_seconds = max_duration_seconds
         self._deadline: float | None = None
@@ -91,15 +98,6 @@ class AnalysisOrchestrator:
         imported_reviews: list[Review] | None = None,
         allow_concurrent: bool = False,
     ) -> RunRecord:
-        # 同一 App 并发分析只是把同一份结论算两遍并双倍计费
-        if not allow_concurrent and request.app_url:
-            active = self.repository.find_active_run(request.app_url)
-            if active is not None:
-                raise ConcurrentRunError(
-                    f"该 App 已有进行中的运行（run_id={active.run_id}，"
-                    f"状态 {active.status.value}）。并发分析会重复消耗模型额度；"
-                    "请等待其结束，或先续跑/放弃该运行后再试。"
-                )
         now = datetime.now(UTC)
         run = RunRecord(
             run_id=str(uuid4()),
@@ -110,10 +108,34 @@ class AnalysisOrchestrator:
             # 无论何时被读取，都能自证是不是回放（含换配置后重新打开旧运行的场景）。
             mode=RECORDING_MODE if self.services.replay_run else LIVE_RUN_MODE,
             is_live=not self.services.replay_run,
+            lease_owner=self.owner,
+            heartbeat_at=now,
             created_at=now,
             updated_at=now,
         )
-        self.repository.save_run(run)
+        # 同一 App 并发分析只是把同一份结论算两遍并双倍计费。判定与写入在同一个
+        # 立即事务里完成，避免"检查通过之后、写入之前"被另一个进程插进来。
+        if not allow_concurrent and request.app_url:
+            acquired = self.repository.acquire_run(
+                run, timeout_seconds=self.lease_timeout_seconds, now=now
+            )
+            if acquired is None:
+                active = self.repository.find_active_run(
+                    request.app_url,
+                    stale_after_minutes=self.lease_timeout_seconds / 60,
+                    now=now,
+                )
+                detail = (
+                    f"run_id={active.run_id}，状态 {active.status.value}"
+                    if active is not None
+                    else "另一进程刚刚开始了同一 App 的分析"
+                )
+                raise ConcurrentRunError(
+                    f"该 App 已有进行中的运行（{detail}）。并发分析会重复消耗模型额度；"
+                    "请等待其结束，或先续跑/放弃该运行后再试。"
+                )
+        else:
+            self.repository.save_run(run)
         self._add_event(run, "Analysis run created")
         return self._run_in_context(run, imported_reviews=imported_reviews)
 
@@ -129,11 +151,20 @@ class AnalysisOrchestrator:
         采集已完成时会直接读检查点，该参数被忽略。
         """
         run = self.repository.get_run(run_id)
-        # 超时停止的运行同样可续跑——它们都停在检查点上
-        if run.status not in (RunStatus.WAITING, RunStatus.TIMED_OUT):
+        # 超时停止的运行同样可续跑——它们都停在检查点上。进程被硬杀留下的 running
+        # 运行，只要确认持有者进程已经不在，同样可以接管：这是崩溃恢复的唯一入口。
+        if not self.repository.can_resume(run, timeout_seconds=self.lease_timeout_seconds):
             return run
 
-        run = self._update_run(run, status=RunStatus.RUNNING, last_error=None)
+        taken = self.repository.take_over(
+            run_id, owner=self.owner, timeout_seconds=self.lease_timeout_seconds
+        )
+        if taken is None:
+            # 竞态：另一个进程刚好抢先接管了。它活着，所以这里必须就此打住——
+            # 两个执行者写同一份检查点会把结果搅坏。
+            return self.repository.get_run(run_id)
+
+        run = self._update_run(taken, status=RunStatus.RUNNING, last_error=None)
         self._add_event(run, "Analysis run resumed")
         return self._run_in_context(run, imported_reviews=imported_reviews)
 
@@ -724,6 +755,9 @@ class AnalysisOrchestrator:
 
     def _update_run(self, run: RunRecord, **updates: Any) -> RunRecord:
         updates["updated_at"] = datetime.now(UTC)
+        # 每写一次运行就顺带刷心跳：租约的"持有者还活着"判定依赖它，而运行记录
+        # 本来每个阶段/批次都会写一次，等于零额外成本。
+        updates.setdefault("heartbeat_at", updates["updated_at"])
         updated = run.model_copy(update=updates)
         self.repository.save_run(updated)
         return updated

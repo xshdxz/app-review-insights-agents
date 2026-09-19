@@ -239,6 +239,9 @@ Agent 层**包裹在确定性核心之外**：
 
 # 数据保留清理 + VACUUM
 .\.venv\Scripts\python -m app_review_insights.maintenance
+
+# 崩溃一致性 / 故障注入（真实子进程硬杀，全部回放 ⇒ 零模型成本；默认不随主套件运行）
+.\.venv\Scripts\python -m pytest -m reliability
 ```
 
 CI 在 push / PR 时跑 ruff 与 pytest（Python 3.11 / 3.12 / 3.13）；实时评测门禁
@@ -303,6 +306,7 @@ evals/
 - `docs/agent-architecture.md` — Planner/Reviewer/工具注册表设计与降级矩阵
 - `docs/data-format.md` — JSON/CSV 导入格式
 - `docs/model-and-prompts.md` — 模型/Prompt 设计与评测记录
+- `docs/reliability.md` — 崩溃一致性矩阵、实测结果、反向验收与**已知边界**
 - `docs/defect-list.md` — 缺陷清单与修复记录
 - `docs/highlights.md` — 技术亮点
 - `docs/experiments/langgraph-vs-native.md` — LangGraph vs 原生编排对比实验

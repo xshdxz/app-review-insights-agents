@@ -338,12 +338,13 @@ def _resume_analysis(
     services: PipelineServices,
     run_id: str,
     event_writer: EventWriter | None = None,
+    imported_reviews=None,
 ) -> RunRecord:
     return AnalysisOrchestrator(
         services,
         on_event=event_writer,
         max_duration_seconds=_max_duration_seconds(),
-    ).resume(run_id)
+    ).resume(run_id, imported_reviews=imported_reviews)
 
 
 def _prepare_imported_reviews(
@@ -367,6 +368,34 @@ def _prepare_imported_reviews(
         raise InputDataError("请选择与导入模式对应的评论文件。")
     reviews = import_reviews(upload.getvalue(), upload.name, app_id="imported")
     return reviews[: request.review_limit]
+
+
+def _reviews_for_resume(
+    services: PipelineServices,
+    run: RunRecord,
+    upload,
+    *,
+    demo_replay: bool = False,
+):
+    """续跑前按需重新提供输入评论。
+
+    中断发生在采集完成**之前**时，检查点里根本没有评论，续跑必须重新拿到输入——
+    `orchestrator.resume()` 的 docstring 一直这么要求，但界面此前从不传这个参数，
+    于是 JSON/CSV 来源的运行在采集前中断后，续跑只会以 CollectionError 收场。
+
+    COLLECT 已经有输出 ⇒ 评论就存在检查点里，直接用，不需要也不该重新导入。
+    """
+    if services.repository.get_output(run.run_id, Stage.COLLECT) is not None:
+        return None
+    if run.request.source_type == SourceType.ONLINE:
+        # 在线来源可以重新采集，不需要文件
+        return None
+    if upload is None and not demo_replay:
+        raise InputDataError(
+            "这次运行在评论采集完成之前就中断了，检查点里还没有评论。"
+            "请重新选择同一份评论文件后再点继续。"
+        )
+    return _prepare_imported_reviews(run.request, upload, demo_replay=demo_replay)
 
 
 def _update_live_status(status, run: RunRecord) -> None:
@@ -698,33 +727,48 @@ def main() -> None:
             run = services.repository.get_run(run_id)
             events = services.repository.list_events(run_id)
             pending = st.session_state.get("pending_resume")
-            if pending == run.run_id and run.status == RunStatus.WAITING:
-                # 模型问题已解决并开始恢复：不展示旧的失败状态与错误文本。
-                resume_status = st.status(
-                    "模型已恢复，正在从检查点继续…",
-                    expanded=True,
-                )
-                st.caption(f"运行 ID：`{run.run_id}`")
-                resumed = _resume_analysis(
-                    services,
-                    run.run_id,
-                    event_writer=lambda event: resume_status.write(
-                        format_event_message(event.message)
-                    ),
-                )
-                st.session_state.pop("pending_resume", None)
-                st.session_state["run_id"] = resumed.run_id
-                _record_model_success(services.repository, resumed.run_id, settings)
-                _update_live_status(resume_status, resumed)
-                st.rerun()
+            # 与编排器共用同一个判定（storage/lease.can_resume）：此前界面和编排器
+            # 各写一份状态元组，两边一旦漂移就会出现"按钮能点、点下去什么都不做"。
+            resumable = services.repository.can_resume(
+                run, timeout_seconds=settings.lease_timeout_seconds
+            )
+            if pending == run.run_id and resumable:
+                # 从检查点继续：不展示旧的失败状态与错误文本。
+                try:
+                    imported = _reviews_for_resume(services, run, upload, demo_replay=demo_replay)
+                except InputDataError as exc:
+                    st.session_state.pop("pending_resume", None)
+                    st.error(str(exc), icon=":material/input:")
+                else:
+                    resume_status = st.status("正在从检查点继续…", expanded=True)
+                    st.caption(f"运行 ID：`{run.run_id}`")
+                    resumed = _resume_analysis(
+                        services,
+                        run.run_id,
+                        event_writer=lambda event: resume_status.write(
+                            format_event_message(event.message)
+                        ),
+                        imported_reviews=imported,
+                    )
+                    st.session_state.pop("pending_resume", None)
+                    st.session_state["run_id"] = resumed.run_id
+                    _record_model_success(services.repository, resumed.run_id, settings)
+                    _update_live_status(resume_status, resumed)
+                    st.rerun()
             else:
                 render_run_status(
                     run,
                     events,
                     usage=services.repository.model_usage_summary(run_id=run.run_id),
                 )
-                # 超时停止的运行同样停在检查点上，可以续跑
-                if run.status in (RunStatus.WAITING, RunStatus.TIMED_OUT):
+                # 超时停止、模型失败、以及进程被硬杀（租约持有者已不存在）都停在
+                # 检查点上，共用 can_resume 这一个判定。
+                if resumable:
+                    if run.status in (RunStatus.PENDING, RunStatus.RUNNING):
+                        st.caption(
+                            "上一次运行的进程已经不在了（崩溃或重启），检查点完好；"
+                            "点继续即可从断点接上。"
+                        )
                     resume = st.button(
                         "继续分析",
                         type="primary",

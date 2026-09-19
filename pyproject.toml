@@ -39,7 +39,14 @@ where = ["src"]
 # 少了它，CI 上用裸 pytest 会在收集阶段就 ModuleNotFoundError。
 pythonpath = ["src", "."]
 testpaths = ["tests"]
-addopts = "-q"
+# 默认排除 reliability 标记的用例（tests/reliability/ 的崩溃矩阵）：它们要起子进程，
+# 既慢又不该混进主套件。命令行 -m 会覆盖这里的 -m（实测：514 deselected），
+# 因此 CI 用 "pytest -m reliability" 单独跑一个 job。
+# 这样裸 pytest 与 CI 主 job 的调用方式保持一致（见 AGENTS.md 已知坑 #12）。
+addopts = "-q -m \"not reliability\""
+markers = [
+  "reliability: 崩溃一致性与故障注入（子进程 + 回放，零模型成本）",
+]
 
 [tool.ruff]
 line-length = 100
