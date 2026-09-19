@@ -6,5 +6,6 @@
 4. 定时监控：APScheduler cron 任务 + 飞书/钉钉/企业微信/Slack 四渠道 Webhook + 变化摘要报告
 5. 多源采集：App Store 任意区 / Google Play（尽力而为）/ Reddit 舆情，社交语料与评论语料隔离
 6. 部署就绪：Docker + docker-compose（web + worker + 健康检查）+ PowerShell 一键脚本（setup/deploy）
-7. 质量：全量 293 项 pytest + ruff 全绿 + 覆盖率 92% + 密钥扫描
-8. 工程规范：TDD 全流程、SQLite 检查点续跑、JSON payload 持久化、CJK FTS5 检索定制（短语匹配 + 词边界保留）
+10. 质量：主套件 541 项 + 可靠性套件 21 项全绿、ruff 全绿、覆盖率 93%、密钥扫描
+8. 崩溃一致性：在**真实子进程**里硬杀（阶段边界 + 随机时刻），再用同一 `run_id` 续跑，断言结果与"一次跑完"**逐字节相同**；运行租约（`host:pid:token` + 进程存活判定）让崩溃后的运行可被立即接管。21 项、全部走回放 ⇒ 零模型成本，见 `docs/reliability.md`
+9. 工程规范：TDD 全流程、SQLite 检查点续跑、版本化 schema 迁移、结构化日志（JSON Lines + `run_id` 关联）、模型用量与费用计量、CJK FTS5 检索定制（短语匹配 + 词边界保留）

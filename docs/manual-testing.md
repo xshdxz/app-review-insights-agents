@@ -4,7 +4,10 @@
 1. **模型连接失败**：DeepSeek 不可用时，页面不中断、进度保留、可同 `run_id` 续跑。
 2. **离线模式**：没有模型密钥时，演示与导入能力可用，不崩溃、不伪装实时结果。
 
-> 对应自动化测试：`tests/test_app_smoke.py`、`tests/test_orchestrator.py`、`tests/test_offline_ui.py`、`tests/test_export.py`（全量 `pytest` 145 项通过）。
+> 对应自动化测试：`tests/test_app_smoke.py`、`tests/test_orchestrator.py`、`tests/test_offline_ui.py`、`tests/test_export.py`。
+>
+> 括号里的数字是写作时的历史值（当时全量 145 项）。**当前数字以 README 为准**：主套件 541 项、
+> 可靠性套件（`pytest -m reliability`）21 项。
 
 ---
 
@@ -57,6 +60,11 @@ Remove-Item Env:DEEPSEEK_API_KEY
 ---
 
 ## 场景二：离线模式（无模型密钥）
+
+> **先看这里**：本节表格描述的是**录制文件缺失**时的降级形态（按钮禁用）。只要
+> `data/recordings/demo-replay.json` 在场，"开始分析"是**可点**的——应用进入演示模式，
+> 在自带样例上回放一次真实运行的模型输出、零外部调用。两者的区别与判定条件见
+> `docs/deploy-streamlit-cloud.md` 的「两种运行模式」。
 
 ### 准备
 

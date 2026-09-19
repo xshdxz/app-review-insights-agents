@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # 全分支触发：原先只挂 main，导致功能分支上的提交从未在 Linux 上跑过一次，
+  # "分支绿灯"只能靠本地自测——而本地与 CI 的调用方式并不完全等价（见 README 的测试章节）。
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
 
@@ -39,8 +41,35 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+      # --cov-fail-under 是地板不是目标：当前 93%，掉到 90 以下说明有新代码没被测到
       - name: Run tests
-        run: pytest --cov=app_review_insights --cov-report=term-missing
+        run: pytest --cov=app_review_insights --cov-report=term-missing --cov-fail-under=90
       # 坏掉的评测集跑出来的数字毫无意义，所以它本身也要过门禁（不调用模型，零成本）
       - name: Validate gold evaluation dataset
         run: python scripts/run_eval.py
+
+  reliability:
+    name: Reliability (crash & fault injection)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      # 真子进程硬杀 + 同 run_id 续跑的收敛性验证。全部走回放 ⇒ 零模型成本、结果可复现。
+      # ARI_COVERAGE 让子进程（恢复路径实际执行的地方）也输出覆盖数据。
+      - name: Crash & fault-injection matrix
+        env:
+          ARI_COVERAGE: "1"
+        run: pytest -m reliability -q
+      # 恢复路径全在子进程里跑，主作业的 --cov 统计不到；这里合并出来单独看，
+      # 免得"新增代码把整体覆盖率拖下去"被误读成"没被测过"。
+      - name: Merge subprocess coverage (evidence, not a gate)
+        run: |
+          coverage combine
+          coverage report | tail -n 3
