@@ -130,3 +130,87 @@ def test_reference_recall_and_precision_constrain_each_other(fake_provider_facto
 
     assert result["reference_precision"] == 1.0, "模型引用的一条在标注里"
     assert result["reference_recall"] == 0.5, "标注两条，模型覆盖了一条"
+
+
+# ── D-11：词面之外，主题到底有没有被找到 ──────────────────────────────────────
+
+
+def _batch_with(*topic_keys: str) -> dict:
+    """一次批次分析里给出多个主题——用来观察"模型比标注细"这件事。"""
+    batch = _batch(topic_keys[0])
+    first = batch["findings"][0]
+    batch["findings"] = [
+        {**first, "topic_key": key, "title": f"问题 {index}"}
+        for index, key in enumerate(topic_keys)
+    ]
+    return batch
+
+
+def test_topic_found_by_evidence_sees_through_different_wording(fake_provider_factory):
+    """D-11 的正脸：模型用**完全不同的词**说中了同一件事。
+
+    词面一致率必然是 0——那是它的定义；但「这个主题被找到了吗」的答案是找到了，
+    证据是它引用了该主题的支撑评论。两个数一起看，才不会被任一个误导。
+    """
+    provider = fake_provider_factory([_batch("trial_renewal_disclosure")])
+
+    result = evaluate_case(provider, CASE)
+
+    assert result["topic_recall"] == 0.0, "词面确实不一致——这不是缺陷，是口径"
+    assert result["topic_found_by_evidence"] == 1.0, "但该主题的支撑评论被用上了"
+
+
+def test_topic_found_by_evidence_is_zero_when_the_topic_is_missed(fake_provider_factory):
+    """说中了别的、且没碰这个主题的支撑评论 ⇒ 这个主题就是没找到。
+
+    这条是上一条的对照：没有它，一个恒为 1.0 的指标同样没有信息量。
+    """
+    case = {
+        **CASE,
+        "reviews": [
+            *CASE["reviews"],
+            {
+                "review_id": "r2",
+                "content": "The app crashes whenever I open the workout tab.",
+                "rating": 1,
+                "language": "en",
+                "published_at": "2026-06-01T10:00:00Z",
+            },
+        ],
+    }
+    provider = fake_provider_factory([_batch("crash_on_launch", review_ids=["r2"])])
+
+    result = evaluate_case(provider, case)
+
+    assert result["topic_found_by_evidence"] == 0.0
+    assert result["reference_recall"] == 0.0, "标注的 r1 确实没被引用"
+
+
+def test_topic_granularity_explains_why_the_lexical_metric_is_low(fake_provider_factory):
+    """粒度比：模型给的主题比标注细多少——它正是词面一致率低的成因。"""
+    provider = fake_provider_factory(
+        [_batch_with("trial_renewal_disclosure", "price_visibility_before_trial")]
+    )
+
+    result = evaluate_case(provider, CASE)
+
+    assert result["topic_recall"] == 0.0
+    assert result["topic_granularity"] == 2.0, "标注 1 个主题，模型给了 2 个更细的键"
+    assert result["topic_found_by_evidence"] == 1.0
+
+
+def test_new_evidence_metrics_survive_into_the_summary(fake_provider_factory):
+    """算出来却没进 CASE_METRICS 的指标，会在汇总里变成一个**看着很合理的 0.0**。
+
+    T4 就踩过这个坑（reference_recall 汇总恒为 0.0），所以这里显式钉住。
+    """
+    from scripts.run_eval import CASE_METRICS, _aggregate
+
+    provider = fake_provider_factory([_batch("trial_renewal_disclosure")])
+    results = [evaluate_case(provider, CASE)]
+
+    summary = _aggregate(results)
+
+    for metric in ("topic_found_by_evidence", "topic_granularity"):
+        assert metric in CASE_METRICS, metric
+        assert summary[metric] == results[0][metric], metric

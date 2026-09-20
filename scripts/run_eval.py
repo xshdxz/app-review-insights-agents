@@ -182,6 +182,9 @@ CASE_METRICS = (
     "reference_recall",
     "hallucination_rate",
     "topic_key_coverage",
+    # D-11 补的两条：词面一致率之外，回答"主题到底有没有被找到"以及"为什么词面对不上"
+    "topic_found_by_evidence",
+    "topic_granularity",
 )
 
 
@@ -217,6 +220,8 @@ def _score_prediction(
     # 只比 topic_key。topic_label 按 prompt 的约定是**中文**，与黄金集里的 ascii 键不可比；
     # 取 label 会让 predicted_topics 恒为空集 —— 主题召回结构性恒为 0（2026-09-20 修）。
     predicted_topics = {finding.topic_key for finding in prediction.findings}
+    expected_topics = set(case.get("expected_topics", []))
+    expected_review_ids = set(case.get("expected_review_ids", []))
     findings_total = len(prediction.findings)
     key_covered = sum(1 for finding in prediction.findings if finding.topic_key)
     predicted_review_ids = {
@@ -243,6 +248,20 @@ def _score_prediction(
         # 后者是事实，不需要任何标注。
         "hallucination_rate": (
             round(len(hallucinated) / len(predicted_review_ids), 3) if predicted_review_ids else 0.0
+        ),
+        # D-11：不依赖词表的主题级口径——"这个主题被找到了吗"，判据是**它的支撑评论
+        # 有没有被用上**，而不是模型有没有恰好选中同一个词。标注里没有主题（或没有
+        # 期望评论）时记 1.0：没有东西要找，就不该扣分。
+        # 这个指标之所以总有定义，靠的是另一条不变量：Schema 要求每个 finding **至少
+        # 引用一条评论**——不存在"给了主题却零证据"的状态。
+        "topic_found_by_evidence": (
+            1.0 if not expected_review_ids or (expected_review_ids & predicted_review_ids) else 0.0
+        ),
+        # 粒度比：模型给的主题数 ÷ 标注主题数。它解释了词面一致率为什么低——
+        # 2026-09-20 的实测里模型把粗粒度标注切成了更细的键（一个标注主题对应好几个
+        # 预测键），两边因此永远对不上。标注为空时记 1.0（无可比，不参与解释）。
+        "topic_granularity": (
+            round(len(predicted_topics) / len(expected_topics), 3) if expected_topics else 1.0
         ),
         "batch_limitations": prediction.batch_limitations,
     }

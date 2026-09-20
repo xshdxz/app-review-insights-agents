@@ -39,9 +39,28 @@ def _render_summary(results: list[dict]) -> None:
     summary = latest.get("summary", {})
     cols = st.columns(4)
     cols[0].metric("案例数", summary.get("cases", 0))
-    cols[1].metric("主题召回率", f"{summary.get('topic_recall', 0):.1%}")
+    cols[1].metric(
+        "主题词面一致率",
+        f"{summary.get('topic_recall', 0):.1%}",
+        help="模型选的主题键与标注键**逐字一致**的比例。它不是召回率：键是自由文本，"
+        "模型常把标注的粗粒度主题切成更细的键（见下面的粒度比），语义对了词面也对不上。",
+    )
     cols[2].metric("引用精确率", f"{summary.get('reference_precision', 0):.1%}")
     cols[3].metric("结构化输出成功率", f"{summary.get('structured_output_success', 0):.1%}")
+    cols = st.columns(3)
+    cols[0].metric(
+        "主题命中率（按证据）",
+        f"{summary.get('topic_found_by_evidence', 0):.1%}",
+        help="标注主题的支撑评论里至少有一条被模型引用。**不依赖词表**，回答的是"
+        "「这个问题被找到了吗」——与词面一致率一起看，才不会被任一个误导。",
+    )
+    cols[1].metric("引用召回率", f"{summary.get('reference_recall', 0):.1%}")
+    cols[2].metric(
+        "主题粒度比",
+        f"{summary.get('topic_granularity', 1):.2f}",
+        help="模型给的主题数 ÷ 标注主题数。大于 1 说明模型切得比标注细——"
+        "这正是词面一致率偏低的成因。",
+    )
     st.caption(
         f"模型：{latest.get('model', '?')} ({latest.get('provider', '?')}) · "
         f"数据集：{latest.get('dataset', '?')} · "
@@ -81,7 +100,7 @@ def _render_case_detail(case_result: dict) -> None:
         # 得分可视化
         recall = case_result.get("topic_recall", 0)
         precision = case_result.get("reference_precision", 0)
-        st.progress(min(recall, 1.0), text=f"主题召回 {recall:.0%}")
+        st.progress(min(recall, 1.0), text=f"主题词面一致 {recall:.0%}")
         st.progress(min(precision, 1.0), text=f"引用精确 {precision:.0%}")
 
 
@@ -108,7 +127,9 @@ def _render_comparison(results: list[dict]) -> None:
             {
                 "来源": r.get("_source_path", "?").split("/")[-1],
                 "模型": r.get("model", "?"),
-                "主题召回": f"{summary.get('topic_recall', 0):.1%}",
+                "主题词面一致": f"{summary.get('topic_recall', 0):.1%}",
+                "主题命中（按证据）": f"{summary.get('topic_found_by_evidence', 0):.1%}",
+                "主题粒度比": f"{summary.get('topic_granularity', 1):.2f}",
                 "引用精确率": f"{summary.get('reference_precision', 0):.1%}",
                 "结构化成功率": f"{summary.get('structured_output_success', 0):.1%}",
                 "案例数": summary.get("cases", 0),
@@ -124,7 +145,11 @@ def main() -> None:
         layout="wide",
     )
     st.title("评测中心", anchor=False)
-    st.caption("基于标注数据集对模型进行评测，量化主题召回率、引用精确率和结构化输出成功率。")
+    st.caption(
+        "基于标注数据集对模型进行评测：主题词面一致率（与标注选词逐字一致的比例）、"
+        "主题命中率（按证据：标注主题的支撑评论有没有被用上）、引用精确率/召回率、"
+        "主题粒度比与结构化输出成功率。"
+    )
     results = _load_latest_results()
     _render_summary(results)
     if results:
