@@ -1,0 +1,5 @@
+# 只给 CI 的 HTTP contract job 用：那一半要度量 app_review_insights.api 的覆盖率，
+# 而 pyproject 里全局 omit 掉了 api/*（主 job 装不上 fastapi，见那里的说明）。
+# 覆盖率配置是「整份替换」语义，所以这里显式给一个空的 omit。
+[run]
+omit =

@@ -63,8 +63,11 @@ jobs:
           pip install -e ".[dev,api]"
       # 主 test job 刻意不装 [api]：那组用例在那里 skip，降级路径一直有人验；
       # 这里装上 extra 真跑一遍契约测试。两半都被覆盖，而不是只验一半。
+      # 这一半的覆盖率单独度量：主 job 因不装 extra 而看不到它（见 pyproject 的 omit 说明）。
+      # 地板 85% 而不是核心的 90%：api/__main__.py 是 uvicorn 的进程装配入口，
+      # 单元测试刻意不去真起服务器，那 8 行本来就该是 0%。
       - name: Contract tests
-        run: pytest tests/test_api.py -q
+        run: pytest tests/test_api.py -q --cov=app_review_insights.api --cov-config=.coveragerc.api --cov-report=term-missing --cov-fail-under=85
 
   reliability:
     name: Reliability (crash & fault injection)

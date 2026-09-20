@@ -45,6 +45,13 @@ observability = [
   "opentelemetry-exporter-otlp-proto-http>=1.27,<2",
 ]
 
+[tool.coverage.run]
+# api/ 是可选 extra 的代码：主测试 job 不装 fastapi（那正是「降级路径持续被验」的那一半），
+# 它自然一条都执行不到。覆盖率会把未执行的文件按 0% 计入，于是门禁**为一份根本没跑的代码
+# 扣分**——扣的不是覆盖率，是记账方式。所以这里排除，改由 CI 的 HTTP contract job
+# 单独度量那一半（它有自己的门禁）。
+omit = ["src/app_review_insights/api/*"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

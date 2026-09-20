@@ -10,15 +10,15 @@ fastapi + uvicorn 是实打实的常驻运行时依赖（还会占一个端口�
 
 端点一览（v1）：
 
-- \`GET  /healthz\`                    存活探针
-- \`GET  /metrics\`                    与 worker 同源的 Prometheus 文本指标
-- \`GET  /v1/queue\`                   队列深度与"有没有执行者在消费"
-- \`GET  /v1/runs\`                    最近运行列表
-- \`POST /v1/runs\`                    **提交一次分析（需令牌）**，202 + run_id
-- \`GET  /v1/runs/{id}\`               单条运行的状态与用量
-- \`GET  /v1/runs/{id}/events\`        事件列表；\`?stream=1\` 走 SSE
-- \`GET  /v1/runs/{id}/result\`        原始阶段产物（证据链）
-- \`POST /v1/runs/{id}/cancel\`        **请求取消（需令牌）**——在下一个阶段边界生效
+- `GET  /healthz`                    存活探针
+- `GET  /metrics`                    与 worker 同源的 Prometheus 文本指标
+- `GET  /v1/queue`                   队列深度与"有没有执行者在消费"
+- `GET  /v1/runs`                    最近运行列表
+- `POST /v1/runs`                    **提交一次分析（需令牌）**，202 + run_id
+- `GET  /v1/runs/{id}`               单条运行的状态与用量
+- `GET  /v1/runs/{id}/events`        事件列表；`?stream=1` 走 SSE
+- `GET  /v1/runs/{id}/result`        原始阶段产物（证据链）
+- `POST /v1/runs/{id}/cancel`        **请求取消（需令牌）**——在下一个阶段边界生效
 """
 
 from __future__ import annotations
@@ -220,7 +220,7 @@ def create_app(
         """提交一次分析：**入队并立刻返回**，执行交给 worker。
 
         202 而不是 200 是诚实的：这次调用只保证"已受理"。轮询
-        \`GET /v1/runs/{id}\` 或订阅 \`/events?stream=1\` 拿进度。
+        `GET /v1/runs/{id}` 或订阅 `/events?stream=1` 拿进度。
         """
         depth = repository.queue_depth()
         if depth >= settings.api_max_queue_depth:
