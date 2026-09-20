@@ -49,7 +49,7 @@ where = ["src"]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
 # 默认排除 reliability 标记的用例（tests/reliability/ 的崩溃矩阵）：它们要起子进程，
-# 既慢又不该混进主套件。命令行 -m 会覆盖这里的 -m（实测：514 deselected），
+# 既慢又不该混进主套件。命令行 -m 会覆盖这里的 -m（实测：22 deselected），
 # 因此 CI 用 "pytest -m reliability" 单独跑一个 job。
 # 这样裸 pytest 与 CI 主 job 的调用方式保持一致（见 AGENTS.md 已知坑 #12）。
 addopts = "-q -m \"not reliability\""
