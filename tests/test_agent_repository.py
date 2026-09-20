@@ -202,3 +202,58 @@ def test_corpus_or_fallback_keeps_bm25_ranking(repo):
     repo.upsert_corpus(_review("v2", "app-a", "billing fine"))
     hits = repo.search_corpus("subscription billing unclear", app_ids=["app-a"], limit=10)
     assert hits[0]["review_id"] == "v1"
+
+
+# ── 中文长问句的宽松回退（T6 检索评测撞出来的真实缺陷）─────────────────────────
+
+
+def test_loose_cjk_terms_are_bigrams_not_one_unmatchable_phrase():
+    """宽松模式下，CJK 长段展开成**相邻二元组**，而不是一条必须逐字出现的短语。
+
+    缺陷现场：中文查询「更新之后我过去几个月的训练记录全没了」被构造成
+    '"更 新 之 后 我 过 去 几 个 月 的 训 练 记 录 全 没 了"'(一条短语)，而语料里写的是
+    「更新之后过去三个月的训练记录全没了」——差两个字就一条都命不中；
+    严格 AND 与宽松 OR 又是同一个串，于是两轮都空。用户问一句人话，系统回答「没有找到相关评论」。
+    """
+    from app_review_insights.storage.agent_repository import build_fts_query
+
+    loose = build_fts_query("更新之后记录没了", match_mode="or")
+
+    assert loose == " OR ".join(
+        f'"{pair}"' for pair in ("更 新", "新 之", "之 后", "后 记", "记 录", "录 没", "没 了")
+    )
+
+
+def test_strict_mode_still_requires_the_whole_run():
+    """严格模式保持「整段相邻」：精确优先，宽松兜底——两级语义不变，改的只是兜底那级。"""
+    from app_review_insights.storage.agent_repository import build_fts_query
+
+    assert build_fts_query("更新之后记录没了", match_mode="and") == '"更 新 之 后 记 录 没 了"'
+
+
+def test_two_character_runs_stay_phrases_in_both_modes():
+    """两字词本来就是最小的相邻单元——不展开，否则「订阅」会退化成两个单字。"""
+    from app_review_insights.storage.agent_repository import build_fts_query
+
+    assert build_fts_query("订阅", match_mode="or") == '"订 阅"'
+    assert build_fts_query("订阅", match_mode="and") == '"订 阅"'
+
+
+def test_corpus_cjk_paraphrase_without_punctuation_still_matches(repo):
+    """端到端：换了个说法的中文问句，必须命中那条评论。"""
+    repo.upsert_corpus(_review("v1", "app-a", "更新之后过去三个月的训练记录全没了。"))
+    repo.upsert_corpus(_review("v2", "app-a", "界面挺好看的，没什么问题"))
+
+    hits = repo.search_corpus("更新之后我过去几个月的训练记录全没了", app_ids=["app-a"], limit=10)
+
+    assert {h["review_id"] for h in hits} == {"v1"}
+
+
+def test_corpus_cjk_loose_fallback_keeps_adjacency(repo):
+    """宽松回退用二元组而不是单字：否则「订…阅分散」那类误命中会回来（既有用例守着它）。"""
+    repo.upsert_corpus(_review("v1", "app-a", "订阅价格不透明"))
+    repo.upsert_corpus(_review("v2", "app-a", "我订了酒店，阅读体验不错"))
+
+    hits = repo.search_corpus("订阅价格不透明的问题", app_ids=["app-a"], limit=10)
+
+    assert {h["review_id"] for h in hits} == {"v1"}

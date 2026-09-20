@@ -1,0 +1,216 @@
+{
+  "corpus": "evals/gold-reviews.json",
+  "note": "检索评测的查询集：答案锚定既有黄金集的 expected_review_ids，不另造一套标注口径。查询写成「用户会怎么问」而不是照抄评论原句——照抄的话词面检索必然命中，测不出任何东西。语料是中英混排的，查询也分中英两组：lexical 检索跨不了语言，这一点由数据本身暴露（看 language 分组统计），而那正是向量那一路要负责的事——本机没有 embedding provider，所以那一路标注为未测。",
+  "queries": [
+    {
+      "query_id": "q-trial-billing",
+      "query": "charged when the free trial ended without any warning",
+      "expected_review_ids": [
+        "e2-01",
+        "e2-02"
+      ],
+      "language": "en",
+      "note": "试用结束即扣款、取消仍被收费"
+    },
+    {
+      "query_id": "q-cancellation",
+      "query": "no way to cancel the subscription inside the app",
+      "expected_review_ids": [
+        "e4-01",
+        "e4-02"
+      ],
+      "language": "en",
+      "note": "应用内没有取消入口"
+    },
+    {
+      "query_id": "q-refund",
+      "query": "refund request rejected and support never answered",
+      "expected_review_ids": [
+        "e5-01",
+        "e5-02"
+      ],
+      "language": "en",
+      "note": "同一诉求的中英两条，词面检索只能命中同语言那条"
+    },
+    {
+      "query_id": "q-timer-freeze",
+      "query": "rest timer stops working when I lock the phone",
+      "expected_review_ids": [
+        "e6-01",
+        "e6-02"
+      ],
+      "language": "en",
+      "note": "锁屏后计时器失效"
+    },
+    {
+      "query_id": "q-audio",
+      "query": "voice guidance disappears in the middle of a workout",
+      "expected_review_ids": [
+        "e8-01",
+        "e8-02"
+      ],
+      "language": "en",
+      "note": "语音指导中途消失"
+    },
+    {
+      "query_id": "q-crash",
+      "query": "app crashes when I open the progress tab",
+      "expected_review_ids": [
+        "e10-01",
+        "e10-02"
+      ],
+      "language": "en",
+      "note": "打开进度页崩溃"
+    },
+    {
+      "query_id": "q-sync",
+      "query": "workout history differs between my phone and tablet",
+      "expected_review_ids": [
+        "e11-01",
+        "e11-02"
+      ],
+      "language": "en",
+      "note": "跨设备不同步；中英各一条"
+    },
+    {
+      "query_id": "q-login",
+      "query": "I keep getting bounced back to the welcome screen",
+      "expected_review_ids": [
+        "e13-01",
+        "e13-02"
+      ],
+      "language": "en",
+      "note": "登录循环"
+    },
+    {
+      "query_id": "q-paywall",
+      "query": "basic features are now locked behind a subscription",
+      "expected_review_ids": [
+        "e14-01",
+        "e14-02"
+      ],
+      "language": "en",
+      "note": "基础功能被付费墙锁住"
+    },
+    {
+      "query_id": "q-performance",
+      "query": "app is slow to open and scrolling stutters",
+      "expected_review_ids": [
+        "e19-01",
+        "e19-02"
+      ],
+      "language": "en",
+      "note": "启动慢、滚动卡顿"
+    },
+    {
+      "query_id": "q-offline",
+      "query": "downloaded workouts will not play without a connection",
+      "expected_review_ids": [
+        "e21-01",
+        "e21-02"
+      ],
+      "language": "en",
+      "note": "离线下载内容放不了"
+    },
+    {
+      "query_id": "q-update",
+      "query": "the last update removed my saved plans",
+      "expected_review_ids": [
+        "e25-01",
+        "e25-02"
+      ],
+      "language": "en",
+      "note": "更新后丢了训练计划"
+    },
+    {
+      "query_id": "q-price-clarity",
+      "query": "订阅页看不到年费总额，价格藏得太深",
+      "expected_review_ids": [
+        "e3-01",
+        "e3-02"
+      ],
+      "language": "zh",
+      "note": "价格不透明"
+    },
+    {
+      "query_id": "q-timer-reset",
+      "query": "暂停之后计时器从零开始，之前那组白做了",
+      "expected_review_ids": [
+        "e7-01",
+        "e7-02"
+      ],
+      "language": "zh",
+      "note": "暂停后计时器归零"
+    },
+    {
+      "query_id": "q-data-loss",
+      "query": "更新之后我过去几个月的训练记录全没了",
+      "expected_review_ids": [
+        "e12-01",
+        "e12-02"
+      ],
+      "language": "zh",
+      "note": "升级后数据丢失"
+    },
+    {
+      "query_id": "q-paywall-zh",
+      "query": "免费内容越来越少，基础功能都要付费",
+      "expected_review_ids": [
+        "e15-01",
+        "e15-02"
+      ],
+      "language": "zh",
+      "note": "免费额度缩水"
+    },
+    {
+      "query_id": "q-ads",
+      "query": "每组之间都插广告，还强制跳到浏览器",
+      "expected_review_ids": [
+        "e16-01",
+        "e16-02"
+      ],
+      "language": "zh",
+      "note": "广告干扰"
+    },
+    {
+      "query_id": "q-battery",
+      "query": "后台放着不动也掉电，训练时手机发烫",
+      "expected_review_ids": [
+        "e20-01",
+        "e20-02"
+      ],
+      "language": "zh",
+      "note": "耗电与发热"
+    },
+    {
+      "query_id": "q-notification",
+      "query": "通知太多而且关不掉，只想留训练提醒",
+      "expected_review_ids": [
+        "e22-01",
+        "e22-02"
+      ],
+      "language": "zh",
+      "note": "通知骚扰且无法精细关闭"
+    },
+    {
+      "query_id": "q-localization",
+      "query": "切换成中文之后界面还有一半是英文",
+      "expected_review_ids": [
+        "e23-01",
+        "e23-02"
+      ],
+      "language": "zh",
+      "note": "本地化不完整"
+    },
+    {
+      "query_id": "q-search-zh",
+      "query": "搜索结果完全不相关，筛选也不起作用",
+      "expected_review_ids": [
+        "e18-01",
+        "e18-02"
+      ],
+      "language": "zh",
+      "note": "站内搜索质量"
+    }
+  ]
+}

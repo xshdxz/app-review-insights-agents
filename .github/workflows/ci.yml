@@ -47,6 +47,11 @@ jobs:
       # 坏掉的评测集跑出来的数字毫无意义，所以它本身也要过门禁（不调用模型，零成本）
       - name: Validate gold evaluation dataset
         run: python scripts/run_eval.py
+      # 检索评测：查询集校验 + 离线基线门禁（纯 FTS，不调用模型，零成本）
+      - name: Validate retrieval eval dataset
+        run: python scripts/run_retrieval_eval.py --validate-only
+      - name: Retrieval baseline gate
+        run: python scripts/run_retrieval_eval.py --fail-under-recall-at-3 0.5 > /dev/null
 
   api:
     name: HTTP contract (optional [api] extra)

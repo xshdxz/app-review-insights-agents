@@ -56,13 +56,29 @@ def build_fts_query(text: str, match_mode: str = "and") -> str:
         runs = re.findall(r"[\u4e00-\u9fff]+|[a-z0-9_]+", term)
         for run in runs:
             if re.fullmatch(r"[\u4e00-\u9fff]+", run):
-                fts_terms.append(f'"{_cjk_segment(run)}"')
+                # 严格模式：整段相邻（精确优先）；宽松模式：相邻二元组（否则中文长问句必然落空）
+                if match_mode == "or":
+                    fts_terms.extend(_cjk_loose_terms(run))
+                else:
+                    fts_terms.append(f'"{_cjk_segment(run)}"')
             else:
                 fts_terms.append(f'"{run}"')
     if not fts_terms:
         return '"__no_match__"'
     joiner = " OR " if match_mode == "or" else " AND "
     return joiner.join(fts_terms)
+
+
+def _cjk_loose_terms(run: str) -> list[str]:
+    """宽松模式下的 CJK 展开：相邻二元组；两字及以下就是它自己。
+
+    整段短语要求逐字相邻出现，而中文问句常常既没空格也没标点——整句于是变成一个永远命不中的
+    短语（2026-09-20 的检索评测实测：用户问一句人话，系统答「没有找到相关评论」）。
+    二元组保留「相邻」这个约束（避免误命中分散的订/阅），同时容忍局部改写。
+    """
+    if len(run) <= 2:
+        return [f'"{_cjk_segment(run)}"']
+    return [f'"{_cjk_segment(run[index : index + 2])}"' for index in range(len(run) - 1)]
 
 
 def _cjk_segment(text: str) -> str:

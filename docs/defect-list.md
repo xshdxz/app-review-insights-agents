@@ -18,6 +18,8 @@
 
 | D-13 | 高 | fixed | **worker 永远不会调度**：compose 里 worker 只写 `env_file: .env`，而 `.env` 是不入库的本机配置（`SCHEDULER_ENABLED=false`）。"只有 worker 设 true"这个设计意图只写在 AGENTS.md 里，代码里从未落实——新克隆必然得到无限重启的 worker；反过来本机 `.env` 若为 true，web 与 worker 会**同时**调度，定时报告发两遍。 | `docker logs repo-worker-1`：每 2 秒一条「SCHEDULER_ENABLED=false，worker 退出」，`docker compose ps` 显示 `Restarting`。 | 在 compose 里显式声明角色（worker=`true` / web=`false`，`environment` 覆盖 `env_file`）；新增 `test_exactly_one_service_schedules` 把"调度者唯一"钉成不变量。修复后 worker 转为 healthy，调度器 0 jobs 常驻。 |
 
+| D-17 | 高 | fixed | **中文长问句检索必然落空**：`build_fts_query` 把没有空白或标点的中文查询变成一个 「字符间加空格的整段短语」，FTS5 里等价于要求**逐字相邻出现**；而 `search_corpus` 的「严格 AND → 无结果退化 OR」 两级用的是**同一个串**，所以换个说法的中文问句两轮都命中不了，RAG 页面回答「当前语料中没有找到与该问题相关的评论」 ——静默失败，还说了假话。（带全角标点时会被切成两段，偶有命中，所以一直没被发现。） | T6 检索评测首跑：`q-data-loss` 的查询与目标评论只差两个字（「我过去几个月」vs「过去三个月」）却召回 0； dump `build_fts_query` 的输出确认两轮都是同一条 17 字短语。评测数字：中文 recall@3 = 0.167、英文 0.500。 | **宽松回退那一级**对 CJK 长段展开为**相邻二元组**（保留「相邻」约束——`订阅` 仍不会命中订/阅分散的评论， 既有用例守着这一点），严格模式保持整段短语不变。修复后中文 recall@3 **0.167 → 0.722**、整体 recall@3 0.357 → 0.595、 MRR 0.667 → 0.873；英文 0.500 未变（无回归）；precision@5 0.333 → 0.319（宽松兜底多带回少量弱相关，代价已量化）。 **这一条是「先造尺子」的直接收益**：没有检索评测，它不会以任何方式暴露出来。 |
+
 ## 中
 
 | # | 严重程度 | 状态 | 问题 | 证据 | 修复 |

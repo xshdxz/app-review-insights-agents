@@ -12,6 +12,12 @@
   全部走回放 ⇒ 零模型成本；`pytest -m reliability`，默认不随主套件运行
 - **运行租约**（`storage/lease.py`）：运行记录带持有者身份（`host:pid:token`）与心跳。
   同主机且持有者进程已不存在时**立即**可以接管；判不出来（跨主机、旧记录）才退回心跳窗口
+- **检索质量评测**（T6）：`evals/gold-retrieval.json`（21 条查询，答案锚定既有黄金集）+ `scripts/run_retrieval_eval.py`
+  （recall@k / MRR / precision@k，口径写进 docstring 与单测）+ `docs/retrieval-eval.md`；离线配置进 CI 并带阈值门禁。
+  **首跑撞出 D-17**：没有空白或标点的中文长问句会被构造成一条必须逐字出现的 FTS 短语，严格 AND 与宽松 OR 又是同一个串，
+  于是换个说法的中文问句两轮都落空、界面回答「没有找到相关评论」。修法是让宽松回退对 CJK 长段展开为相邻二元组——
+  中文 recall@3 0.167 → 0.722、整体 0.357 → 0.595、MRR 0.667 → 0.873，英文 0.500 未变，precision@5 略降 0.333 → 0.319（代价已量化）。
+  向量/混合那一路因本机无 embedding provider 标注为**未测**
 - **运行队列与服务化**（T1）：编排器拆出「提交」与「执行」两半——`enqueue` 只落一条排队记录，
   worker 侧的常驻执行者原子认领并跑完（`RUN_QUEUE_ENABLED`）。**运行不再依赖浏览器标签页**：
   界面在 `EXECUTION_MODE=queued` 下提交即撒手，并如实显示有没有执行者在消费队列（执行者心跳）；
