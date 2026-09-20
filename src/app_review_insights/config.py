@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     # 配合下方 mode="before" 校验器手工按逗号拆分。
     webhook_urls: Annotated[list[str], NoDecode] = Field(default_factory=list, alias="WEBHOOK_URLS")
     scheduler_enabled: bool = Field(default=False, alias="SCHEDULER_ENABLED")
+    #: worker 是否消费运行队列（把用户提交的分析真正跑起来）。与 SCHEDULER_ENABLED 是两个
+    #: 独立职责，一个进程可以只做其一。**web 进程不消费队列**——那正是"运行不依赖浏览器
+    #: 标签页"的前提。
+    run_queue_enabled: bool = Field(default=False, alias="RUN_QUEUE_ENABLED")
+    #: 队列轮询间隔（秒）。空队列时执行者每这么久看一眼；调大会让"提交之后被接手"变慢。
+    run_queue_poll_seconds: float = Field(default=2.0, alias="RUN_QUEUE_POLL_SECONDS")
     # 日志：LOG_FORMAT=json 时输出 JSON Lines（带 run_id 关联 ID），便于采集器索引
     # 整轮运行的墙钟上限（秒；0 = 不限制）。单次调用超时之外的第二道保险。
     run_max_duration_seconds: float = Field(default=0, alias="RUN_MAX_DURATION_SECONDS")

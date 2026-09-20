@@ -255,6 +255,30 @@ class RunRepository:
         with self._session() as connection:
             connection.execute("DELETE FROM run_cancellations WHERE run_id = ?", (run_id,))
 
+    def fail_run(self, run_id: str, *, error: str, now: datetime | None = None) -> RunRecord:
+        """把一条运行直接判为失败——用于"认领了却没能开始"的情形。
+
+        刻意**不让它退回 `PENDING`**：那会让一条必然失败（密钥缺失、装配报错…）的运行被
+        反复重试，变成毒丸——日志刷屏、每一轮都白占一个执行者。失败就如实失败，
+        错误写进 `last_error`，用户看得见，也能重新提交。
+        """
+        moment = now or datetime.now(UTC)
+        with self._immediate_session() as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(run_id)
+            record = RunRecord.model_validate_json(row["payload_json"])
+            failed = record.model_copy(
+                update={"status": RunStatus.FAILED, "last_error": error, "updated_at": moment}
+            )
+            connection.execute(
+                "UPDATE runs SET payload_json = ?, updated_at = ? WHERE run_id = ?",
+                (failed.model_dump_json(), moment.isoformat(), run_id),
+            )
+        return failed
+
     def save_inputs(self, run_id: str, payload: list[dict[str, Any]]) -> None:
         """把提交时的评论落盘。
 

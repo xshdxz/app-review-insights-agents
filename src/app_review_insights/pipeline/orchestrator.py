@@ -173,11 +173,29 @@ class AnalysisOrchestrator:
 
         认领不到（别人正持有、或运行已终结）就**原样返回、绝不开工**：两个执行者写同一份
         检查点会把结果搅坏——宁可不干，也不能重复干。
-        没传评论时优先用提交时落盘的那批（见 `enqueue`）。
+        没传评论时由 `_run_in_context` 从库里读提交时落盘的那批（见 `enqueue`）。
         """
-        if imported_reviews is None:
-            imported_reviews = self._load_imported_reviews(run_id)
         return self._claim_and_run(run_id, imported_reviews)
+
+    def run_claimed(self, run: RunRecord) -> RunRecord:
+        """执行一条**调用方已经认领**的运行。
+
+        与 `execute()` 的分工：那个负责"确认没人持有 → 接管"，这个假定认领已经完成
+        （队列执行者刚用 `claim_next_run` 拿到它）。两者分开，是为了不让"我持有它"与
+        "同进程的另一个线程持有它"混为一谈——租约按进程判定，区分不了线程，
+        再判一次只会把"我自己刚认领的"误判成"别人在写"。
+        """
+        if self.repository.cancel_requested(run.run_id):
+            # 排队期间就被请求取消：拿到它就直接了结，一次模型调用都不发
+            return self._stop(
+                self._update_run(run, status=RunStatus.RUNNING, last_error=None),
+                status=RunStatus.CANCELLED,
+                error=None,
+                message="Run cancelled before it started",
+            )
+        run = self._update_run(run, status=RunStatus.RUNNING, last_error=None)
+        self._add_event(run, "Analysis run claimed")
+        return self._run_in_context(run)
 
     def cancel(self, run_id: str) -> bool:
         """请求取消一次运行；返回是否被受理。
@@ -278,6 +296,10 @@ class AnalysisOrchestrator:
         之外的调用（例如流水线跑完后 Agent 侧再发起的模型调用），把成本记到
         一个已经结束的运行上。
         """
+        if imported_reviews is None:
+            # 三条执行入口（start / resume / run_claimed）共用的兜底：评论没在手上，
+            # 就从提交时落盘的那份读——执行者可能是另一个进程，甚至在几天之后。
+            imported_reviews = self._load_imported_reviews(run.run_id)
         self._deadline = (
             None
             if self.max_duration_seconds is None

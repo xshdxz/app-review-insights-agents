@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
@@ -21,6 +22,8 @@ from app_review_insights.models import (
     Stage,
     ValidationReport,
 )
+from app_review_insights.monitor.health import HealthState
+from app_review_insights.monitor.queue_executor import execute_once, start_queue_executor
 from app_review_insights.pipeline.orchestrator import (
     AnalysisOrchestrator,
     PipelineServices,
@@ -323,3 +326,113 @@ def test_pruning_a_run_also_removes_its_persisted_inputs(tmp_path):
 
     assert repo.prune_runs(older_than_days=0) == 1
     assert repo.get_inputs(queued.run_id) is None
+
+
+# ── 执行者：认领 → 执行 → 记结果 ─────────────────────────────────────────────
+
+
+def _wait_for(predicate, timeout: float = 20.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def _services_factory(repo: RunRepository):
+    return lambda run: make_services(repo, CountingAnalyzer())
+
+
+def test_executor_completes_an_enqueued_run(tmp_path):
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    AnalysisOrchestrator(make_services(repo, CountingAnalyzer())).enqueue(
+        make_request(), imported_reviews=make_reviews(4)
+    )
+
+    executed = execute_once(repo, _services_factory(repo), lease_timeout_seconds=300.0)
+
+    assert executed is not None
+    assert executed.status == RunStatus.COMPLETED
+    assert repo.get_output(executed.run_id, Stage.COLLECT) is not None
+
+
+def test_executor_returns_none_when_the_queue_is_empty(tmp_path):
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+
+    assert execute_once(repo, _services_factory(repo), lease_timeout_seconds=300.0) is None
+
+
+def test_executor_loop_picks_up_a_run_enqueued_after_it_started(tmp_path):
+    """常驻循环：先空转一阵，之后新提交的运行不需要重启进程就能被接手。"""
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    state = HealthState()
+    stop_event = threading.Event()
+    thread = start_queue_executor(
+        repo,
+        _services_factory(repo),
+        state,
+        stop_event,
+        poll_seconds=0.05,
+        lease_timeout_seconds=300.0,
+    )
+    try:
+        time.sleep(0.3)  # 让它先在空队列上转几圈
+        queued = AnalysisOrchestrator(make_services(repo, CountingAnalyzer())).enqueue(
+            make_request(), imported_reviews=make_reviews(4)
+        )
+
+        assert _wait_for(lambda: repo.get_run(queued.run_id).status is RunStatus.COMPLETED), (
+            "提交之后的运行没有被执行者接手"
+        )
+    finally:
+        stop_event.set()
+        thread.join(timeout=10)
+
+    assert not thread.is_alive(), "执行者应当能干净地停下来"
+    assert state.snapshot()["jobs_completed"] == 1
+
+
+def test_executor_marks_a_run_failed_when_it_cannot_even_start(tmp_path):
+    """认领了却起不来（装配报错等）：如实判失败。
+
+    若退回 `PENDING`，这条必然失败的运行会被反复重试——毒丸：日志刷屏，
+    每一轮都白占一个执行者。而且执行者本身不能因此死掉：后面的运行还得有人接。
+    """
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    first = AnalysisOrchestrator(make_services(repo, CountingAnalyzer())).enqueue(
+        make_request(), imported_reviews=make_reviews(4)
+    )
+    second = AnalysisOrchestrator(make_services(repo, CountingAnalyzer())).enqueue(
+        AnalysisRequest(source_type=SourceType.JSON, analysis_goal="第二个目标"),
+        imported_reviews=make_reviews(4),
+    )
+    state = HealthState()
+    stop_event = threading.Event()
+    broken = {"pending": True}
+
+    def flaky_factory(run):
+        if broken["pending"]:
+            broken["pending"] = False
+            raise RuntimeError("装配失败：假装没有可用的模型密钥")
+        return make_services(repo, CountingAnalyzer())
+
+    thread = start_queue_executor(
+        repo,
+        flaky_factory,
+        state,
+        stop_event,
+        poll_seconds=0.05,
+        lease_timeout_seconds=300.0,
+    )
+    try:
+        assert _wait_for(lambda: repo.get_run(second.run_id).status is RunStatus.COMPLETED), (
+            "一次装配失败不该让后面的运行没人接"
+        )
+    finally:
+        stop_event.set()
+        thread.join(timeout=10)
+
+    assert repo.get_run(first.run_id).status is RunStatus.FAILED
+    assert "装配失败" in (repo.get_run(first.run_id).last_error or "")
+    assert state.snapshot()["jobs_failed"] == 1

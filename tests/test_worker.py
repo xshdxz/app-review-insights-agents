@@ -189,15 +189,58 @@ def test_run_job_no_delivered_on_webhook_failure():
 # ── main() tests ─────────────────────────────────────────────────────────────
 
 
-def test_main_exits_when_scheduler_disabled():
+def test_main_exits_when_it_has_nothing_to_do():
+    """两个职责都关掉：worker 没有可做的事，应当正常返回而不是空转。
+
+    `SCHEDULER_ENABLED` 与 `RUN_QUEUE_ENABLED` 是**两个独立职责**：关掉定时调度
+    不代表也关掉了"执行用户提交的运行"。
+    """
     from app_review_insights.monitor.worker import main
 
     settings = MagicMock()
     settings.scheduler_enabled = False
+    settings.run_queue_enabled = False
 
     with patch("app_review_insights.monitor.worker.load_settings", return_value=settings):
         # main() 应该正常返回（不抛异常），只是发 warning 并退出
         main()
+
+
+def test_main_runs_only_the_queue_executor_when_scheduler_is_off(tmp_path):
+    """只消费队列的 worker：起执行者，但**不该装配 agent 栈**——那是调度器才需要的东西。"""
+    from app_review_insights.monitor.worker import main
+
+    settings = MagicMock()
+    settings.scheduler_enabled = False
+    settings.run_queue_enabled = True
+    settings.maintenance_enabled = False
+    settings.database_path = str(tmp_path / "runs.sqlite3")
+    settings.run_queue_poll_seconds = 0.05
+
+    fake_executor = MagicMock()
+    fake_executor.is_alive.return_value = False
+
+    with (
+        patch("app_review_insights.monitor.worker.load_settings", return_value=settings),
+        patch("app_review_insights.monitor.worker.build_agent_stack") as mock_stack,
+        patch(
+            "app_review_insights.monitor.worker.start_queue_executor",
+            return_value=fake_executor,
+        ) as mock_exec,
+        patch(
+            "app_review_insights.monitor.worker.install_signal_handlers",
+            side_effect=lambda stop_event: stop_event.set(),
+        ),
+        # 健康端点不真绑端口
+        patch("app_review_insights.monitor.worker.start_health_server") as mock_health,
+    ):
+        mock_health.return_value = (MagicMock(), MagicMock())
+        main()
+
+    mock_stack.assert_not_called()
+    mock_exec.assert_called_once()
+    assert mock_exec.call_args.kwargs["poll_seconds"] == settings.run_queue_poll_seconds
+    assert mock_exec.call_args.kwargs["lease_timeout_seconds"] == settings.lease_timeout_seconds
 
 
 def test_main_starts_scheduler_when_enabled():

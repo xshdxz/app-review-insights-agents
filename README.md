@@ -215,6 +215,8 @@ Agent 层**包裹在确定性核心之外**：
 | `AGENT_DB_PATH` | `data/agent/agent.sqlite3` | Agent 运行 / 监控任务 / 报告 / 语料（FTS5）。 |
 | `WEBHOOK_TYPE` / `WEBHOOK_URLS` | *(空)* | `feishu` / `dingtalk` / `wecom` / `slack`；多个地址用英文逗号分隔。 |
 | `SCHEDULER_ENABLED` | `false` | 本进程是否启动定时调度（worker 容器设为 `true`）。 |
+| `RUN_QUEUE_ENABLED` | `false` | worker 是否**消费运行队列**（把提交的分析真正跑起来）。与 `SCHEDULER_ENABLED` 是两个独立职责，可只做其一；**web 进程不消费队列**——这正是"运行不依赖浏览器标签页"的前提。 |
+| `RUN_QUEUE_POLL_SECONDS` | `2` | 队列轮询间隔。空队列时执行者按这个间隔看一眼；调大会让"提交之后被接手"变慢。 |
 | `WEB_HEALTH_HOST` / `WEB_HEALTH_PORT` | `0.0.0.0` / `9101` | web 进程的健康与指标端点（同上三个路径）。**默认不被 Prometheus 抓取**：Streamlit 的脚本按会话执行，没人打开页面时该端点并不存在；阶段耗时写在共享 SQLite 里，worker 的 `/metrics` 读的是同一份数据。 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | *(空)* | 三层追踪（run → stage → model call）的上报地址。**留空 = 不上报**；需要先装 `.[observability]` extra。|
 | `WORKER_HEALTH_HOST` / `WORKER_HEALTH_PORT` | `0.0.0.0` / `9100` | worker 的健康与指标端点：`/healthz` 存活、`/readyz` 就绪、`/metrics` Prometheus 文本。 |
