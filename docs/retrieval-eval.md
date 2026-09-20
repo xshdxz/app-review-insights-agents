@@ -96,7 +96,7 @@ min-max 归一化成 1.0，于是改写出来的短查询（更泛、更容易�
 ```python
 # 修复前（retrieval.py::_rank）
 by_id = {hit["review_id"]: score for hit in hits}
-for chunk in chunks:                    # ← 只遍历 FTS 已召回的候选
+for chunk in chunks:  # ← 只遍历 FTS 已召回的候选
     chunk.score = 0.6 * chunk.score + 0.4 * by_id.get(chunk.review_id, 0.0)
 ```
 
