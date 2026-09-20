@@ -9,7 +9,8 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 # editable 安装：保持 main.py 的 __file__ 指向 /app/src/，
 # 使 ui/main.py 的 _PROJECT_ROOT = parents[3] 正确解析到 /app（data/ 挂载点）。
-RUN pip install --no-cache-dir -e .
+# 装上 [api]：HTTP 契约层是 compose 部署的一部分；其余 extra 仍按需
+RUN pip install --no-cache-dir -e ".[api]"
 
 COPY app.py .streamlit .env.example ./
 COPY pages ./pages

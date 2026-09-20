@@ -51,6 +51,30 @@ services:
       retries: 3
       start_period: 20s
 
+  # HTTP 契约层：与 web/worker 同一份镜像，第三条启动命令
+  api:
+    image: ari-app
+    build: .
+    command: python -m app_review_insights.api
+    env_file: .env
+    environment:
+      # 容器内必须显式监听所有网卡，否则端口映射形同虚设（默认 127.0.0.1 是给本机跑的）
+      ARI_API_HOST: "0.0.0.0"
+      SCHEDULER_ENABLED: "false"
+      RUN_QUEUE_ENABLED: "false"
+    volumes:
+      - ./data:/app/data
+    ports:
+      # 只绑本机：提交分析要花钱，默认不该对局域网敞开
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
   worker:
     image: ari-app
     build: .

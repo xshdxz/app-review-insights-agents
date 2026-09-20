@@ -28,7 +28,8 @@ def rendered_metric_names() -> set[str]:
         duration_stats=lambda: {
             "stage": {"clean": {"count": 2, "p50": 10.0, "p95": 20.0, "max": 25.0}},
             "model": {"plan": {"count": 2, "p50": 30.0, "p95": 40.0, "max": 45.0}},
-        }
+        },
+        queue_stats=lambda: {"depth": 3, "oldest_wait_seconds": 12.5, "executor_seen": True},
     )
     state.record_job(success=True)
     state.record_job(success=False)

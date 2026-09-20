@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     #: queued＝只入队，交给 worker 执行——运行因此不依赖浏览器标签页。
     #: 用 Literal 而不是 str：写错的值应当在启动时就炸，而不是悄悄退化成 inline。
     execution_mode: Literal["inline", "queued"] = Field(default="inline", alias="EXECUTION_MODE")
+    #: HTTP 接口的写入令牌。**没配置时写入端点一律 503**：提交一次分析要花钱，
+    #: 一个能匿名花钱的接口不该被默认打开。读取端点不受影响。
+    api_token: str = Field(default="", alias="API_TOKEN")
+    #: 队列积压上限：超过就对新提交返回 429，而不是让它们排到天荒地老。
+    api_max_queue_depth: int = Field(default=20, ge=1, alias="API_MAX_QUEUE_DEPTH")
     #: 队列轮询间隔（秒）。空队列时执行者每这么久看一眼；调大会让"提交之后被接手"变慢。
     run_queue_poll_seconds: float = Field(default=2.0, alias="RUN_QUEUE_POLL_SECONDS")
     # 日志：LOG_FORMAT=json 时输出 JSON Lines（带 run_id 关联 ID），便于采集器索引

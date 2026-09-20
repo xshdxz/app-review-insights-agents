@@ -132,6 +132,31 @@ F-001 免费内容大幅减少，付费墙限制基本功能   ← 15 条支持�
 - **出事了照着做**：`docs/slo.md`（6 条 SLI，每条写明用哪句 PromQL / SQL 算）+ `docs/runbook.md`（10 个场景：症状 → 先看什么 → 处置 → 怎么确认好了）。
 - **恢复能力是演练过的**：`scripts/backup_restore_drill.py` 用 SQLite 在线备份 API 备份、**从备份**恢复后逐表核对行数与内容摘要，真实记录见 `docs/backup-drill.md`。
 
+### 作为服务运行（HTTP 接口）
+
+流水线也能不经过页面直接用。装上可选 extra 之后：
+
+```powershell
+pip install -e ".[api]"
+$env:API_TOKEN = "dev-token"        # 不配令牌时写入端点一律 503（提交一次分析要花钱）
+python -m app_review_insights.api  # 默认只监听 127.0.0.1:8000
+
+# 提交一次分析：202 表示「已受理」，执行交给 worker
+curl -X POST http://127.0.0.1:8000/v1/runs `
+  -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" `
+  -d '{"analysis_goal":"找出订阅转化的问题","reviews":[{"review_id":"r1","content":"订阅页看不到续费价格"}]}'
+
+# 看进度（加 ?stream=1 走 SSE），或看整条队列
+curl http://127.0.0.1:8000/v1/runs/<run_id>
+curl http://127.0.0.1:8000/v1/queue
+```
+
+- **为什么是 202 而不是 200**：这次调用只保证「已受理」。执行者是 worker——**运行不依赖你的终端，也不依赖浏览器标签页**。
+- **取消是协作式的**：`POST /v1/runs/{id}/cancel` 只记下意图，执行者在下一个阶段边界才停，响应里写明了这一点，**不假装「点了就停」**。
+- **写端点要令牌，读端点不要**：提交一次分析要花钱，一个能匿名花钱的接口不该默认打开；没配 `API_TOKEN` 时写入端点返回 503 并说明怎么开。
+- **背压**：队列积压超过 `API_MAX_QUEUE_DEPTH` 时新提交返回 429——宁可现在如实拒绝，也不让请求排到天荒地老。
+- **契约有测试守着**：`tests/test_api.py` 冻结路由表与受理码。刻意不比对整份 OpenAPI schema 快照——那东西会随 FastAPI/pydantic 小版本漂移，天天红之后就没人看了。
+- `docker compose up -d` 会一并起 `api` 服务（同一份镜像的第三条启动命令），端口只绑本机；交互式文档在 `/docs`。
 ---
 
 ## 核心架构
@@ -218,6 +243,9 @@ Agent 层**包裹在确定性核心之外**：
 | `RUN_QUEUE_ENABLED` | `false` | worker 是否**消费运行队列**（把提交的分析真正跑起来）。与 `SCHEDULER_ENABLED` 是两个独立职责，可只做其一；**web 进程不消费队列**——这正是"运行不依赖浏览器标签页"的前提。 |
 | `RUN_QUEUE_POLL_SECONDS` | `2` | 队列轮询间隔。空队列时执行者按这个间隔看一眼；调大会让"提交之后被接手"变慢。 |
 | `EXECUTION_MODE` | `inline` | 界面怎么执行一次分析：`inline`＝在本进程里直接跑；`queued`＝只入队、交给 worker——**运行因此不依赖浏览器标签页**。队列模式下界面会如实显示有没有执行者在消费队列。 |
+| `API_TOKEN` | 空 | HTTP 接口的写入令牌（`Authorization: Bearer …`）。**没配置时写入端点返回 503**——提交一次分析要花钱，一个能匿名花钱的接口不该默认打开；读取端点不受影响。 |
+| `API_MAX_QUEUE_DEPTH` | `20` | 队列积压上限，超过就对新的提交返回 429（背压：宁可现在拒绝，也不让请求排到天荒地老）。 |
+| `ARI_API_HOST` / `ARI_API_PORT` | `127.0.0.1` / `8000` | API 服务监听地址。容器里必须显式设成 `0.0.0.0`，否则端口映射形同虚设。 |
 | `WEB_HEALTH_HOST` / `WEB_HEALTH_PORT` | `0.0.0.0` / `9101` | web 进程的健康与指标端点（同上三个路径）。**默认不被 Prometheus 抓取**：Streamlit 的脚本按会话执行，没人打开页面时该端点并不存在；阶段耗时写在共享 SQLite 里，worker 的 `/metrics` 读的是同一份数据。 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | *(空)* | 三层追踪（run → stage → model call）的上报地址。**留空 = 不上报**；需要先装 `.[observability]` extra。|
 | `WORKER_HEALTH_HOST` / `WORKER_HEALTH_PORT` | `0.0.0.0` / `9100` | worker 的健康与指标端点：`/healthz` 存活、`/readyz` 就绪、`/metrics` Prometheus 文本。 |

@@ -12,6 +12,17 @@
   全部走回放 ⇒ 零模型成本；`pytest -m reliability`，默认不随主套件运行
 - **运行租约**（`storage/lease.py`）：运行记录带持有者身份（`host:pid:token`）与心跳。
   同主机且持有者进程已不存在时**立即**可以接管；判不出来（跨主机、旧记录）才退回心跳窗口
+- **运行队列与服务化**（T1）：编排器拆出「提交」与「执行」两半——`enqueue` 只落一条排队记录，
+  worker 侧的常驻执行者原子认领并跑完（`RUN_QUEUE_ENABLED`）。**运行不再依赖浏览器标签页**：
+  界面在 `EXECUTION_MODE=queued` 下提交即撒手，并如实显示有没有执行者在消费队列（执行者心跳）；
+  取消是协作式的（下一个阶段边界生效，已完成的阶段全部保留、可续跑）；
+  认领了却起不来的运行如实判失败，不退回队列变成毒丸
+- **HTTP 契约层**（可选 extra `[api]`：fastapi + uvicorn）：`POST /v1/runs` 提交即返回 202；
+  `GET /v1/runs/{id}`、`/events`（含 SSE）、`/result`、`/v1/queue`、`/healthz`、`/metrics`；
+  写端点需 `API_TOKEN`（未配置时 503——提交要花钱），队列积压超限 429，默认只监听 127.0.0.1。
+  契约由路由表快照测试守着；主 CI job 不装 extra（降级路径持续被验），新增一个 job 装上真跑契约测试
+- **队列可观测**：`ari_queue_depth` / `ari_queue_oldest_wait_seconds` / `ari_queue_executor_seen`
+  三条指标与两条告警（积压过久、有排队却没人消费）
 - **可观测性**：阶段耗时落盘（`stage_timings` 表，跟着运行一起被保留策略清理）并在
   `/metrics` 暴露 P50/P95（以秒为基本单位）；web 进程也有健康/指标端点（`WEB_HEALTH_HOST` /
   `WEB_HEALTH_PORT`，但 Streamlit 按会话执行脚本 ⇒ 不作为抓取目标，详见 `ops/prometheus.yml`）；

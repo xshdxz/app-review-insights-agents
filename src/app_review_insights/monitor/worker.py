@@ -19,7 +19,10 @@ from app_review_insights.maintenance import start_maintenance_loop
 from app_review_insights.models import Review, RunRecord
 from app_review_insights.monitor.alerts import make_status_alerter
 from app_review_insights.monitor.health import HealthState, start_health_server
-from app_review_insights.monitor.queue_executor import start_queue_executor
+from app_review_insights.monitor.queue_executor import (
+    HEARTBEAT_INTERVAL_SECONDS,
+    start_queue_executor,
+)
 from app_review_insights.monitor.report import build_report
 from app_review_insights.monitor.scheduler import MonitorScheduler
 from app_review_insights.monitor.webhook import WebhookSender
@@ -162,7 +165,12 @@ def main() -> None:
         duration_stats=lambda: {
             "stage": run_repository.stage_timing_summary(),
             "model": run_repository.model_latency_summary(),
-        }
+        },
+        queue_stats=lambda: {
+            "depth": run_repository.queue_depth(),
+            "oldest_wait_seconds": run_repository.oldest_pending_seconds(),
+            "executor_seen": run_repository.executor_seen_within(HEARTBEAT_INTERVAL_SECONDS * 3),
+        },
     )
     server, _health_thread = start_health_server(
         state,

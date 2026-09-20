@@ -147,3 +147,27 @@ worker 默认每天自动跑一次（`MAINTENANCE_ENABLED=true`）。
 # 与 CI 完全一致的调用方式（裸 pytest 不会把 CWD 放进 sys.path）
 ..venvScriptspytest
 ```
+
+---
+
+## 11. 提交了，但一直停在「排队中」
+
+**症状**：界面显示「已入队」；`GET /v1/runs/{id}` 的 `status` 长期是 `pending`；什么都没报错。
+
+**先看什么**：
+
+```powershell
+curl http://127.0.0.1:8000/v1/queue   # 或直接看 /metrics 里的 ari_queue_*
+```
+
+| 线索 | 判断 | 处置 |
+|---|---|---|
+| `executor_seen: false` | **根本没人消费队列**——这是最常见的成因 | 起 worker（`RUN_QUEUE_ENABLED=true`）；容器部署先看 worker 容器在不在 |
+| `executor_seen: true` 且 `depth` 一直涨 | 执行者在跑，但比提交慢 | 看 `ari_queue_oldest_wait_seconds` 涨得多快；必要时加执行者或降低提交频率 |
+| `depth: 0` 但运行仍是 `pending` | 认领走了却没跑起来 | 看 worker 日志有没有「认领到运行」后紧跟着的异常——**起不来的运行会被如实判失败**（`failed` + `last_error`），不会一直挂着 |
+
+**验证**：`depth` 归零，运行状态走到 `running` 再到 `completed`。
+
+> 队列模式下的「继续」＝重新入队（`requeue`）：清租约 + 清取消请求后才可能被认领。
+> 若仍被活执行者持有，接口会如实报冲突，不会假装成功。
+

@@ -31,6 +31,12 @@ dev = [
 experiments = [
   "langgraph>=0.2,<1",
 ]
+# 可选：HTTP 契约层（fastapi + uvicorn）。不装就没有这一层，核心依赖不受影响；
+# Streamlit Cloud 那种单进程演示部署也不需要它。
+api = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+]
 # 可选：三层追踪（run → stage → model call）。没装就是 no-op，核心依赖不受影响。
 # CI 刻意不装这个 extra —— 正好让 CI 覆盖"降级路径仍然全绿"那一半。
 observability = [

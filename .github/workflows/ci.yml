@@ -48,6 +48,24 @@ jobs:
       - name: Validate gold evaluation dataset
         run: python scripts/run_eval.py
 
+  api:
+    name: HTTP contract (optional [api] extra)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package with the optional api extra
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,api]"
+      # 主 test job 刻意不装 [api]：那组用例在那里 skip，降级路径一直有人验；
+      # 这里装上 extra 真跑一遍契约测试。两半都被覆盖，而不是只验一半。
+      - name: Contract tests
+        run: pytest tests/test_api.py -q
+
   reliability:
     name: Reliability (crash & fault injection)
     runs-on: ubuntu-latest

@@ -181,7 +181,9 @@ def _ensure_health_server(settings: Settings, repository: RunRepository) -> None
         duration_stats=lambda: {
             "stage": repository.stage_timing_summary(),
             "model": repository.model_latency_summary(),
-        }
+        },
+        # web 进程答不了「有没有执行者」（它不消费队列），但积压数是读库就有的
+        queue_stats=lambda: {"depth": repository.queue_depth()},
     )
     try:
         start_health_server(state, host=settings.web_health_host, port=settings.web_health_port)

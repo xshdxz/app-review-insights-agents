@@ -59,8 +59,13 @@ class HealthState:
     那会让"抓不到指标"变成"服务看起来挂了"。
     """
 
-    def __init__(self, duration_stats: Callable[[], dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self,
+        duration_stats: Callable[[], dict[str, Any]] | None = None,
+        queue_stats: Callable[[], dict[str, Any]] | None = None,
+    ) -> None:
         self._duration_stats = duration_stats
+        self._queue_stats = queue_stats
         self._lock = threading.Lock()
         self._started_at = time.time()
         self._ready = False
@@ -114,6 +119,31 @@ class HealthState:
             stats.get("model") or {},
         )
 
+    def queue_families(self) -> list[str]:
+        """队列指标：积压多少、有没有人在消费。
+
+        只有在**知道答案的进程**里才输出（worker 与 API 给得出，纯 web 进程给不出）。
+        宁可整段不出现，也不要输出一个看着像 0 的假值——告警会当真。
+        """
+        if self._queue_stats is None:
+            return []
+        try:
+            stats = self._queue_stats()
+        except Exception:
+            logger.warning("队列指标取数失败（端点仍可用）", exc_info=True)
+            return ["# 队列指标暂不可用（取数失败，详见日志）"]
+        return [
+            "# HELP ari_queue_depth 排队中、等待被认领的运行数",
+            "# TYPE ari_queue_depth gauge",
+            f"ari_queue_depth {int(stats.get('depth', 0))}",
+            "# HELP ari_queue_executor_seen 最近有队列执行者报到（1/0）",
+            "# TYPE ari_queue_executor_seen gauge",
+            f"ari_queue_executor_seen {1 if stats.get('executor_seen') else 0}",
+            "# HELP ari_queue_oldest_wait_seconds 排队中最久的一条已等待秒数",
+            "# TYPE ari_queue_oldest_wait_seconds gauge",
+            f"ari_queue_oldest_wait_seconds {float(stats.get('oldest_wait_seconds', 0.0)):.3f}",
+        ]
+
     def render_prometheus(self) -> str:
         snap = self.snapshot()
         lines = [
@@ -135,6 +165,7 @@ class HealthState:
             f"ari_worker_last_job_timestamp_seconds {snap['last_job_timestamp_seconds']:.3f}",
         ]
         lines.extend(self.duration_families())
+        lines.extend(self.queue_families())
         return "\n".join(lines) + "\n"
 
 

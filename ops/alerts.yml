@@ -47,6 +47,23 @@ groups:
           summary: "阶段 {{ $labels.stage }} 的模型调用 P95 超过 60 秒"
           description: "接近 MODEL_TIMEOUT_SECONDS 时，重试会开始频繁发生；先确认上游限流情况。"
 
+      - alert: AriQueueBacklog
+        expr: ari_queue_depth > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "队列积压超过 5 条且持续 10 分钟"
+          description: "先看 ari_queue_executor_seen：为 0 说明根本没人消费（worker 没起、或没开 RUN_QUEUE_ENABLED）；为 1 则说明执行者跑得比提交慢。"
+
+      - alert: AriQueueExecutorMissing
+        expr: ari_queue_depth > 0 and ari_queue_executor_seen == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "有运行在排队，却没有任何执行者在消费"
+          description: "提交上去的运行会一直停在排队中。检查 worker 容器是否在跑、RUN_QUEUE_ENABLED 是否为 true。"
   - name: ari-jobs
     rules:
       - alert: AriJobFailures

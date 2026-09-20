@@ -318,6 +318,37 @@ class RunRepository:
             connection.execute("DELETE FROM run_cancellations WHERE run_id = ?", (run_id,))
         return requeued
 
+    def queue_depth(self) -> int:
+        """排队中的运行条数（`PENDING`）。背压与队列指标共用同一个口径。
+
+        与 `claim_next_run` 一样是逐条判状态而不是 SQL 过滤：状态在 JSON 负载里，
+        数据库层面过滤不了。单机工作台的量级够用，见那里的说明。
+        """
+        with self._session() as connection:
+            rows = connection.execute("SELECT payload_json FROM runs").fetchall()
+        return sum(
+            1
+            for row in rows
+            if RunRecord.model_validate_json(row["payload_json"]).status is RunStatus.PENDING
+        )
+
+    def oldest_pending_seconds(self, *, now: datetime | None = None) -> float:
+        """排队中最久的那条已经等了多久（秒）；队列空则为 0。
+
+        这个数回答的是队列指标里更该被盯的那个问题：**积压 3 条不用管，有 1 条等了
+        40 分钟必须管**。不需要额外状态——`created_at` 就够了。
+        """
+        moment = now or datetime.now(UTC)
+        with self._session() as connection:
+            rows = connection.execute("SELECT payload_json FROM runs").fetchall()
+        waits = [
+            (moment - record.created_at).total_seconds()
+            for row in rows
+            if (record := RunRecord.model_validate_json(row["payload_json"])).status
+            is RunStatus.PENDING
+        ]
+        return max(waits, default=0.0)
+
     def record_executor_heartbeat(self, owner: str, *, now: datetime | None = None) -> None:
         """执行者报个到。
 
