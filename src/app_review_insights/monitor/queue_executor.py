@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from collections.abc import Callable
 
 from app_review_insights.models import RunRecord, RunStatus
@@ -24,6 +25,10 @@ from app_review_insights.storage import lease
 from app_review_insights.storage.repository import RunRepository
 
 logger = logging.getLogger("agent-worker")
+
+#: 执行者报到间隔（秒）。界面按它的 3 倍判断现在有没有人在消费队列——
+#: 一次网络抖动或一次 GC 停顿不该被读成执行者没了。
+HEARTBEAT_INTERVAL_SECONDS = 10.0
 
 
 def execute_once(
@@ -66,9 +71,19 @@ def serve_forever(
     poll_seconds: float,
     lease_timeout_seconds: float,
     max_duration_seconds: float | None = None,
+    heartbeat_seconds: float = HEARTBEAT_INTERVAL_SECONDS,
 ) -> None:
     """常驻循环：认领 → 执行 → 记结果；空队列就等着，下一轮再看。"""
+    last_heartbeat = 0.0
     while not stop_event.is_set():
+        moment = time.monotonic()
+        if moment - last_heartbeat >= heartbeat_seconds:
+            try:
+                repository.record_executor_heartbeat(lease.make_owner())
+            except Exception:
+                # 报到失败不该让执行者停摆：它只是界面用来判断"有没有人消费"的信号
+                logger.warning("执行者心跳写入失败", exc_info=True)
+            last_heartbeat = moment
         try:
             executed = execute_once(
                 repository,
@@ -105,6 +120,7 @@ def start_queue_executor(
     poll_seconds: float,
     lease_timeout_seconds: float,
     max_duration_seconds: float | None = None,
+    heartbeat_seconds: float = HEARTBEAT_INTERVAL_SECONDS,
 ) -> threading.Thread:
     """把执行循环放进守护线程；返回线程对象供调用方观测。"""
     thread = threading.Thread(
@@ -114,6 +130,7 @@ def start_queue_executor(
             "poll_seconds": poll_seconds,
             "lease_timeout_seconds": lease_timeout_seconds,
             "max_duration_seconds": max_duration_seconds,
+            "heartbeat_seconds": heartbeat_seconds,
         },
         name="ari-queue-executor",
         daemon=True,

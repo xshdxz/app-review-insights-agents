@@ -86,6 +86,16 @@ RUNS_MIGRATIONS: list[Migration] = [
         );
         """,
     ),
+    # v3 已随提交发布：之后的迁移只能往后追加，已发布的版本号不能改语义
+    (
+        4,
+        """
+        CREATE TABLE IF NOT EXISTS queue_executor_heartbeats (
+            owner TEXT PRIMARY KEY,
+            heartbeat_at TEXT NOT NULL
+        );
+        """,
+    ),
 ]
 
 #: Agent / 监控 / 语料库（AGENT_DB_PATH）

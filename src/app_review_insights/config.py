@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     #: 独立职责，一个进程可以只做其一。**web 进程不消费队列**——那正是"运行不依赖浏览器
     #: 标签页"的前提。
     run_queue_enabled: bool = Field(default=False, alias="RUN_QUEUE_ENABLED")
+    #: 界面怎么执行一次分析：inline＝在本进程里直接跑（本机工作台与云端演示的默认）；
+    #: queued＝只入队，交给 worker 执行——运行因此不依赖浏览器标签页。
+    #: 用 Literal 而不是 str：写错的值应当在启动时就炸，而不是悄悄退化成 inline。
+    execution_mode: Literal["inline", "queued"] = Field(default="inline", alias="EXECUTION_MODE")
     #: 队列轮询间隔（秒）。空队列时执行者每这么久看一眼；调大会让"提交之后被接手"变慢。
     run_queue_poll_seconds: float = Field(default=2.0, alias="RUN_QUEUE_POLL_SECONDS")
     # 日志：LOG_FORMAT=json 时输出 JSON Lines（带 run_id 关联 ID），便于采集器索引

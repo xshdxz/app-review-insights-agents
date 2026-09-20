@@ -436,3 +436,67 @@ def test_executor_marks_a_run_failed_when_it_cannot_even_start(tmp_path):
     assert repo.get_run(first.run_id).status is RunStatus.FAILED
     assert "装配失败" in (repo.get_run(first.run_id).last_error or "")
     assert state.snapshot()["jobs_failed"] == 1
+
+
+# ── 回队与执行者心跳 ─────────────────────────────────────────────────────────
+
+
+def test_requeue_puts_a_stopped_run_back_in_the_queue(tmp_path):
+    """队列模式下的「继续」＝重新入队：清租约、清取消请求，然后等执行者接手。"""
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    orchestrator = AnalysisOrchestrator(make_services(repo, CountingAnalyzer()))
+    queued = orchestrator.enqueue(make_request())
+    orchestrator.cancel(queued.run_id)
+
+    requeued = repo.requeue(queued.run_id, timeout_seconds=300.0)
+
+    assert requeued is not None
+    assert requeued.status == RunStatus.PENDING
+    assert requeued.lease_owner is None
+    assert repo.cancel_requested(queued.run_id) is False
+    # 入队之后必须真的能被认领，否则「继续」只是换了个地方卡住
+    claimed = repo.claim_next_run(owner="w:1:x", timeout_seconds=300.0)
+    assert claimed is not None
+    assert claimed.run_id == queued.run_id
+
+
+def test_requeue_refuses_while_a_live_executor_holds_the_run(tmp_path):
+    """把一条仍被活执行者持有的运行重新入队，等于制造第二个执行者。"""
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    queued = AnalysisOrchestrator(make_services(repo, CountingAnalyzer())).enqueue(make_request())
+    repo.save_run(
+        repo.get_run(queued.run_id).model_copy(update={"lease_owner": lease.make_owner()})
+    )
+
+    assert repo.requeue(queued.run_id, timeout_seconds=300.0) is None
+
+
+def test_executor_heartbeat_answers_whether_anyone_consumes_the_queue(tmp_path):
+    """queued 模式下没人消费时，界面唯一的诚实回答来自这个心跳。"""
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    assert repo.executor_seen_within(30.0) is False
+
+    repo.record_executor_heartbeat("w:1:x")
+
+    assert repo.executor_seen_within(30.0) is True
+    assert repo.executor_seen_within(0.0) is False, "心跳会过期——这正是界面据以报警的信号"
+
+
+def test_executor_loop_reports_a_heartbeat(tmp_path):
+    """常驻执行者必须让别人看得见它在，否则界面只能说「不知道有没有人在跑」。"""
+    repo = RunRepository(tmp_path / "runs.sqlite3")
+    stop_event = threading.Event()
+    thread = start_queue_executor(
+        repo,
+        _services_factory(repo),
+        HealthState(),
+        stop_event,
+        poll_seconds=0.05,
+        lease_timeout_seconds=300.0,
+        heartbeat_seconds=0.0,
+    )
+    try:
+        assert _wait_for(lambda: repo.executor_seen_within(60.0), timeout=5)
+    finally:
+        stop_event.set()
+        thread.join(timeout=10)

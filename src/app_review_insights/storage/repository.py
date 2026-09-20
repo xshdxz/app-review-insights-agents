@@ -279,6 +279,73 @@ class RunRepository:
             )
         return failed
 
+    def requeue(
+        self,
+        run_id: str,
+        *,
+        timeout_seconds: float,
+        now: datetime | None = None,
+    ) -> RunRecord | None:
+        """把一条停在检查点上的运行放回队列，交给任意一个执行者接手。
+
+        队列模式下的"继续"不是在本进程里跑，而是重新入队。两件事必须一起做干净：
+        **清租约**（留着旧租约的 PENDING 会被认领方判成"仍有人在写"而跳过）与
+        **清取消请求**（人明确要求继续，旧的取消意图必须让路）。
+        仍被活着的执行者持有时返回 `None`——那时候重新入队等于制造第二个执行者。
+        """
+        moment = now or datetime.now(UTC)
+        with self._immediate_session() as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(run_id)
+            record = RunRecord.model_validate_json(row["payload_json"])
+            if lease.is_held(record, moment, timeout_seconds):
+                return None
+            requeued = record.model_copy(
+                update={
+                    "status": RunStatus.PENDING,
+                    "lease_owner": None,
+                    "heartbeat_at": None,
+                    "updated_at": moment,
+                }
+            )
+            connection.execute(
+                "UPDATE runs SET payload_json = ?, updated_at = ? WHERE run_id = ?",
+                (requeued.model_dump_json(), moment.isoformat(), run_id),
+            )
+            connection.execute("DELETE FROM run_cancellations WHERE run_id = ?", (run_id,))
+        return requeued
+
+    def record_executor_heartbeat(self, owner: str, *, now: datetime | None = None) -> None:
+        """执行者报个到。
+
+        界面据此回答一个否则无解的问题：**现在到底有没有人在消费队列？**
+        queued 模式下没人消费时，提交上去的运行会一直停在排队中，界面必须能说实话，
+        而不是让用户对着「运行中」干等。
+        """
+        moment = now or datetime.now(UTC)
+        with self._session() as connection:
+            connection.execute(
+                """
+                INSERT INTO queue_executor_heartbeats(owner, heartbeat_at) VALUES (?, ?)
+                ON CONFLICT(owner) DO UPDATE SET heartbeat_at = excluded.heartbeat_at
+                """,
+                (owner, moment.isoformat()),
+            )
+
+    def executor_seen_within(self, seconds: float, *, now: datetime | None = None) -> bool:
+        """最近这么多秒内有没有执行者报到过。"""
+        moment = now or datetime.now(UTC)
+        cutoff = (moment - timedelta(seconds=seconds)).isoformat()
+        with self._session() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM queue_executor_heartbeats WHERE heartbeat_at >= ? LIMIT 1",
+                (cutoff,),
+            ).fetchone()
+        return row is not None
+
     def save_inputs(self, run_id: str, payload: list[dict[str, Any]]) -> None:
         """把提交时的评论落盘。
 
@@ -560,6 +627,11 @@ class RunRepository:
                 connection.execute("DELETE FROM run_inputs WHERE run_id = ?", (run_id,))
                 connection.execute("DELETE FROM run_cancellations WHERE run_id = ?", (run_id,))
                 connection.execute("DELETE FROM runs WHERE run_id = ?", (run_id,))
+            # 心跳不跟运行走，按时间清理：死掉的执行者会留下一个永远不会更新的 owner
+            stale = ((now or datetime.now(UTC)) - timedelta(days=1)).isoformat()
+            connection.execute(
+                "DELETE FROM queue_executor_heartbeats WHERE heartbeat_at < ?", (stale,)
+            )
         return len(victims)
 
     def vacuum(self) -> None:
