@@ -29,6 +29,7 @@ from app_review_insights.models import (
     StageEvent,
 )
 from app_review_insights.monitor.health import HealthState, start_health_server
+from app_review_insights.monitor.queue_executor import HEARTBEAT_INTERVAL_SECONDS
 from app_review_insights.pipeline.orchestrator import (
     AnalysisOrchestrator,
     PipelineServices,
@@ -392,6 +393,42 @@ def _resume_analysis(
     ).resume(run_id, imported_reviews=imported_reviews)
 
 
+def _enqueue_analysis(
+    services: PipelineServices,
+    request: AnalysisRequest,
+    imported_reviews,
+) -> RunRecord:
+    """队列模式：只提交，执行交给 worker。
+
+    与 `_run_analysis` 的唯一区别就是**不在这里跑**——这正是"关掉标签页、运行照样跑完"
+    的实现方式，也是队列模式存在的全部理由。
+    """
+    return AnalysisOrchestrator(services).enqueue(request, imported_reviews=imported_reviews)
+
+
+def _render_queue_state(services: PipelineServices, run: RunRecord) -> None:
+    """队列模式下"排队中 / 正在跑"的状态，含一句关于执行者在不在的实话。
+
+    这是队列模式带给界面的新问题：**没人消费队列时，运行会一直停在排队中**，而界面
+    此前无从知道。宁可直说"现在没有执行者"，也不要让用户对着一个"运行中"干等。
+    """
+    if run.status is RunStatus.PENDING:
+        st.caption(f"已入队，等待执行者接手（运行 ID：`{run.run_id}`）。")
+    else:
+        st.caption(f"执行者正在运行（运行 ID：`{run.run_id}`）。")
+    if services.repository.executor_seen_within(HEARTBEAT_INTERVAL_SECONDS * 3):
+        st.caption("执行者在线。")
+    else:
+        st.warning(
+            "最近没有检测到队列执行者，这条运行不会被接手。请启动 worker"
+            "（`python -m app_review_insights.monitor.worker`，或确认 compose 里"
+            "worker 容器在跑），或把 EXECUTION_MODE 改回 inline。",
+            icon=":material/hourglass_disabled:",
+        )
+    if st.button("刷新状态", icon=":material/refresh:", width="stretch"):
+        st.rerun()
+
+
 def _prepare_imported_reviews(
     request: AnalysisRequest,
     upload,
@@ -736,18 +773,24 @@ def main() -> None:
                 except (InputDataError, ConcurrentRunError, ValueError) as exc:
                     st.error(str(exc), icon=":material/input:")
                 else:
-                    live_status = st.status("正在执行分析工作流", expanded=True)
-                    run = _run_analysis(
-                        services,
-                        request,
-                        imported_reviews,
-                        event_writer=lambda event: live_status.write(
-                            format_event_message(event.message)
-                        ),
-                    )
-                    st.session_state["run_id"] = run.run_id
-                    _record_model_success(services.repository, run.run_id, settings)
-                    _update_live_status(live_status, run)
+                    if settings.execution_mode == "queued":
+                        # 提交即撒手：执行者是另一个进程，页面关掉也不影响这次运行
+                        queued = _enqueue_analysis(services, request, imported_reviews)
+                        st.session_state["run_id"] = queued.run_id
+                        st.rerun()
+                    else:
+                        live_status = st.status("正在执行分析工作流", expanded=True)
+                        run = _run_analysis(
+                            services,
+                            request,
+                            imported_reviews,
+                            event_writer=lambda event: live_status.write(
+                                format_event_message(event.message)
+                            ),
+                        )
+                        st.session_state["run_id"] = run.run_id
+                        _record_model_success(services.repository, run.run_id, settings)
+                        _update_live_status(live_status, run)
 
         run_id = st.session_state.get("run_id")
         if run_id:
@@ -781,37 +824,60 @@ def main() -> None:
                 run, timeout_seconds=settings.lease_timeout_seconds
             )
             if pending == run.run_id and resumable:
-                # 从检查点继续：不展示旧的失败状态与错误文本。
-                try:
-                    imported = _reviews_for_resume(services, run, upload, demo_replay=demo_replay)
-                except InputDataError as exc:
-                    st.session_state.pop("pending_resume", None)
-                    st.error(str(exc), icon=":material/input:")
-                else:
-                    resume_status = st.status("正在从检查点继续…", expanded=True)
-                    st.caption(f"运行 ID：`{run.run_id}`")
-                    resumed = _resume_analysis(
-                        services,
-                        run.run_id,
-                        event_writer=lambda event: resume_status.write(
-                            format_event_message(event.message)
-                        ),
-                        imported_reviews=imported,
+                if settings.execution_mode == "queued":
+                    # 队列模式下的「继续」＝重新入队：本进程不执行，交给执行者。
+                    # 与 inline 的区别正在这里——运行不再绑在这个浏览器会话上。
+                    requeued = services.repository.requeue(
+                        run.run_id, timeout_seconds=settings.lease_timeout_seconds
                     )
                     st.session_state.pop("pending_resume", None)
-                    st.session_state["run_id"] = resumed.run_id
-                    _record_model_success(services.repository, resumed.run_id, settings)
-                    _update_live_status(resume_status, resumed)
-                    st.rerun()
+                    if requeued is None:
+                        st.error(
+                            "这条运行仍被执行者持有，稍后再试。",
+                            icon=":material/hourglass_top:",
+                        )
+                    else:
+                        st.rerun()
+                else:
+                    # 从检查点继续：不展示旧的失败状态与错误文本。
+                    try:
+                        imported = _reviews_for_resume(
+                            services, run, upload, demo_replay=demo_replay
+                        )
+                    except InputDataError as exc:
+                        st.session_state.pop("pending_resume", None)
+                        st.error(str(exc), icon=":material/input:")
+                    else:
+                        resume_status = st.status("正在从检查点继续…", expanded=True)
+                        st.caption(f"运行 ID：`{run.run_id}`")
+                        resumed = _resume_analysis(
+                            services,
+                            run.run_id,
+                            event_writer=lambda event: resume_status.write(
+                                format_event_message(event.message)
+                            ),
+                            imported_reviews=imported,
+                        )
+                        st.session_state.pop("pending_resume", None)
+                        st.session_state["run_id"] = resumed.run_id
+                        _record_model_success(services.repository, resumed.run_id, settings)
+                        _update_live_status(resume_status, resumed)
+                        st.rerun()
             else:
                 render_run_status(
                     run,
                     events,
                     usage=services.repository.model_usage_summary(run_id=run.run_id),
                 )
+                if settings.execution_mode == "queued" and run.status in (
+                    RunStatus.PENDING,
+                    RunStatus.RUNNING,
+                ):
+                    # 队列模式下"排队中"是正常状态，不是崩溃——不该显示「继续分析」
+                    _render_queue_state(services, run)
                 # 超时停止、模型失败、以及进程被硬杀（租约持有者已不存在）都停在
                 # 检查点上，共用 can_resume 这一个判定。
-                if resumable:
+                elif resumable:
                     if run.status in (RunStatus.PENDING, RunStatus.RUNNING):
                         st.caption(
                             "上一次运行的进程已经不在了（崩溃或重启），检查点完好；"

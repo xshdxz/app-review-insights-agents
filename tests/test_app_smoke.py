@@ -829,3 +829,89 @@ def test_unavailable_model_shows_warning_but_keeps_start_clickable(tmp_path, mon
     assert any("无法连接模型服务" in item.value for item in app.warning)
     start_button = next(button for button in app.button if button.label == "开始分析")
     assert start_button.disabled is False
+
+
+# ── 队列模式（EXECUTION_MODE=queued）─────────────────────────────────────────
+
+
+def _seed_run(database_path, *, status, run_id):
+    """直接往库里放一条运行：队列模式的界面行为不必真的提交一次表单就能验。"""
+    from app_review_insights.models import (
+        AnalysisRequest,
+        RunRecord,
+        SourceType,
+        Stage,
+    )
+    from app_review_insights.storage import RunRepository
+
+    repository = RunRepository(database_path)
+    now = datetime.now(UTC)
+    repository.save_run(
+        RunRecord(
+            run_id=run_id,
+            request=AnalysisRequest(
+                source_type=SourceType.JSON,
+                analysis_goal="队列模式下的运行",
+            ),
+            current_stage=Stage.SCOPE,
+            status=status,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    return repository
+
+
+def _queued_app(tmp_path, monkeypatch, *, run_id, status):
+    app_path = Path(__file__).parents[1] / "app.py"
+    database_path = tmp_path / "runs.sqlite3"
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "")
+    monkeypatch.setenv("DATABASE_PATH", str(database_path))
+    monkeypatch.setenv("EXECUTION_MODE", "queued")
+    monkeypatch.setenv("DEMO_REPLAY_PATH", str(tmp_path / "no-recording.json"))
+    repository = _seed_run(database_path, status=status, run_id=run_id)
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
+    return app, repository
+
+
+def test_queued_run_says_nobody_is_consuming_the_queue(tmp_path, monkeypatch):
+    """排队中却没有执行者时，界面必须直说——否则用户会对着"运行中"干等。"""
+    from app_review_insights.models import RunStatus
+
+    app, _ = _queued_app(tmp_path, monkeypatch, run_id="q1", status=RunStatus.PENDING)
+
+    assert not app.exception
+    assert any("已入队" in caption.value for caption in app.caption)
+    assert any("没有检测到队列执行者" in warning.value for warning in app.warning)
+    assert any(button.label == "刷新状态" for button in app.button)
+    # 排队中不是崩溃：不该出现「继续分析」
+    assert not any(button.label == "继续分析" for button in app.button)
+
+
+def test_queued_run_says_the_executor_is_online(tmp_path, monkeypatch):
+    """有执行者报到时不该再报警——一条总在响的提示等于没有提示。"""
+    from app_review_insights.models import RunStatus
+
+    app, repository = _queued_app(tmp_path, monkeypatch, run_id="q2", status=RunStatus.PENDING)
+    repository.record_executor_heartbeat("w:1:x")
+
+    app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
+
+    assert not app.exception
+    assert any("执行者在线" in caption.value for caption in app.caption)
+    assert not any("没有检测到队列执行者" in warning.value for warning in app.warning)
+
+
+def test_resume_in_queued_mode_puts_the_run_back_in_the_queue(tmp_path, monkeypatch):
+    """队列模式下的「继续」＝重新入队：本进程不执行，运行也不再绑在页面上。"""
+    from app_review_insights.models import RunStatus
+
+    app, repository = _queued_app(tmp_path, monkeypatch, run_id="q3", status=RunStatus.WAITING)
+    app.session_state["pending_resume"] = "q3"
+
+    app.run(timeout=30)
+
+    assert not app.exception
+    requeued = repository.get_run("q3")
+    assert requeued.status is RunStatus.PENDING
+    assert requeued.lease_owner is None
