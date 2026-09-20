@@ -30,6 +30,8 @@
 
 | D-14 | 中 | fixed | **抓取目标永远 down，告警常态误报**：web 的 `/metrics` 端点挂在 Streamlit 脚本里，而 Streamlit 的脚本**按会话执行**——没人打开页面时端点根本不存在。`AriProcessDown` 因此对 `ari-web` 一直为真，「一条永远在响的告警等于没有告警」。 | Prometheus targets API：`ari-web http://web:9101/metrics down`，同时 `ari-worker http://worker:9100/metrics up`。 | 抓取目标收敛到常驻的 worker——阶段耗时本就写在共享 SQLite 里，worker 读同一份数据，不抓 web 不丢信息；测试改为断言只抓常驻进程。web 的存活交给容器健康检查（Streamlit 自带 `/_stcore/health`）。 |
 
+| D-16 | 中 | fixed | **取消请求被静默丢弃**：第一版把"请求取消"标志写在运行记录里，而运行记录的执行者只有流水线自己——请求方写进去的标志，会被执行者的**下一次写入整体覆盖**。批次边界的一次 `_update_run` 就足以把它冲掉，于是"点了停止"看起来受理成功、实际照跑到底（还在继续烧模型额度）。 | 新增的 `test_cancel_takes_effect_at_the_next_stage_boundary` 红了：请求取消之后运行仍然是 `completed`。定位很快——同阶段内的批次还在继续，说明标志在**下一个阶段边界之前**就没了。 | 取消请求改放**独立的表**（`run_cancellations`，迁移 v3），运行记录的合法写者只剩流水线自己；执行者在每个阶段边界查一次表。**同一份状态有两个写者，就一定有丢更新**——与 D-09（check-then-act 竞态）同族，只是失效方向相反：那次是多写一遍，这次是标志没了。 |
+
 | D-11 | 中 | open | **`topic_recall` 缺共享词表**：它按集合精确匹配 `topic_key`，而键是模型自由生成的。2026-09-20 首次真实运行显示，模型识别出的问题**语义正确但粒度更细**：gold `subscription_transparency` ↔ 模型 `pre_trial_price_visibility` / `subscription_terms_clarity` / `trial_renewal_disclosure`；25+ 个预测键每个只出现一次，而标注只有 22 个粗粒度类目。因此该指标实际测的是"与标注者选词的词面一致率"。 | 首次真实运行 `topic_recall = 0.033` 而 `topic_key_coverage = 1.0`——键本身是规范的，排除了规范化问题。 | **本次只修了一半**：新增不依赖词表的 `reference_recall`（标注认为相关的评论被覆盖了多少）。彻底修法有三条路且都未做：① 给模型一套受控词表（与"动态识别主题、不用预设分类表"的设计取舍直接冲突）；② 在黄金集里为每个主题标注同义键；③ 用语义相似度替代精确匹配。留待评估。 |
 
 ## 低

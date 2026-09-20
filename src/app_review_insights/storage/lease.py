@@ -149,7 +149,9 @@ def can_resume(run: RunRecord, now: datetime, timeout_seconds: float) -> bool:
     等待中的运行随时可续（进程本来就已经交还控制权）；执行中的运行必须确认
     没有活着的持有者——这正是"进程被硬杀之后无法续跑"的修复点。
     """
-    if run.status in (RunStatus.WAITING, RunStatus.TIMED_OUT):
+    if run.status in (RunStatus.WAITING, RunStatus.TIMED_OUT, RunStatus.CANCELLED):
+        # 超时与取消都停在检查点上，与"等模型恢复"同构：已完成的工作不该因为
+        # "停过一次"而作废，用户随时可以续跑。
         return True
     if run.status in EXECUTING_STATUSES:
         return not is_held(run, now, timeout_seconds)

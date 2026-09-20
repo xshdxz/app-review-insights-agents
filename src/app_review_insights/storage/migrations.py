@@ -72,6 +72,20 @@ RUNS_MIGRATIONS: list[Migration] = [
         CREATE INDEX IF NOT EXISTS idx_stage_timings_run ON stage_timings(run_id);
         """,
     ),
+    (
+        3,
+        """
+        CREATE TABLE IF NOT EXISTS run_inputs (
+            run_id TEXT PRIMARY KEY,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS run_cancellations (
+            run_id TEXT PRIMARY KEY,
+            requested_at TEXT NOT NULL
+        );
+        """,
+    ),
 ]
 
 #: Agent / 监控 / 语料库（AGENT_DB_PATH）

@@ -23,6 +23,14 @@ class RunDeadlineExceeded(AppReviewInsightsError):
     """
 
 
+class RunCancelled(AppReviewInsightsError):
+    """用户请求取消，执行者已在**阶段边界**停下来。
+
+    与超时同构：停在检查点上，已完成的阶段全部保留，随时可以续跑。取消是协作式的
+    ——立即终止要么得跨进程杀进程，要么丢掉"已完成阶段不重做"的保证。
+    """
+
+
 class ConcurrentRunError(AppReviewInsightsError):
     """同一 App 已有进行中的分析运行。
 

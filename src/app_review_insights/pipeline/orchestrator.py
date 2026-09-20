@@ -15,6 +15,7 @@ from app_review_insights.errors import (
     CollectionError,
     ConcurrentRunError,
     RecoverableModelError,
+    RunCancelled,
     RunDeadlineExceeded,
 )
 from app_review_insights.llm.prompts import prompt_fingerprint, prompt_version
@@ -104,6 +105,7 @@ class AnalysisOrchestrator:
     def enqueue(
         self,
         request: AnalysisRequest,
+        imported_reviews: list[Review] | None = None,
         allow_concurrent: bool = False,
     ) -> RunRecord:
         """提交一次分析：只落一条**排队中**的运行记录，不执行任何阶段。
@@ -111,6 +113,9 @@ class AnalysisOrchestrator:
         与 `start()` 的唯一区别是不做最后那步执行。拆开的意义是"谁提交"与"谁执行"
         从此可以是两个进程——浏览器标签页关掉不该让一次运行死掉。排队中的运行
         **不带租约**：没有执行者，才可能被任意执行者认领（见 storage/lease.py）。
+
+        给了 `imported_reviews` 就同时落盘：执行者可能是另一个进程，也可能几小时后
+        才接手，"评论还在调用者的内存里"这种假设在队列里不成立。
         """
         now = datetime.now(UTC)
         run = RunRecord(
@@ -154,6 +159,8 @@ class AnalysisOrchestrator:
                 )
         else:
             self.repository.save_run(run)
+        if imported_reviews:
+            self.repository.save_inputs(run.run_id, self._dump_models(imported_reviews))
         self._add_event(run, "Analysis run created")
         return run
 
@@ -166,8 +173,30 @@ class AnalysisOrchestrator:
 
         认领不到（别人正持有、或运行已终结）就**原样返回、绝不开工**：两个执行者写同一份
         检查点会把结果搅坏——宁可不干，也不能重复干。
+        没传评论时优先用提交时落盘的那批（见 `enqueue`）。
         """
+        if imported_reviews is None:
+            imported_reviews = self._load_imported_reviews(run_id)
         return self._claim_and_run(run_id, imported_reviews)
+
+    def cancel(self, run_id: str) -> bool:
+        """请求取消一次运行；返回是否被受理。
+
+        只是**请求**：执行者在下一个阶段边界看到它才会停（见 `_begin_stage`）。
+        立即终止要么得跨进程杀进程，要么丢掉"已完成阶段不重做"的保证——两者都比
+        "多等一个阶段"更糟。已经停下来或已终结的运行不受理。
+        """
+        accepted = self.repository.request_cancel(run_id)
+        if accepted:
+            self._add_event(self.repository.get_run(run_id), "Cancel requested")
+        return accepted
+
+    def _load_imported_reviews(self, run_id: str) -> list[Review] | None:
+        """提交时落盘的那批评论；没有就返回 None，由采集阶段按来源去取。"""
+        payload = self.repository.get_inputs(run_id)
+        if not payload:
+            return None
+        return [Review.model_validate(item) for item in payload]
 
     def start(
         self,
@@ -190,7 +219,12 @@ class AnalysisOrchestrator:
         发生在 collect 之前）：此时检查点里没有评论，必须重新提供导入文件才能继续。
         采集已完成时会直接读检查点，该参数被忽略。
         """
-        return self._claim_and_run(run_id, imported_reviews, event_message="Analysis run resumed")
+        return self._claim_and_run(
+            run_id,
+            imported_reviews,
+            event_message="Analysis run resumed",
+            clear_cancel=True,
+        )
 
     def _claim_and_run(
         self,
@@ -198,6 +232,7 @@ class AnalysisOrchestrator:
         imported_reviews: list[Review] | None = None,
         *,
         event_message: str | None = None,
+        clear_cancel: bool = False,
     ) -> RunRecord:
         """认领一个无人持有的运行并执行它——`execute` 与 `resume` 共用的那一段。
 
@@ -216,6 +251,17 @@ class AnalysisOrchestrator:
             # 两个执行者写同一份检查点会把结果搅坏。
             return self.repository.get_run(run_id)
 
+        if self.repository.cancel_requested(run_id) and not clear_cancel:
+            # 排队期间就被请求取消：执行者拿到它时应当直接了结，而不是"先跑起来再说"
+            return self._stop(
+                self._update_run(taken, status=RunStatus.RUNNING, last_error=None),
+                status=RunStatus.CANCELLED,
+                error=None,
+                message="Run cancelled before it started",
+            )
+        if clear_cancel:
+            # 人明确要求继续，旧的取消意图必须让路，否则续跑会立刻又把自己停掉
+            self.repository.clear_cancel(run_id)
         run = self._update_run(taken, status=RunStatus.RUNNING, last_error=None)
         if event_message:
             self._add_event(run, event_message)
@@ -245,6 +291,14 @@ class AnalysisOrchestrator:
                 **{"run.id": run.run_id, "run.mode": run.mode, "run.is_live": run.is_live},
             ):
                 return self._execute(run, imported_reviews=imported_reviews)
+        except RunCancelled:
+            # 与超时同构：停在检查点上，已完成阶段全部保留，随时可续跑
+            return self._stop(
+                self.repository.get_run(run.run_id),
+                status=RunStatus.CANCELLED,
+                error=None,
+                message="Run cancelled at a stage boundary",
+            )
         except RunDeadlineExceeded as exc:
             # 停在检查点上：已完成阶段全部保留，调高上限即可续跑
             return self._stop(
@@ -765,6 +819,11 @@ class AnalysisOrchestrator:
         stage: Stage,
         **updates: Any,
     ) -> RunRecord:
+        # 取消只在**阶段边界**生效：同阶段内的批次不半途而废，已完成的阶段也不需要重做
+        if self.repository.cancel_requested(run.run_id):
+            raise RunCancelled(
+                "运行已被请求取消，已在检查点停止；已完成的阶段全部保留，可随时续跑。"
+            )
         if self._deadline is not None and time.monotonic() > self._deadline:
             raise RunDeadlineExceeded(
                 f"运行超过最长时长限制（{self.max_duration_seconds:.0f} 秒），已在检查点停止；"
@@ -830,7 +889,7 @@ class AnalysisOrchestrator:
         self,
         run: RunRecord,
         status: RunStatus,
-        error: str,
+        error: str | None,
         message: str,
     ) -> RunRecord:
         run = self._update_run(run, status=status, last_error=error)

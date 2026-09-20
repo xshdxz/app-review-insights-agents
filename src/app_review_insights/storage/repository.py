@@ -176,6 +176,108 @@ class RunRepository:
             )
         return taken
 
+    def claim_next_run(
+        self,
+        *,
+        owner: str,
+        timeout_seconds: float,
+        now: datetime | None = None,
+    ) -> RunRecord | None:
+        """认领队列里最早的一条运行；没有可认领的就返回 `None`。
+
+        选中与写入必须在这**同一个立即事务**里完成——这是整个队列的安全底线：
+        先查后写会让两个执行者同时拿到同一条运行，而两个执行者写同一份检查点会把
+        结果搅坏，比"这次没跑"严重得多。
+
+        按 `updated_at` 出队（提交顺序）。代价是全表扫描后逐条判状态：单机工作台这个
+        量级完全够用，真换成独立队列时这里才是第一个该改的地方。
+        """
+        moment = now or datetime.now(UTC)
+        with self._immediate_session() as connection:
+            rows = connection.execute(
+                "SELECT payload_json FROM runs ORDER BY updated_at ASC"
+            ).fetchall()
+            for row in rows:
+                record = RunRecord.model_validate_json(row["payload_json"])
+                if record.status is not RunStatus.PENDING:
+                    continue
+                if lease.is_held(record, moment, timeout_seconds):
+                    continue
+                taken = record.model_copy(
+                    update={"lease_owner": owner, "heartbeat_at": moment, "updated_at": moment}
+                )
+                connection.execute(
+                    "UPDATE runs SET payload_json = ?, updated_at = ? WHERE run_id = ?",
+                    (taken.model_dump_json(), moment.isoformat(), taken.run_id),
+                )
+                return taken
+        return None
+
+    def request_cancel(self, run_id: str, *, now: datetime | None = None) -> bool:
+        """记下"请求取消"；返回是否被受理。
+
+        **刻意不写运行记录**：运行记录的合法写者只有流水线自己。请求方去改它，会被执行者
+        的下一次写入整体覆盖——开发时实测，批次边界的一次心跳就把标志冲掉了（丢更新）。
+        所以请求放在独立的表里，执行者在阶段边界查它。
+
+        只受理 `PENDING` / `RUNNING`：只有这两种状态下才有"正在进行的执行"可以被打断；
+        对 `WAITING` 之类置标志只会留下一个没人消费的悬空请求。
+        """
+        moment = now or datetime.now(UTC)
+        with self._immediate_session() as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(run_id)
+            status = RunRecord.model_validate_json(row["payload_json"]).status
+            if status not in (RunStatus.PENDING, RunStatus.RUNNING):
+                return False
+            connection.execute(
+                """
+                INSERT INTO run_cancellations(run_id, requested_at) VALUES (?, ?)
+                ON CONFLICT(run_id) DO NOTHING
+                """,
+                (run_id, moment.isoformat()),
+            )
+        return True
+
+    def cancel_requested(self, run_id: str) -> bool:
+        """这条运行是否被请求过取消。执行者在每个阶段边界查一次。"""
+        with self._session() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM run_cancellations WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return row is not None
+
+    def clear_cancel(self, run_id: str) -> None:
+        """清掉取消请求——人明确要求续跑时，旧的取消意图必须让路。"""
+        with self._session() as connection:
+            connection.execute("DELETE FROM run_cancellations WHERE run_id = ?", (run_id,))
+
+    def save_inputs(self, run_id: str, payload: list[dict[str, Any]]) -> None:
+        """把提交时的评论落盘。
+
+        执行者可能是另一个进程、也可能几小时后才接手，"评论还在调用者的内存里"
+        这种假设在队列里不成立。
+        """
+        with self._session() as connection:
+            connection.execute(
+                """
+                INSERT INTO run_inputs(run_id, payload_json, created_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(run_id) DO UPDATE SET payload_json = excluded.payload_json
+                """,
+                (run_id, json.dumps(payload, ensure_ascii=False), datetime.now(UTC).isoformat()),
+            )
+
+    def get_inputs(self, run_id: str) -> list[dict[str, Any]] | None:
+        with self._session() as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM run_inputs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return json.loads(row["payload_json"]) if row else None
+
     def can_resume(
         self,
         run: RunRecord,
@@ -430,6 +532,9 @@ class RunRepository:
                 connection.execute("DELETE FROM model_usage WHERE run_id = ?", (run_id,))
                 # 阶段耗时同样跟着运行走，否则它就是一个只涨不跌的表
                 connection.execute("DELETE FROM stage_timings WHERE run_id = ?", (run_id,))
+                # 提交时落盘的评论与取消请求同理
+                connection.execute("DELETE FROM run_inputs WHERE run_id = ?", (run_id,))
+                connection.execute("DELETE FROM run_cancellations WHERE run_id = ?", (run_id,))
                 connection.execute("DELETE FROM runs WHERE run_id = ?", (run_id,))
         return len(victims)
 
