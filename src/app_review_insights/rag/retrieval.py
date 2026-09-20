@@ -100,7 +100,31 @@ class CorpusRetriever:
         except Exception:  # noqa: BLE001 - embedding 故障降级为纯 FTS
             return sorted(chunks, key=lambda chunk: chunk.score, reverse=True)[:top_k]
         by_id = {hit["review_id"]: float(hit["score"]) for hit in hits}
-        for chunk in chunks:
-            vector_score = by_id.get(chunk.review_id, 0.0)
-            chunk.score = 0.6 * chunk.score + 0.4 * vector_score
-        return sorted(chunks, key=lambda chunk: chunk.score, reverse=True)[:top_k]
+        # **两路召回**：只有向量那一路找到的评论也要进来（FTS 分为 0，靠向量分竞争）。
+        # 此前只对 FTS 已召回的候选重排，那样的「混合」**结构上不可能提升召回**——
+        # 向量只能改动 FTS 命中的顺序（D-19，2026-09-20 造检索评测时顺藤摸出来的）。
+        seen = {chunk.review_id for chunk in chunks}
+        merged = list(chunks)
+        for hit in hits:
+            review_id = hit["review_id"]
+            if review_id in seen:
+                continue
+            platform = hit.get("platform") or "app-store"
+            if not self._allowed_platform(platform):
+                # 侧门也要守：向量那一路补进来的候选同样得过平台过滤
+                continue
+            seen.add(review_id)
+            merged.append(
+                RetrievedChunk(
+                    review_id=review_id,
+                    app_id=hit.get("app_id") or "",
+                    content=hit.get("content") or "",
+                    score=0.0,
+                    platform=platform,
+                    source=hit.get("source") or "",
+                    storefront=hit.get("storefront") or "us",
+                )
+            )
+        for chunk in merged:
+            chunk.score = 0.6 * chunk.score + 0.4 * by_id.get(chunk.review_id, 0.0)
+        return sorted(merged, key=lambda chunk: chunk.score, reverse=True)[:top_k]

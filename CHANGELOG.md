@@ -12,6 +12,9 @@
   全部走回放 ⇒ 零模型成本；`pytest -m reliability`，默认不随主套件运行
 - **运行租约**（`storage/lease.py`）：运行记录带持有者身份（`host:pid:token`）与心跳。
   同主机且持有者进程已不存在时**立即**可以接管；判不出来（跨主机、旧记录）才退回心跳窗口
+- **修 D-19（混合检索只是重排器）**：`CorpusRetriever._rank` 此前只对 FTS 已召回的候选做融合，向量那一路找到的评论进不来，
+  那样的「混合」结构上不可能提升召回。改为**两路召回**（向量候选并入，先过平台过滤）；两项测试钉住。
+  向量那一路的**质量仍未测**（本机无 provider），评测脚本 `--hybrid` 会如实记进 skipped
 - **检索质量评测**（T6）：`evals/gold-retrieval.json`（21 条查询，答案锚定既有黄金集）+ `scripts/run_retrieval_eval.py`
   （recall@k / MRR / precision@k，口径写进 docstring 与单测）+ `docs/retrieval-eval.md`；离线配置进 CI 并带阈值门禁。
   **首跑撞出 D-17**：没有空白或标点的中文长问句会被构造成一条必须逐字出现的 FTS 短语，严格 AND 与宽松 OR 又是同一个串，

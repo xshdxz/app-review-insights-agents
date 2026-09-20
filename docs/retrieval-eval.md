@@ -89,11 +89,39 @@ min-max 归一化成 1.0，于是改写出来的短查询（更泛、更容易�
 ② 原查询的结果优先、改写只用于补召回；③ 只在严格检索无结果时才启用改写。三条都得用同一套评测来验，
 否则就是又一次「凭感觉改检索」。
 
+## 混合检索：从「重排器」改成「两路召回」（D-19）
+
+补向量那一路的数字之前，先读了代码——发现了一件更根本的事：
+
+```python
+# 修复前（retrieval.py::_rank）
+by_id = {hit["review_id"]: score for hit in hits}
+for chunk in chunks:                    # ← 只遍历 FTS 已召回的候选
+    chunk.score = 0.6 * chunk.score + 0.4 * by_id.get(chunk.review_id, 0.0)
+```
+
+**向量那一路找到的评论根本没有机会进入结果**——它只能改动 FTS 命中的顺序，
+也就是说这个「混合检索」**结构上不可能提升召回**，与 README 的表述所暗示的能力不符。
+（`search_embeddings` 其实已经返回了 `content/app_id/platform`，构造候选所需的数据全在手上，只是没用。）
+
+已改成**两路召回**：向量那一路的候选（先过平台过滤，社交语料不能从侧门溜进来）并入候选集，
+FTS 分为 0、靠向量分竞争；融合权重与截断逻辑不变。两项测试钉住它：只有向量能找到的评论必须进入结果、
+向量补进来的候选同样受平台隔离约束。
+
+**但这一路的质量数字仍然没有**：本机 `EMBEDDING_ENABLED=false`，也确认过 DeepSeek 不提供 `/embeddings`（404）、
+机器上没有 sentence-transformers 运行时、HF 缓存里只有一个 reranker 而非 embedder。
+评测脚本的 `--hybrid` 在这种情况下会**如实记进 `skipped`**（"EMBEDDING_ENABLED=false…"），
+配好 `EMBEDDING_API_KEY` 或 `EMBEDDING_LOCAL_MODEL_PATH` 之后，同一条命令就能出数字：
+
+```powershell
+.\\.venv\\Scripts\\python scripts/run_retrieval_eval.py --hybrid --output output\\retrieval-hybrid.json
+```
+
 ## 没测的部分（如实列出，不假装）
 
-- **向量 / 混合检索**：本机 `EMBEDDING_ENABLED=false` 且没有 embedding provider，所以那一路**未测**。
-  评测脚本支持注入 embedding store，配好 provider 后可以直接跑，但**现在没有数字**。
-  这也意味着 0.6/0.4 的融合权重至今没被验证过——它在本次评测范围之外，不是「已经比过所以没问题」。
+- **向量 / 混合检索的质量**：本机没有 embedding provider（DeepSeek 不提供 `/embeddings`；没有本地向量运行时；HF 缓存里只有 reranker）。
+  接线已经做完并测过（`--hybrid` + 两路召回，见上一节），但**没有数字**。
+  这也意味着 0.6/0.4 的融合权重至今没被验证过——它是**未测**，不是「已经比过所以没问题」。
 - **跨语言检索**（中文提问、英文语料）：词面检索天然做不到，那正是向量那一路的职责；本评测用 language 分组把差距显式暴露出来，
   而不是把中英混在一起做一个平均数把它盖住。
 - **多 App 合并语义**（`search_many` 的每个 App 取 top）：需要多 App 语料才谈得上，本次语料只有一个 App，属范围之外。

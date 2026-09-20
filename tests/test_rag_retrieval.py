@@ -171,3 +171,48 @@ def test_retriever_hybrid_falls_back_on_embedding_error(repo):
     hits = retriever.search("订阅", app_ids=["app-a"], top_k=5)
     assert {h.review_id for h in hits} == {"v1", "v2"}
     assert all(0.0 <= hit.score <= 1.0 for hit in hits)
+
+
+def test_hybrid_lets_the_vector_side_contribute_candidates(repo):
+    """**两路召回**：只有向量那一路找到的评论，也必须有机会进入结果。
+
+    修复前的实现只对 FTS 已召回的候选重排（`for chunk in chunks`），向量那一路找到的评论
+    根本没有机会进来——那样的「混合检索」**结构上不可能提升召回**，只能改动 FTS 命中的顺序。
+    （D-19，2026-09-20 造检索评测时顺藤摸出来的：README 说混合，代码里其实是重排器。）
+    """
+    indexer = CorpusIndexer(repo)
+    indexer.index_reviews(
+        [
+            _review("fts", "app-a", "订阅太贵了"),
+            _review("semantic", "app-a", "价格藏得太深，看不到年费"),
+        ]
+    )
+    repo.upsert_embedding("fts", [0.0, 1.0])
+    repo.upsert_embedding("semantic", [1.0, 0.0])
+    retriever = CorpusRetriever(repo, embedding_store=_FakeEmbeddingStore([1.0, 0.0]))
+
+    hits = retriever.search("订阅", app_ids=["app-a"], top_k=5)
+
+    assert {hit.review_id for hit in hits} == {"fts", "semantic"}, (
+        "「价格藏得太深」不含查询词、FTS 命中不了，但向量那一路把它排在第一——"
+        "它必须能进入结果，否则混合检索就只是 FTS 的重排器"
+    )
+    assert hits[0].review_id == "fts"  # 0.6*1.0（FTS 满分）压过 0.4*1.0（向量满分）
+
+
+def test_vector_only_candidates_still_respect_platform_isolation(repo):
+    """向量那一路补进来的候选同样要过平台过滤，否则社交语料会从侧门溜进来。"""
+    indexer = CorpusIndexer(repo)
+    indexer.index_reviews(
+        [
+            _review("review", "app-a", "订阅太贵了"),
+            _review("social", "app-a", "有人在讨论这个 App", platform="social"),
+        ]
+    )
+    repo.upsert_embedding("review", [0.0, 1.0])
+    repo.upsert_embedding("social", [1.0, 0.0])
+    retriever = CorpusRetriever(repo, embedding_store=_FakeEmbeddingStore([1.0, 0.0]))
+
+    hits = retriever.search("订阅", app_ids=["app-a"], top_k=5)
+
+    assert {hit.review_id for hit in hits} == {"review"}

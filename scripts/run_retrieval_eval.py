@@ -31,6 +31,7 @@ from typing import Any
 from app_review_insights.config import load_settings
 from app_review_insights.llm.provider import DeepSeekProvider
 from app_review_insights.models import Review
+from app_review_insights.rag.embeddings import EmbeddingStore, LocalEmbeddingStore
 from app_review_insights.rag.indexer import CorpusIndexer
 from app_review_insights.rag.metrics import precision_at_k, recall_at_k, reciprocal_rank
 from app_review_insights.rag.retrieval import CorpusRetriever
@@ -101,12 +102,47 @@ def validate_dataset(dataset: dict[str, Any], corpus_ids: set[str]) -> list[str]
     return problems
 
 
-def build_retriever(database_path: Path) -> CorpusRetriever:
+def build_index(database_path: Path) -> tuple[AgentRepository, CorpusRetriever]:
     """在临时库上建索引——评测绝不碰 data/ 下的真实档案。"""
     repository = AgentRepository(database_path)
     reviews, _ = load_corpus()
     CorpusIndexer(repository).index_reviews(reviews)
-    return CorpusRetriever(repository)
+    return repository, CorpusRetriever(repository)
+
+
+def attach_embeddings(repository: AgentRepository, store: Any) -> None:
+    """把语料灌成向量——混合检索要有向量才谈得上。"""
+    reviews, _ = load_corpus()
+    vectors = store.embed_texts([review.content_original for review in reviews])
+    for review, vector in zip(reviews, vectors, strict=True):
+        repository.upsert_embedding(review.review_id, vector)
+
+
+def _build_embedding_store(settings: Any) -> tuple[Any | None, str]:
+    """按配置造向量后端；造不出来时返回 (None, 原因)，由调用方**如实**记进 skipped。
+
+    宁可写清楚「没配 provider 所以没测」，也不要拿一个假的向量后端跑出个数字来充数。
+    """
+    if not settings.embedding_enabled:
+        return None, "EMBEDDING_ENABLED=false（混合检索要有向量，先开启它）"
+    if settings.embedding_local_model_path:
+        try:
+            return LocalEmbeddingStore(settings.embedding_local_model_path), ""
+        except Exception as exc:  # noqa: BLE001 - 缺库或模型缺失都要能说清楚
+            return None, (
+                f"本地模型加载失败（{type(exc).__name__}）——"
+                "需要装 sentence-transformers 与可用的模型路径"
+            )
+    if settings.embedding_api_key:
+        return (
+            EmbeddingStore(
+                settings.embedding_api_key,
+                settings.embedding_model,
+                settings.embedding_base_url,
+            ),
+            "",
+        )
+    return None, "既没有 EMBEDDING_LOCAL_MODEL_PATH 也没有 EMBEDDING_API_KEY"
 
 
 def retrieve(
@@ -200,6 +236,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default=None)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--live-rewrite", action="store_true")
+    parser.add_argument(
+        "--hybrid", action="store_true", help="追加混合检索配置（需要向量 provider）"
+    )
     parser.add_argument("--fail-under-recall-at-3", type=float, default=None)
     args = parser.parse_args(argv)
 
@@ -215,17 +254,35 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     with tempfile.TemporaryDirectory(prefix="ari-retrieval-eval-") as tmp:
-        retriever = build_retriever(Path(tmp) / "agent.sqlite3")
         settings = load_settings()
-        configs: dict[str, Callable[[str], list[str]] | None] = {"fts": None}
+        repository, fts_retriever = build_index(Path(tmp) / "agent.sqlite3")
         skipped: list[str] = []
-        if args.live_rewrite:
+        runs: list[tuple[str, CorpusRetriever, Callable[[str], list[str]] | None]] = [
+            ("fts", fts_retriever, None)
+        ]
+        if args.hybrid:
+            store, reason = _build_embedding_store(settings)
+            if store is None:
+                skipped.append(f"hybrid：{reason}")
+            else:
+                try:
+                    attach_embeddings(repository, store)
+                except Exception as exc:  # noqa: BLE001 - 没跑成也要如实说
+                    skipped.append(f"hybrid：向量生成失败（{type(exc).__name__}）")
+                else:
+                    runs.append(
+                        ("hybrid", CorpusRetriever(repository, embedding_store=store), None)
+                    )
+        else:
+            skipped.append(
+                "hybrid：本次未启用（加 --hybrid，并提供 EMBEDDING_API_KEY "
+                "或 EMBEDDING_LOCAL_MODEL_PATH）",
+            )
             variants = _build_variants(settings)
             if variants is None:
                 skipped.append("fts+rewrite：未配置可用的模型密钥")
             else:
-                configs["fts+rewrite"] = variants
-        skipped.append("hybrid：本机没有 embedding provider（EMBEDDING_ENABLED=false），未测")
+                runs.append(("fts+rewrite", fts_retriever, variants))
 
         report: dict[str, Any] = {
             "dataset": args.dataset,
@@ -234,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
             "configs": {},
             "skipped": skipped,
         }
-        for name, variants in configs.items():
+        for name, retriever, variants in runs:
             rows = [
                 score_query(
                     query, retrieve(retriever, query["query"], top_k=args.top_k, variants=variants)
