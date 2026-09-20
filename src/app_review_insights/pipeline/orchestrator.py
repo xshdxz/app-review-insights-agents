@@ -101,12 +101,17 @@ class AnalysisOrchestrator:
         #: 当前阶段的追踪 span（未启用追踪时为 None）。与耗时同生共死。
         self._stage_span: Any = None
 
-    def start(
+    def enqueue(
         self,
         request: AnalysisRequest,
-        imported_reviews: list[Review] | None = None,
         allow_concurrent: bool = False,
     ) -> RunRecord:
+        """提交一次分析：只落一条**排队中**的运行记录，不执行任何阶段。
+
+        与 `start()` 的唯一区别是不做最后那步执行。拆开的意义是"谁提交"与"谁执行"
+        从此可以是两个进程——浏览器标签页关掉不该让一次运行死掉。排队中的运行
+        **不带租约**：没有执行者，才可能被任意执行者认领（见 storage/lease.py）。
+        """
         now = datetime.now(UTC)
         run = RunRecord(
             run_id=str(uuid4()),
@@ -117,8 +122,10 @@ class AnalysisOrchestrator:
             # 无论何时被读取，都能自证是不是回放（含换配置后重新打开旧运行的场景）。
             mode=RECORDING_MODE if self.services.replay_run else LIVE_RUN_MODE,
             is_live=not self.services.replay_run,
-            lease_owner=self.owner,
-            heartbeat_at=now,
+            # 排队中不属于任何执行者：带租约会被 is_held 判成"仍有人在写"，
+            # 于是谁也认领不了。执行者接手时才会写上自己的身份。
+            lease_owner=None,
+            heartbeat_at=None,
             prompt_version=prompt_version(),
             prompt_fingerprint=prompt_fingerprint(),
             created_at=now,
@@ -148,7 +155,29 @@ class AnalysisOrchestrator:
         else:
             self.repository.save_run(run)
         self._add_event(run, "Analysis run created")
-        return self._run_in_context(run, imported_reviews=imported_reviews)
+        return run
+
+    def execute(
+        self,
+        run_id: str,
+        imported_reviews: list[Review] | None = None,
+    ) -> RunRecord:
+        """认领并执行一个已经提交的运行。
+
+        认领不到（别人正持有、或运行已终结）就**原样返回、绝不开工**：两个执行者写同一份
+        检查点会把结果搅坏——宁可不干，也不能重复干。
+        """
+        return self._claim_and_run(run_id, imported_reviews)
+
+    def start(
+        self,
+        request: AnalysisRequest,
+        imported_reviews: list[Review] | None = None,
+        allow_concurrent: bool = False,
+    ) -> RunRecord:
+        """提交并**立刻在本进程执行**（本机工作台与云端演示走的仍是这条路）。"""
+        run = self.enqueue(request, allow_concurrent=allow_concurrent)
+        return self.execute(run.run_id, imported_reviews=imported_reviews)
 
     def resume(
         self,
@@ -161,9 +190,21 @@ class AnalysisOrchestrator:
         发生在 collect 之前）：此时检查点里没有评论，必须重新提供导入文件才能继续。
         采集已完成时会直接读检查点，该参数被忽略。
         """
+        return self._claim_and_run(run_id, imported_reviews, event_message="Analysis run resumed")
+
+    def _claim_and_run(
+        self,
+        run_id: str,
+        imported_reviews: list[Review] | None = None,
+        *,
+        event_message: str | None = None,
+    ) -> RunRecord:
+        """认领一个无人持有的运行并执行它——`execute` 与 `resume` 共用的那一段。
+
+        超时停止的运行同样可接管——它们都停在检查点上。进程被硬杀留下的 running
+        运行，只要确认持有者进程已经不在，同样可以接管：这是崩溃恢复的唯一入口。
+        """
         run = self.repository.get_run(run_id)
-        # 超时停止的运行同样可续跑——它们都停在检查点上。进程被硬杀留下的 running
-        # 运行，只要确认持有者进程已经不在，同样可以接管：这是崩溃恢复的唯一入口。
         if not self.repository.can_resume(run, timeout_seconds=self.lease_timeout_seconds):
             return run
 
@@ -176,7 +217,8 @@ class AnalysisOrchestrator:
             return self.repository.get_run(run_id)
 
         run = self._update_run(taken, status=RunStatus.RUNNING, last_error=None)
-        self._add_event(run, "Analysis run resumed")
+        if event_message:
+            self._add_event(run, event_message)
         return self._run_in_context(run, imported_reviews=imported_reviews)
 
     def _run_in_context(

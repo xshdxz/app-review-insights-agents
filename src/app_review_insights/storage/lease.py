@@ -119,6 +119,10 @@ def is_held(run: RunRecord, now: datetime, timeout_seconds: float) -> bool:
     """能否判定"仍有一个活着的执行者在写这次运行"。"""
     if run.status not in EXECUTING_STATUSES:
         return False
+    if run.status == RunStatus.PENDING and run.lease_owner is None:
+        # 排队中：已提交、还没有执行者。没有租约就是**没人写它**——若按心跳窗口判成
+        # "被持有"，任何执行者都不敢认领，队列直接死掉（见 T1 计划书）。
+        return False
     alive = owner_is_alive(run.lease_owner)
     if alive is True:
         return True
@@ -132,8 +136,9 @@ def blocks_new_run(run: RunRecord, now: datetime, timeout_seconds: float) -> boo
     """这次运行是否应当阻止同一 App 的新运行（占用互斥）。"""
     if run.status not in MUTEX_STATUSES:
         return False
-    if run.status == RunStatus.WAITING:
-        # 停在检查点上等模型恢复，仍然占着这个 App
+    if run.status in (RunStatus.PENDING, RunStatus.WAITING):
+        # 排队中（还没有执行者）与停在检查点上等模型恢复的运行，都仍然占着这个 App：
+        # "没人持有"不等于"同一个 App 可以再来一次"——否则会被排两次队、模型额度烧两份。
         return True
     return is_held(run, now, timeout_seconds)
 

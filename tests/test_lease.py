@@ -137,6 +137,32 @@ def test_waiting_run_blocks_new_runs_even_without_a_live_owner(monkeypatch):
     assert lease.blocks_new_run(_run(RunStatus.WAITING), datetime.now(UTC), TIMEOUT) is True
 
 
+def test_queued_run_without_a_lease_is_not_held(monkeypatch):
+    """排队中的运行**没有执行者**：没有租约就不算被持有。
+
+    否则它会被按心跳窗口判成"仍有人在写"，任何执行者都不敢认领——队列就死了。
+    """
+    monkeypatch.setattr(lease, "owner_is_alive", lambda owner: None)
+
+    queued = _run(RunStatus.PENDING, lease_owner=None, heartbeat_age_seconds=0)
+
+    assert lease.is_held(queued, datetime.now(UTC), TIMEOUT) is False
+    assert lease.can_resume(queued, datetime.now(UTC), TIMEOUT) is True
+
+
+def test_queued_run_still_blocks_a_second_run_for_the_same_app(monkeypatch):
+    """ "没人持有"不等于"这个 App 可以再来一次"。
+
+    排着队的运行同样占位：否则同一个 App 会被排两次队，模型额度烧两份。
+    """
+    monkeypatch.setattr(lease, "owner_is_alive", lambda owner: None)
+
+    queued = _run(RunStatus.PENDING, lease_owner=None, heartbeat_age_seconds=0)
+
+    assert lease.is_held(queued, datetime.now(UTC), TIMEOUT) is False
+    assert lease.blocks_new_run(queued, datetime.now(UTC), TIMEOUT) is True
+
+
 @pytest.mark.parametrize("status", [RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.PARTIAL])
 def test_terminal_runs_do_not_block_new_runs(status):
     assert lease.blocks_new_run(_run(status), datetime.now(UTC), TIMEOUT) is False
