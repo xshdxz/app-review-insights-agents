@@ -26,6 +26,18 @@ def fake_provider_factory():
     return SchemaFakeProvider
 
 
+@pytest.fixture(autouse=True)
+def isolate_runtime_artifacts(tmp_path, monkeypatch):
+    """把"装配时会在 CWD 下建文件"的运行时路径统一重定向到 tmp_path。
+
+    装配是真的会建库的（响应缓存、检查点库）。不重定向的话，跑一次测试就会在仓库里
+    留下 `data/cache/llm-cache.sqlite3` —— 测试不该往工作树里写东西，哪怕那个文件
+    已经被 .gitignore 覆盖。个别用例想验证路径行为时，自己 setenv 覆盖即可
+    （显式传参优先于环境变量）。
+    """
+    monkeypatch.setenv("MODEL_CACHE_PATH", str(tmp_path / "llm-cache.sqlite3"))
+
+
 def _recording_at(path: Path) -> Path:
     """写一份最小合法录制件到 path 并返回该路径（演示模式用例的公共前置）。
 

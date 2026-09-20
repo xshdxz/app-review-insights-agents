@@ -21,6 +21,7 @@ from app_review_insights.config import Settings, load_settings
 from app_review_insights.errors import InputDataError
 from app_review_insights.llm import DeepSeekProvider
 from app_review_insights.llm.budget import make_budget_guard
+from app_review_insights.llm.cache import CachingProvider, ResponseCache
 from app_review_insights.llm.recording import (
     RecordingProvider,
     ReplayProvider,
@@ -91,6 +92,14 @@ def _build_model_provider(
         usage_recorder=repository.record_model_usage,
         budget_check=build_budget_guard(settings, repository),
     )
+    if settings.model_cache_enabled:
+        # 缓存贴在最内层：录制层仍然包在外面，所以录制件照旧记录每一次调用
+        # （包括命中缓存返回的那次）——录制件的语义是"这次运行拿到了什么"，
+        # 不是"网络请求发了几次"。
+        provider = CachingProvider(
+            provider,
+            ResponseCache(settings.model_cache_path, ttl_days=settings.model_cache_ttl_days),
+        )
     if settings.model_record_path is not None:
         if not input_fingerprint:
             raise InputDataError(

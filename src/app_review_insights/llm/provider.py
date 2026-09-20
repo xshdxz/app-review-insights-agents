@@ -28,6 +28,9 @@ class DeepSeekProvider:
         max_retries: int = 2,
         retry_delays: Sequence[float] | None = None,
         max_tokens: int = 8192,
+        #: 采样温度。提成显式字段而不是写在调用里：它是决定响应的因素之一，
+        #: 响应缓存的键必须包含它，否则"换了温度却命中旧答案"就是正确性事故。
+        temperature: float = 0.1,
         usage_recorder: Callable[[ModelUsage], None] | None = None,
         budget_check: Callable[[], None] | None = None,
     ):
@@ -45,6 +48,7 @@ class DeepSeekProvider:
         self.max_retries = max_retries
         self.retry_delays = delays
         self.max_tokens = max_tokens
+        self.temperature = temperature
         self.usage_recorder = usage_recorder
         self.budget_check = budget_check
 
@@ -116,7 +120,7 @@ class DeepSeekProvider:
                 started_at = time.perf_counter()
                 response = self.client.chat.completions.create(
                     model=self.model,
-                    temperature=0.1,
+                    temperature=self.temperature,
                     max_tokens=self.max_tokens,
                     response_format={"type": "json_object"},
                     messages=messages,

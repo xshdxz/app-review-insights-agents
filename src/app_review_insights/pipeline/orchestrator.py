@@ -15,6 +15,7 @@ from app_review_insights.errors import (
     RecoverableModelError,
     RunDeadlineExceeded,
 )
+from app_review_insights.llm.prompts import prompt_fingerprint, prompt_version
 from app_review_insights.llm.recording import RECORDING_MODE
 from app_review_insights.llm.schemas import (
     BatchAnalysisResult,
@@ -110,6 +111,8 @@ class AnalysisOrchestrator:
             is_live=not self.services.replay_run,
             lease_owner=self.owner,
             heartbeat_at=now,
+            prompt_version=prompt_version(),
+            prompt_fingerprint=prompt_fingerprint(),
             created_at=now,
             updated_at=now,
         )

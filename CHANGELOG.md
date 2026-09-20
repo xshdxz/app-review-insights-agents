@@ -12,6 +12,15 @@
   全部走回放 ⇒ 零模型成本；`pytest -m reliability`，默认不随主套件运行
 - **运行租约**（`storage/lease.py`）：运行记录带持有者身份（`host:pid:token`）与心跳。
   同主机且持有者进程已不存在时**立即**可以接管；判不出来（跨主机、旧记录）才退回心跳窗口
+- **模型响应缓存**（`llm/cache.py`）：内容寻址，键含模型/温度/输出上限/Schema/请求文本——
+  任何一项变了都不会命中。`MODEL_CACHE_ENABLED` 一键开关、`MODEL_CACHE_TTL_DAYS` 控制有效期，
+  数据维护顺带清理过期条目
+- **Prompt 版本化**：运行记录带上 prompt 版本标签与**文本指纹**（只进记录、不进请求文本，
+  因此不影响录制件）。指纹由测试钉死——改了 prompt 文本却忘改版本号会红
+- **评测体系**：新增 `reference_recall`（不依赖词表的证据覆盖口径）、`hallucination_rate`
+  （引用了不存在评论的比例）、`--stability N`（同输入 N 次的主题集合一致度）、`--save-history`
+  与 `scripts/compare_eval.py`（跨版本比较 + 手动门禁）。`--live` 评测现在会记账
+  （`usage.estimated_cost_usd`）并受 `--max-cost-usd` 上限保护
 
 - **离线演示模式**：无模型密钥的部署自动回放一次真实运行的录制
   （`data/recordings/demo-replay.json`），「开始分析」可点、跑完整条流水线；输入锁定为自带样例，
@@ -24,6 +33,9 @@
 
 ### 修复
 
+- **评测的头条指标结构性恒为 0**：打分取的是中文 `topic_label`，与黄金集里的 ascii 主题键
+  不可比，规范化后成空串被丢弃 ⇒ `predicted_topics` 恒为空集。文档宣称的修复只到了 Schema
+  与 Prompt，没落到打分代码里（D-10）
 - **进程被硬杀后无法续跑**：`orchestrator.resume()` 只接受 `waiting_for_model` / `timed_out`，
   而崩溃留下的运行停在 `running`，于是续跑静默变成空操作、界面也没有续跑入口——检查点完好
   却永远取不回来。现在执行中的运行在确认持有者进程已消失后可以接管

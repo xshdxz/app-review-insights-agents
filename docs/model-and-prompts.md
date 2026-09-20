@@ -34,18 +34,36 @@
 - **冲突证据**（同一主题正反评论并存）、**证据不足**（应拒绝下结论）、
   **重复评论**、**Prompt 注入**、**全正面**（应无可验证问题）。
 
-### 主题键 topic_key
+### 主题键 topic_key，与它暴露出的"词表问题"
 
-早期评测拿模型生成的**中文标签**（`topic_label`）与黄金集做精确字符串比对，
-所以 `topic_recall` 长期是 0.000——那不是模型没识别出主题，而是**指标不可比**。
+早期评测拿模型生成的**中文标签**（`topic_label`）与黄金集做精确字符串比对，所以
+`topic_recall` 长期是 0.000。当时判断"不是模型没识别出主题，而是指标不可比"，于是给 Schema
+加上语言无关的 `topic_key`（ascii snake_case），并要求模型为同一具体问题复用同一个键。
 
-现在每个 Finding 额外输出语言无关的 `topic_key`（ascii snake_case）：
+**但那次修复只到了 Schema 与 Prompt，没落到打分代码里**：`run_eval.py` 仍然取 `topic_label`，
+中文标签被规范化成空串后丢弃，`predicted_topics` 恒为空集——指标依旧结构性恒为 0
+（缺陷 **D-10**，2026-09-20 修复）。
 
-- 展示仍用本地化的 `topic_label`；
-- 评测只比对 `topic_key`，且大小写与分隔符不敏感
-  （`Subscription Transparency` ≡ `subscription_transparency`）；
-- 模型中英混排或输出中文键时，规范化会得到空串并计入覆盖率缺口，
-  而不是制造一个永远匹配不上的值。
+修好之后第一次真实运行（30 用例）给出两个数字：
+
+- `topic_key_coverage = 1.0` —— 模型每次都给出了规范的可比键，排除"压根没给键"这一解释；
+- `topic_recall = 0.033` —— 仍然极低。
+
+看逐用例对照才看得清原因：**模型找对了问题，只是粒度比标注细**。
+
+| 黄金标注（粗粒度） | 模型给出（细粒度） |
+|---|---|
+| `subscription_transparency` | `pre_trial_price_visibility`、`subscription_terms_clarity`、`trial_renewal_disclosure` |
+| `timer_reliability` | `timer_continues_after_pause`、`timer_freeze_on_screen_lock`、`timer_works_on_some_devices` |
+| `cancellation_difficulty` | `cancellation_multi_step_flow`、`no_in_app_cancel_entry`、`charged_after_cancellation` |
+
+25+ 个预测键**每个只出现一次**，而黄金集只有 22 个粗粒度类目。所以 `topic_recall` 实际测的是
+"与标注者选词的词面一致率"，而不是主题识别能力——这是指标设计问题（**D-11**，仍未解决，
+三条候选路径记在缺陷清单里）。
+
+因此补了一个**不依赖词表**的口径：`reference_recall`——标注认为相关的评论，模型覆盖了多少。
+它回答的是"有没有找到同一批证据"，与双方用什么词无关。展示仍用本地化的 `topic_label`；
+模型输出中英混排或中文键时，规范化得到空串并计入 `topic_key_coverage` 缺口。
 
 ### 回归门禁
 
@@ -69,7 +87,20 @@
 
 # 调用当前 DeepSeek 配置并保存详细结果
 .\.venv\Scripts\python scripts/run_eval.py --live --output output/prompt-eval-2026-08-15.json
+
+# 测稳定性：每个用例重复 3 次（成本约 ×3，仍受 --max-cost-usd 约束）
+.\.venv\Scripts\python scripts/run_eval.py --live --stability 3
+
+# 存进评测历史（文件名带 prompt 指纹与时分），供跨版本比较
+.\.venv\Scripts\python scripts/run_eval.py --live --stability 3 --save-history
+
+# 比较两次报告；--fail-on-regression 供手动触发的门禁使用
+.\.venv\Scripts\python scripts/compare_eval.py evals/history/<基线>.json evals/history/<本次>.json
 ```
+
+评测报告里带 **prompt 版本 + 文本指纹**、**实际花费**（`usage.estimated_cost_usd`）与
+**完成用例数**。`--max-cost-usd` 默认 1.0 美元是安全上限，触顶会停下并如实标注
+`budget_exceeded`，而不是装作跑完了。
 
 根目录 PowerShell 入口只负责定位项目虚拟环境并转发参数，不读取或打印
 `DEEPSEEK_API_KEY`。缺少 `.venv` 或评测脚本时会给出中文错误提示。
@@ -81,7 +112,33 @@
 | 2026-08-15 | batch-v1 / `FindingDraft`-v1 | gold-reviews（3 cases） | 0.000 | 0.556 | 1.000 | 模型输出中文主题标签，而黄金标签为英文，精确字符串匹配全部失败；订阅用例把一条正向评论列为 supporting；证据不足用例仍输出两个单条证据主题 | 为 Schema 增加稳定、语言无关的 `topic_key`，展示层继续保留本地化 `topic_label`；补充“正向评论优先放入 conflicting_review_ids”“单条证据默认标记 assumption”的 Prompt 约束，再扩充数据集后复测 |
 | 2026-08-16 | batch-v1 + max_tokens / `FindingDraft`-v1 | Workout for Women 真实评论（100 条） | — | — | 1.000（修复后） | 未设置 `max_tokens` 时使用 API 默认 4096，大批次输出（每条中文摘要 + 发现）被截断，JSON 解析失败，重试后仍失败进入等待恢复 | 显式设置 `MODEL_MAX_TOKENS=8192`；批次 Prompt 增加“每条摘要不超过 25 字”约束；已在真实运行上验证续跑成功（同一 `run_id`） |
 
-## 首次结果解读
+### 2026-09-20 首次完整评测（六个指标）
+
+同一天跑了三次（同一 prompt，指纹 `9e70a08b5eef`，每次 30 用例 × 3 次重复），
+累计花费 **$0.075 × 3 ≈ $0.23**。下表取第 1 次与第 3 次：
+
+| 指标 | 第 1 次 | 第 3 次 | 含义 |
+|---|---:|---:|---|
+| 引用召回 `reference_recall` | — | **0.950** | 标注认为相关的评论，模型覆盖了多少（不依赖词表） |
+| 引用精确率 `reference_precision` | 0.796 | 0.795 | 模型引用的评论里有多少在标注集内 |
+| 主题召回 `topic_recall` | 0.033 | 0.033 | 集合精确匹配；受词表粒度影响，见 D-11 |
+| 主题键覆盖率 `topic_key_coverage` | 1.000 | 1.000 | 模型给出的键全部规范可比 |
+| 幻觉率 `hallucination_rate` | 0.000 | 0.000 | 引用了输入中**不存在**的 `review_id` 的比例 |
+| 稳定性 `stability`（N=3） | 0.497 | 0.492 | 同输入三次运行的主题集合一致度 |
+| 结构化输出成功率 | 1.000 | 1.000 | |
+
+三个结论，都可复现（历史报告在 `evals/history/`，用 `scripts/compare_eval.py` 可自行复算）：
+
+1. **指标本身是可复现的**：两次独立运行的差值都在 ±0.005 以内，主题召回甚至完全相同。
+   所以后面按版本比较趋势是可信的——这一条不成立的话，其余数字都没意义。
+2. **模型的证据覆盖很好，但用词不稳定**：引用召回 0.95、幻觉率 0（90 次运行一次都没编造评论 ID），
+   而稳定性只有 0.49——同一批评论跑三次，主题集合只有约一半重合。测量噪声已被第 1 条排除，
+   所以这是**模型输出的性质**，不是评测的抖动。
+3. **`topic_recall = 0.033` 不等于"模型没找到问题"**：逐用例对照显示模型给出的键语义正确、
+   粒度更细（gold 的 `subscription_transparency` ↔ 模型的 `trial_renewal_disclosure` 等），
+   属于指标缺共享词表（D-11），不是模型能力问题。
+
+## 首次结果解读（2026-08-15；数字已被后续轮次取代，保留作方法演进记录）
 
 结构化输出成功率为 100%，说明当前 JSON Schema、低温度和自动修复重试可以稳定获得可解析对象。`reference_precision=0.556` 表明模型仍会混淆支持证据与冲突/不足证据，这正是后续程序校验不能省略的原因。
 

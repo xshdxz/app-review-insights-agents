@@ -25,6 +25,9 @@ data/runs/
 data/uploads/
 data/agent/
 output/
+# 模型响应缓存（可随时重建的派生数据）。注意 data/cache/ 里还有**被跟踪**的演示档案
+# demo-run.json，所以只忽略库文件，不忽略整个目录。
+data/cache/*.sqlite3*
 
 # Editors and OS
 .idea/

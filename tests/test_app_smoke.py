@@ -90,6 +90,8 @@ def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monk
 
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "runs.sqlite3"))
+    # 装配会按 MODEL_CACHE_PATH 建缓存库；不钉进 tmp_path 就会在仓库里造出真文件
+    monkeypatch.setenv("MODEL_CACHE_PATH", str(tmp_path / "cache.sqlite3"))
     provider = object()
     provider_factory = Mock(return_value=provider)
     analyze = Mock(return_value="batch-result")
@@ -119,11 +121,30 @@ def test_build_services_with_key_wires_existing_deepseek_pipeline(tmp_path, monk
     assert services.requirement_builder(["finding"], "goal", 12) == "requirements"
     assert services.test_case_builder(["requirement"]) == "test-cases"
     provider_factory.assert_called_once()
-    analyze.assert_called_once_with(provider, ["review"], "goal")
-    consolidate.assert_called_once_with(provider, ["batch-result"], "goal", ["review"])
-    audit.assert_called_once_with(provider, ["finding"], ["review"], "goal")
-    plan.assert_called_once_with(provider, ["finding"], "goal", 12)
-    generate_tests.assert_called_once_with(provider, ["requirement"])
+    analyze.assert_called_once()
+    called_provider, called_reviews, called_goal = analyze.call_args.args
+    assert (called_reviews, called_goal) == (["review"], "goal")
+    # 断言"接的就是这个 provider"，而不是"就是它本身"：中间可能夹着响应缓存层
+    # （MODEL_CACHE_ENABLED 默认开），那是实现细节，不是这个用例要守的性质。
+    assert _unwrap_provider(called_provider) is provider
+    consolidate.assert_called_once()
+    assert _unwrap_provider(consolidate.call_args.args[0]) is provider
+    audit.assert_called_once()
+    assert _unwrap_provider(audit.call_args.args[0]) is provider
+    plan.assert_called_once()
+    assert _unwrap_provider(plan.call_args.args[0]) is provider
+    generate_tests.assert_called_once()
+    assert _unwrap_provider(generate_tests.call_args.args[0]) is provider
+
+
+def _unwrap_provider(candidate):
+    """剥掉可能的 provider 包装层（响应缓存），拿到最内层。"""
+    for _ in range(5):
+        inner = getattr(candidate, "inner", None)
+        if inner is None:
+            return candidate
+        candidate = inner
+    raise AssertionError("provider 包装层数异常，疑似循环包裹")
 
 
 def test_streamlit_page_starts_without_model_key(tmp_path, monkeypatch):

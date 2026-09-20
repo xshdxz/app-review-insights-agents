@@ -170,6 +170,11 @@ class RunRecord(BaseModel):
     #: 用户得白等一个窗口才能续跑。旧记录没有这两个键，反序列化时按 None 补齐。
     lease_owner: str | None = None
     heartbeat_at: datetime | None = None
+    #: 产生这次运行的 prompt 版本标签与文本指纹。两者一起记录，是为了让"文本改了但
+    #: 版本号没动"这种漂移可发现；旧记录没有这两个键，反序列化时按 None 补齐。
+    #: 它们只进记录、不进请求文本，所以不影响录制件。
+    prompt_version: str | None = None
+    prompt_fingerprint: str | None = None
     current_batch: int = 0
     total_batches: int = 0
     coverage_ratio: float = Field(default=0, ge=0, le=1)

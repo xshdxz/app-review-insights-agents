@@ -17,14 +17,32 @@ from __future__ import annotations
 
 import logging
 import threading
+from pathlib import Path
 from typing import Any
 
 from app_review_insights.config import Settings, load_settings
+from app_review_insights.llm.cache import ResponseCache
 from app_review_insights.logging_setup import configure_logging
 from app_review_insights.storage.agent_repository import AgentRepository
 from app_review_insights.storage.repository import RunRepository
 
 logger = logging.getLogger("ari-maintenance")
+
+
+def prune_model_cache(settings: Settings) -> int:
+    """清掉过期的模型响应缓存条目，返回删除条数。
+
+    缓存是可随时丢弃的派生数据，但不清就是一个只涨不跌的文件——与 events / reports 同理。
+    缓存文件不存在时什么都不做（没跑过实时模型就没有缓存）。
+    """
+    path = Path(settings.model_cache_path)
+    if not path.exists():
+        return 0
+    cache = ResponseCache(path, ttl_days=settings.model_cache_ttl_days)
+    removed = cache.prune()
+    if removed:
+        cache.vacuum()
+    return removed
 
 
 def run_maintenance(settings: Settings | None = None) -> dict[str, int]:
@@ -39,6 +57,7 @@ def run_maintenance(settings: Settings | None = None) -> dict[str, int]:
         "reports_removed": agent_repository.prune_reports(
             keep_per_app=settings.reports_keep_per_app
         ),
+        "cache_entries_removed": prune_model_cache(settings),
     }
 
     if any(result.values()):

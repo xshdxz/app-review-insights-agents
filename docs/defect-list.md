@@ -1,4 +1,4 @@
-# 缺陷清单（2026-09-19 更新）
+# 缺陷清单（2026-09-20 更新）
 
 严重程度：`阻断` > `高` > `中` > `低`。
 状态：`open` / `fixed` / `won't-fix` / `env`（环境问题，仅文档说明）。
@@ -12,6 +12,8 @@
 
 | D-07 | 高 | fixed | **进程被硬杀后无法续跑**：`orchestrator.resume()` 的状态门只放行 `waiting_for_model` / `timed_out`，而崩溃留下的运行停在 `running`，于是续跑静默变成空操作；界面按钮用同一份状态元组，也没有恢复入口。检查点完好却永远取不回来——"同一 `run_id` 续跑、不丢已完成工作"这条承诺在**进程级故障**下不成立（而它比模型失败更常见）。 | 崩溃一致性矩阵 15 个场景全红，且红在同一条断言上（`'running' != 'completed'`），前三条断言（崩溃生效 / 负向 / 原子性）全过 ⇒ 缺陷精确定位在状态门而非检查点机制。 | 引入运行租约（`storage/lease.py`）：持有者身份 `host:pid:token` + 进程存活判定，执行中的运行在确认持有者已消失后可**立即**接管；判不出来才退回心跳窗口；界面与编排器共用 `repository.can_resume`。修复后 21 项全绿，且反向验收（换回旧行为）会重新变红。 |
 
+| D-10 | 高 | fixed | **评测的头条指标结构性恒为 0**：`scripts/run_eval.py` 的打分取的是 `finding.topic_label`，而按 prompt 的约定它是**中文**、黄金集里是 `subscription_transparency` 这类 ascii 键；规范化把非 ascii 字符整体替换成下划线，中文标签于是变成空串并被丢弃，`predicted_topics` 恒为空集。文档与 AGENTS.md 都写着"评测只比对 `topic_key`"——那次修复只改了 Schema 与 Prompt，**没落到打分代码里**。 | 单测把"中文 label + ascii key"喂进 `evaluate_case`，实测 `topic_recall = 0.0`（应 1.0）。它长期存活还有第二个原因：`tests/test_analysis.py` 的夹具用**英文 label 且没有 key**，与真实模型输出形状不一致。 | 打分改用 `topic_key`；新增 `topic_key_coverage` 让"模型没给出可比键"这一缺口可见；`_normalize_topic` 改为复用 Schema 的规范化（原先两份实现有分叉风险）。修复后首次真实运行：`topic_key_coverage = 1.0`、`topic_recall = 0.033`——后者暴露出下一个问题（D-11）。 |
+
 ## 中
 
 | # | 严重程度 | 状态 | 问题 | 证据 | 修复 |
@@ -21,6 +23,8 @@
 
 | D-08 | 中 | fixed | **采集完成前中断的运行无法续跑**：界面调用 `resume()` 时从不传 `imported_reviews`，而该参数在"采集阶段尚未完成"时是必需的——即便放开了状态门，续跑也只会以 `CollectionError` 收场。 | `ui/main.py` 的 `_resume_analysis` 签名里没有这个参数；`orchestrator.resume()` 的 docstring 明确要求它。 | 新增 `_reviews_for_resume`：COLLECT 已有输出则直接用检查点里的评论；否则按来源重新导入（缺文件时给出中文提示而不是崩在采集阶段）。 |
 | D-09 | 中 | fixed | **同一 App 并发互斥存在 check-then-act 竞态**：`find_active_run()` 与 `save_run()` 分两步执行，中间的空档里另一个进程可以插进来，同一个 App 被分析两遍、模型额度烧两份。孤儿判定还依赖"60 分钟未更新"这一魔数，语义也不对——更新得早不等于没人拥有它。 | 两处调用在 `AnalysisOrchestrator.start()` 里相邻但不在同一事务内。 | 改为 `BEGIN IMMEDIATE` 事务内原子占用（`repository.acquire_run`）；互斥判定改为租约语义（`lease.blocks_new_run`），保留对无租约旧记录的"最近更新时间"回退。 |
+
+| D-11 | 中 | open | **`topic_recall` 缺共享词表**：它按集合精确匹配 `topic_key`，而键是模型自由生成的。2026-09-20 首次真实运行显示，模型识别出的问题**语义正确但粒度更细**：gold `subscription_transparency` ↔ 模型 `pre_trial_price_visibility` / `subscription_terms_clarity` / `trial_renewal_disclosure`；25+ 个预测键每个只出现一次，而标注只有 22 个粗粒度类目。因此该指标实际测的是"与标注者选词的词面一致率"。 | 首次真实运行 `topic_recall = 0.033` 而 `topic_key_coverage = 1.0`——键本身是规范的，排除了规范化问题。 | **本次只修了一半**：新增不依赖词表的 `reference_recall`（标注认为相关的评论被覆盖了多少）。彻底修法有三条路且都未做：① 给模型一套受控词表（与"动态识别主题、不用预设分类表"的设计取舍直接冲突）；② 在黄金集里为每个主题标注同义键；③ 用语义相似度替代精确匹配。留待评估。 |
 
 ## 低
 

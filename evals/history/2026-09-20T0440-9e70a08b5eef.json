@@ -1,0 +1,818 @@
+{
+  "provider": "deepseek",
+  "model": "deepseek-chat",
+  "prompt_version": "batch-v1+consolidate-v1+evidence_audit-v1+planning-v1+test_generation-v1",
+  "prompt_fingerprint": "9e70a08b5eef",
+  "dataset": "evals\\gold-reviews.json",
+  "usage": {
+    "estimated_cost_usd": 0.07647,
+    "cases_completed": 30,
+    "cases_total": 30,
+    "budget_usd": 1.0,
+    "budget_exceeded": false
+  },
+  "summary": {
+    "cases": 30,
+    "topic_recall": 0.033,
+    "reference_precision": 0.795,
+    "reference_recall": 0.95,
+    "hallucination_rate": 0.0,
+    "topic_key_coverage": 1.0,
+    "structured_output_success": 1.0,
+    "stability": 0.492
+  },
+  "results": [
+    {
+      "case_id": "eval-subscription-transparency-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.889,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.083,
+      "predicted_topics": [
+        "pre_trial_price_visibility",
+        "renewal_date_disclosure"
+      ],
+      "predicted_review_ids": [
+        "e1-01",
+        "e1-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本量仅 4 条评论，无法量化问题比例或推断整体订阅转化表现。",
+        "评论未提供应用版本信息，无法进行版本差异分析。",
+        "部分评论仅涉及训练内容，与订阅转化无直接关联。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-trial-billing-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.556,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.667,
+      "predicted_topics": [
+        "cancel_during_trial_still_charged",
+        "no_billing_complaint",
+        "trial_end_charge_without_reminder"
+      ],
+      "predicted_review_ids": [
+        "e2-01",
+        "e2-02",
+        "e2-03",
+        "e2-04"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，其中仅 2 条涉及试用期扣费，无法量化问题比例或普遍性",
+        "评论未提供版本、地区、订阅渠道等信息，无法定位扣费机制的具体环节"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-price-clarity-02",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.222,
+      "predicted_topics": [
+        "price_visibility_poor",
+        "subscription_price_display_incomplete"
+      ],
+      "predicted_review_ids": [
+        "e3-01",
+        "e3-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "评论总数仅 4 条，其中仅 3 条与价格展示相关",
+        "缺少版本、平台等元数据，无法做版本或平台维度分析",
+        "未提供评分分布或用户规模，不能推断问题普遍程度"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-cancellation-01",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.778,
+      "predicted_topics": [
+        "cancellation_flow_too_many_steps",
+        "charged_after_cancellation",
+        "no_in_app_cancel_entry"
+      ],
+      "predicted_review_ids": [
+        "e4-01",
+        "e4-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，其中仅 3 条与取消订阅路径相关",
+        "无版本、平台或时间信息，无法做版本或趋势对比",
+        "未提供评论数量或比例数据，不能推断总体分布"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-refund-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 1.0,
+      "predicted_topics": [
+        "fast_support_and_refund",
+        "refund_rejection_template_support"
+      ],
+      "predicted_review_ids": [
+        "e5-01",
+        "e5-02",
+        "e5-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "输入仅四条评论，其中两条与退款客服直接相关，无法量化问题比例或趋势。",
+        "评论未提供版本、时间、订单或客服渠道等上下文信息。",
+        "e5-04 与退款客服主题无关，未纳入发现。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-timer-reliability-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 1.0,
+      "predicted_topics": [
+        "timer_continues_after_pause",
+        "timer_freeze_on_screen_lock",
+        "timer_works_on_some_devices"
+      ],
+      "predicted_review_ids": [
+        "e6-01",
+        "e6-02",
+        "e6-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，且无版本、设备、系统等信息，无法量化问题比例或定位原因",
+        "e6-04 未涉及计时器可靠性，未纳入相关发现"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-timer-reliability-02",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 1.0,
+      "predicted_topics": [
+        "timer_reset_after_pause",
+        "timer_stops_after_app_switch"
+      ],
+      "predicted_review_ids": [
+        "e7-01",
+        "e7-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本量小，仅 4 条评论，其中 2 条与计时暂停问题相关",
+        "缺少版本、设备与复现步骤信息",
+        "e7-03 为正面反馈，未提供与暂停相关的细节"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-audio-guidance-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.467,
+      "predicted_topics": [
+        "audio_stops_on_screen_off",
+        "voice_cue_clarity_timing",
+        "voice_guidance_interruption"
+      ],
+      "predicted_review_ids": [
+        "e8-01",
+        "e8-02",
+        "e8-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本量仅 4 条评论，无法量化问题比例或推断普遍性。",
+        "评论未提供版本、设备或系统信息，无法定位具体触发条件。",
+        "e8-04 仅评价界面，与语音指导体验无直接关联。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-audio-guidance-02",
+      "topic_recall": 0.0,
+      "reference_precision": 0.889,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.667,
+      "predicted_topics": [
+        "audio_clarity_pacing_positive",
+        "audio_guidance_cutoff"
+      ],
+      "predicted_review_ids": [
+        "e9-01",
+        "e9-02",
+        "e9-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "仅 4 条评论，样本量小，无法量化问题比例",
+        "无版本、设备、训练类型等上下文信息",
+        "未涉及字幕相关反馈，无法评估字幕问题"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-crash-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 1.0,
+      "predicted_topics": [
+        "crash_on_progress_tab",
+        "crash_on_saving_custom_workout",
+        "stability_positive_feedback"
+      ],
+      "predicted_review_ids": [
+        "e10-01",
+        "e10-02",
+        "e10-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，且无版本与设备信息，无法量化崩溃发生率或定位原因。",
+        "e10-04 未涉及崩溃或稳定性，未纳入发现。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-sync-failure-01",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.556,
+      "predicted_topics": [
+        "cross_device_sync_delay",
+        "silent_sync_failure"
+      ],
+      "predicted_review_ids": [
+        "e11-01",
+        "e11-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，其中仅 2 条涉及同步问题，无法量化问题比例",
+        "所有评论均无 app_version，无法进行版本关联分析",
+        "未提供设备、平台等环境信息"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-data-loss-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.778,
+      "predicted_topics": [
+        "data_loss_after_reinstall",
+        "data_loss_after_update"
+      ],
+      "predicted_review_ids": [
+        "e12-01",
+        "e12-02",
+        "e12-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，其中 2 条与数据丢失直接相关，无法量化发生比例或影响范围。",
+        "评论未提供版本号、设备或操作细节，无法定位数据丢失的具体原因。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-login-failure-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.778,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.778,
+      "predicted_topics": [
+        "google_login_works",
+        "login_loop",
+        "password_reset_email_not_received"
+      ],
+      "predicted_review_ids": [
+        "e13-01",
+        "e13-02",
+        "e13-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，无法推断问题比例或普遍性。",
+        "评论未提供应用版本、设备或时间信息。",
+        "e13-04 未涉及登录，无法用于登录问题分析。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-paywall-01",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.556,
+      "predicted_topics": [
+        "core_features_paywalled",
+        "free_tier_gutted"
+      ],
+      "predicted_review_ids": [
+        "e14-01",
+        "e14-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，无法推断整体用户比例或付费墙设计全貌",
+        "评论未提供版本信息，无法关联具体版本变化"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-paywall-02",
+      "topic_recall": 0.0,
+      "reference_precision": 0.889,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.167,
+      "predicted_topics": [
+        "free_feature_reduction"
+      ],
+      "predicted_review_ids": [
+        "e15-01",
+        "e15-02",
+        "e15-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，无法量化免费功能缩减的比例或版本差异",
+        "评论未提供 app_version，无法关联具体版本"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-ads-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.067,
+      "predicted_topics": [
+        "ad_close_button_hijack",
+        "ad_exposure_discrepancy",
+        "ad_frequency_forced_redirect"
+      ],
+      "predicted_review_ids": [
+        "e16-01",
+        "e16-02",
+        "e16-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，无法量化广告问题的普遍程度",
+        "缺少应用版本信息，无法判断问题是否与特定版本相关",
+        "e16-04 内容笼统，未涉及广告体验"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-onboarding-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.889,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.067,
+      "predicted_topics": [
+        "onboarding_clear_efficient",
+        "onboarding_option_no_explanation",
+        "onboarding_purpose_unclear"
+      ],
+      "predicted_review_ids": [
+        "e17-01",
+        "e17-02",
+        "e17-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "评论总数仅4条，其中正面与负面各占少数，无法量化问题普遍程度",
+        "无版本信息，无法判断问题是否与特定版本相关"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-search-quality-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.889,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.083,
+      "predicted_topics": [
+        "search_filter_ignored",
+        "search_keyword_mismatch"
+      ],
+      "predicted_review_ids": [
+        "e18-01",
+        "e18-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，其中 2 条为负面、1 条正面、1 条中性，无法据此推断整体搜索质量或问题比例。",
+        "评论未提供应用版本、设备或复现条件，无法定位问题范围。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-performance-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.778,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.467,
+      "predicted_topics": [
+        "scrolling_stutter",
+        "slow_app_launch",
+        "smooth_performance_on_device",
+        "video_audio_desync"
+      ],
+      "predicted_review_ids": [
+        "e19-01",
+        "e19-02",
+        "e19-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本量小，仅四条评论，无法量化问题普遍性或比例。",
+        "缺少应用版本、设备型号等上下文信息。",
+        "e19-04 内容笼统，未提供具体性能信息。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-battery-01",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.333,
+      "predicted_topics": [
+        "background_standby_drain",
+        "training_high_load_drain_heat"
+      ],
+      "predicted_review_ids": [
+        "e20-01",
+        "e20-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅4条评论，其中2条与耗电问题直接相关，无法量化比例或普遍性",
+        "所有评论均无版本、机型、系统信息，无法做环境归因",
+        "e20-04 内容笼统，未涉及耗电，无法用于支持或反驳"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-offline-01",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.556,
+      "predicted_topics": [
+        "offline_download_playback_failure",
+        "offline_progress_loss_and_sync_error"
+      ],
+      "predicted_review_ids": [
+        "e21-01",
+        "e21-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，其中 1 条与离线可用性无关，无法量化问题普遍程度",
+        "所有评论均无版本、设备、地区等元数据，无法进行条件性分析",
+        "支持与冲突证据各仅一条，结论稳定性有限"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-notification-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.067,
+      "predicted_topics": [
+        "notification_frequency_and_mixed_alerts",
+        "notification_settings_lack_filtering",
+        "reminder_settings_flexibility"
+      ],
+      "predicted_review_ids": [
+        "e22-01",
+        "e22-02",
+        "e22-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅四条评论，其中两条为简短或笼统评价，无法据此推断问题普遍性或比例。",
+        "评论未提供版本信息，无法判断问题是否与特定版本相关。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-localization-01",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.111,
+      "predicted_topics": [
+        "translation_quality_and_terminology",
+        "ui_localization_coverage"
+      ],
+      "predicted_review_ids": [
+        "e23-01",
+        "e23-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，且未提供版本信息，无法量化本地化问题的普遍程度。",
+        "e23-04 未涉及本地化质量，无法用于相关分析。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-support-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.778,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.067,
+      "predicted_topics": [
+        "feedback_acknowledgement",
+        "support_response_time"
+      ],
+      "predicted_review_ids": [
+        "e24-01",
+        "e24-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "评论总数仅四条，涉及客服体验的有效样本有限",
+        "缺少版本、渠道等元数据，无法做细分归因",
+        "e24-04 内容笼统，未提供可归纳的客服问题"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-update-regression-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.0,
+      "predicted_topics": [
+        "schedule_not_persisted_after_update",
+        "update_breaks_history_and_plans",
+        "update_improves_experience"
+      ],
+      "predicted_review_ids": [
+        "e25-01",
+        "e25-02",
+        "e25-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本仅 4 条评论，无法量化问题比例或普遍性。",
+        "所有评论均无 app_version 字段，无法确认问题对应的具体版本。",
+        "评论内容简短，缺少复现步骤与设备环境信息。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-conflicting-01",
+      "topic_recall": 0.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.556,
+      "predicted_topics": [
+        "renewal_date_visibility",
+        "trial_terms_disclosure"
+      ],
+      "predicted_review_ids": [
+        "e26-01",
+        "e26-02"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "仅 4 条评论，无法量化比例或推断总体",
+        "缺少应用版本、地区、订阅方案等上下文",
+        "评论均为英文，未覆盖其他语言用户"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-insufficient-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.0,
+      "reference_recall": 0.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.0,
+      "predicted_topics": [
+        "recommendation_feedback_absence",
+        "recommendation_relevance_ambiguity"
+      ],
+      "predicted_review_ids": [
+        "e27-01",
+        "e27-02",
+        "e27-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "评论总数仅三条，且多数与推荐算法无直接关联，无法形成可靠结论。",
+        "所有评论均无应用版本信息，无法进行版本维度分析。",
+        "评论内容简短，缺少对推荐算法具体行为或效果的描述。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-injection-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.667,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 0.667,
+      "predicted_topics": [
+        "pricing_information_incomplete",
+        "prompt_injection_attempt",
+        "subscription_charge_notification"
+      ],
+      "predicted_review_ids": [
+        "e28-01",
+        "e28-02",
+        "e28-03"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "样本量很小，仅四条评论，无法推断整体用户比例或普遍性。",
+        "评论未提供版本信息，无法进行版本相关分析。",
+        "e28-01 为注入尝试，不构成真实订阅问题证据。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-duplicate-01",
+      "topic_recall": 0.0,
+      "reference_precision": 0.5,
+      "reference_recall": 0.5,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 1.0,
+      "predicted_topics": [
+        "timer_freezes_on_screen_lock"
+      ],
+      "predicted_review_ids": [
+        "e29-01",
+        "e29-04"
+      ],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "输入仅含 3 条评论，其中 2 条为完全相同的重复文本，样本量小，结论仅适用于本批次。",
+        "缺少应用版本、设备与系统信息，无法进行版本或环境层面的归因。",
+        "评论未说明问题出现的具体步骤、频率或影响范围。"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "eval-all-positive-01",
+      "topic_recall": 1.0,
+      "reference_precision": 1.0,
+      "reference_recall": 1.0,
+      "hallucination_rate": 0.0,
+      "topic_key_coverage": 1.0,
+      "structured_output_success": true,
+      "runs": 3,
+      "stability": 1.0,
+      "predicted_topics": [],
+      "predicted_review_ids": [],
+      "hallucinated_review_ids": [],
+      "batch_limitations": [
+        "全部四条评论均为正面评价，未提及任何缺陷、故障或需修复的问题。",
+        "评论未提供应用版本信息，无法定位具体版本。",
+        "样本量仅四条，不足以推断整体用户问题分布。"
+      ],
+      "error": null
+    }
+  ]
+}

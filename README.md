@@ -101,7 +101,12 @@ F-001 免费内容大幅减少，付费墙限制基本功能   ← 15 条支持�
 ### 评测中心
 
 - **标注数据集**（`evals/gold-reviews.json`）：**30 个案例 / 120 条评论**，覆盖中英单语与混排、冲突证据、证据不足、重复评论、Prompt 注入、全正面等场景；数据集完整性在 CI 里有独立门禁
-- **自动评测**（`scripts/run_eval.py --live`）：主题召回率、引用精确率、结构化输出成功率
+- **自动评测**（`scripts/run_eval.py --live`）：引用召回 / 引用精确率 / 主题召回 / 主题键覆盖率 /
+  幻觉率 / 结构化输出成功率；`--stability N` 另给"同输入 N 次的主题集合一致度"。
+  报告带 prompt 版本与文本指纹、实际花费，并受 `--max-cost-usd` 上限保护
+- **跨版本比较**（`scripts/compare_eval.py`）：两份报告逐指标算差值，按指标方向判定回退
+  （幻觉率越小越好），`--fail-on-regression` 可作手动门禁；`--save-history` 把报告存进
+  `evals/history/`（文件名带 prompt 指纹与时分）
 - **评测中心页面**（`pages/3_评测中心.py`）：可视化结果 + 历史对比
 
 ### 定时监控与推送
@@ -191,6 +196,9 @@ Agent 层**包裹在确定性核心之外**：
 | `MODEL_NAME` / `MODEL_BASE_URL` | `deepseek-chat` / `https://api.deepseek.com` | OpenAI 兼容端点。 |
 | `MODEL_TIMEOUT_SECONDS` / `MODEL_MAX_RETRIES` / `MODEL_MAX_TOKENS` | `60` / `2` / `8192` | 模型调用行为。 |
 | `MODEL_BUDGET_USD_PER_RUN` / `MODEL_BUDGET_USD_PER_DAY` | `0` / `0` | 费用预算（美元，0 = 不限制）。超限时流水线停在检查点，调高后可用同一 `run_id` 续跑。 |
+| `MODEL_CACHE_ENABLED` | `true` | 响应缓存：同一请求（模型/温度/输出上限/Schema/请求文本全同）直接返回上次响应，不再付费。任何一项变了都不会命中，因此不会串味。 |
+| `MODEL_CACHE_PATH` | `data/cache/llm-cache.sqlite3` | 缓存库位置。可随时删除重建。 |
+| `MODEL_CACHE_TTL_DAYS` | `7` | 超过该天数的条目视为未命中，并在数据维护时清除。 |
 | `DATABASE_PATH` | `data/runs/runs.sqlite3` | 流水线检查点库。 |
 | `AGENT_DB_PATH` | `data/agent/agent.sqlite3` | Agent 运行 / 监控任务 / 报告 / 语料（FTS5）。 |
 | `WEBHOOK_TYPE` / `WEBHOOK_URLS` | *(空)* | `feishu` / `dingtalk` / `wecom` / `slack`；多个地址用英文逗号分隔。 |
@@ -236,6 +244,12 @@ Agent 层**包裹在确定性核心之外**：
 
 # 真实 DeepSeek 评测（可传 --fail-under-topic-recall 等阈值做回归门禁）
 .\run_eval.ps1 -Live -Output output\prompt-eval.json
+
+# 真实评测 + 稳定性 + 存进评测历史（约 0.07 美元/次，受 --max-cost-usd 约束）
+.\.venv\Scripts\python scripts/run_eval.py --live --stability 3 --save-history
+
+# 与历史基线比较（--fail-on-regression 供手动门禁）
+.\.venv\Scripts\python scripts/compare_eval.py evals/history/<基线>.json evals/history/<本次>.json
 
 # 数据保留清理 + VACUUM
 .\.venv\Scripts\python -m app_review_insights.maintenance

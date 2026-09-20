@@ -1,6 +1,44 @@
+import hashlib
 import json
 
 from app_review_insights.models import Review
+
+#: 各阶段 prompt 的版本标签。
+#:
+#: **改了下面任何一段 prompt 文本，就必须同步 bump 对应的版本号**——有测试守着指纹，
+#: 忘了会红。版本号只进**运行记录与评测报告**，不进请求文本，因此它不会改变录制键
+#: （键只由 schema + system + user 决定），也就不会作废 data/recordings/demo-replay.json。
+PROMPT_VERSIONS: dict[str, str] = {
+    "batch": "v1",
+    "consolidate": "v1",
+    "evidence_audit": "v1",
+    "planning": "v1",
+    "test_generation": "v1",
+}
+
+
+def prompt_version() -> str:
+    """本次运行使用的 prompt 版本标签（写进运行记录，供评测按版本对比）。"""
+    return "+".join(f"{stage}-{version}" for stage, version in sorted(PROMPT_VERSIONS.items()))
+
+
+def prompt_fingerprint() -> str:
+    """全部 prompt 文本的指纹。
+
+    版本号靠人记得改，指纹不靠——两者一起写进运行记录之后，"文本变了但版本号没动"
+    这种漂移是可发现的。取前 12 位足够区分，也便于在报告里阅读。
+    """
+    payload = "\x1f".join(
+        (
+            BATCH_SYSTEM_PROMPT,
+            CONSOLIDATE_SYSTEM_PROMPT,
+            EVIDENCE_AUDIT_SYSTEM_PROMPT,
+            PLANNING_SYSTEM_PROMPT,
+            TEST_GENERATION_SYSTEM_PROMPT,
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
+
 
 BATCH_SYSTEM_PROMPT = """你是证据约束的产品研究分析师。
 只允许根据提供的评论归纳与分析目标相关的具体用户问题。

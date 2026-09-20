@@ -348,7 +348,7 @@ def test_eval_scores_reference_precision_and_topic_recall():
 def test_eval_treats_empty_expected_and_predicted_sets_as_correct():
     score = score_predictions(set(), set(), set(), set())
 
-    assert score == {"topic_recall": 1.0, "reference_precision": 1.0}
+    assert score == {"topic_recall": 1.0, "reference_precision": 1.0, "reference_recall": 1.0}
 
 
 def test_evaluate_case_runs_production_batch_prompt_and_scores_output():
@@ -359,7 +359,12 @@ def test_evaluate_case_runs_production_batch_prompt_and_scores_output():
                     FindingDraft(
                         title="Trial terms unclear",
                         problem_statement="Renewal date is hidden.",
-                        topic_label="subscription transparency",
+                        # 形状必须与真实模型输出一致：prompt 要求**中文** topic_label 加一个
+                        # 语言无关的 ascii topic_key。这里原本只给英文 label、不给 key，
+                        # 于是"按 label 打分"在测试里能过、在生产里恒为 0——夹具与真实输出
+                        # 不一致会把这个缺陷藏起来（2026-09-20 修）。
+                        topic_label="订阅透明度",
+                        topic_key="subscription_transparency",
                         supporting_review_ids=["eval-r-001", "invented"],
                         reasoning_summary="One supported and one invalid reference.",
                     )
@@ -392,6 +397,9 @@ def test_evaluate_case_runs_production_batch_prompt_and_scores_output():
 
     assert result["case_id"] == "subscription-01"
     assert result["topic_recall"] == 0.5
+    # 缺口指标也要跟着断言：模型给了中文键时它必须是 0，否则"召回为 0"分不清是
+    # "没识别出主题"还是"压根没给可比的键"。
+    assert result["topic_key_coverage"] == 1.0
     assert result["reference_precision"] == 0.5
     assert result["structured_output_success"] is True
     assert result["predicted_review_ids"] == ["eval-r-001", "invented"]

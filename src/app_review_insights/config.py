@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     model_max_retries: int = Field(default=2, alias="MODEL_MAX_RETRIES")
     model_max_tokens: int = Field(default=8192, alias="MODEL_MAX_TOKENS")
     model_api_key: str = Field(default="", alias="MODEL_API_KEY")
+    # 响应缓存：同一次实验重复跑时省成本。键含模型/温度/输出上限/Schema/请求文本，
+    # 任何一项变了都不会命中——所以它是安全的，不是"把上一次的答案还给你"。
+    model_cache_enabled: bool = Field(default=True, alias="MODEL_CACHE_ENABLED")
+    model_cache_path: Path = Field(
+        default=Path("data/cache/llm-cache.sqlite3"), alias="MODEL_CACHE_PATH"
+    )
+    model_cache_ttl_days: int = Field(default=7, alias="MODEL_CACHE_TTL_DAYS")
     # 预算熔断：0 表示不限制。超限时流水线停在检查点，可调高后续跑。
     model_budget_usd_per_run: float = Field(default=0.0, alias="MODEL_BUDGET_USD_PER_RUN")
     model_budget_usd_per_day: float = Field(default=0.0, alias="MODEL_BUDGET_USD_PER_DAY")
