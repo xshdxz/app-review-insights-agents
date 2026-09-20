@@ -7,6 +7,7 @@ from typing import Any
 
 from app_review_insights.llm.usage import ModelUsage
 from app_review_insights.models import RunRecord, RunStatus, Stage, StageEvent
+from app_review_insights.observability import summarize
 from app_review_insights.storage import lease
 from app_review_insights.storage.migrations import RUNS_MIGRATIONS, apply_migrations
 from app_review_insights.storage.sqlite import connect
@@ -258,6 +259,69 @@ class RunRepository:
             "estimated_cost_usd": row["estimated_cost_usd"],
         }
 
+    def record_stage_timing(
+        self,
+        run_id: str,
+        stage: Stage,
+        duration_ms: float,
+        *,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> None:
+        """记一条阶段耗时。指标端点据此算 P50/P95——没有它，"慢在哪一段"只能靠猜。"""
+        with self._session() as connection:
+            connection.execute(
+                """
+                INSERT INTO stage_timings(run_id, stage, duration_ms, started_at, ended_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    run_id,
+                    stage.value,
+                    float(duration_ms),
+                    started_at.isoformat(),
+                    ended_at.isoformat(),
+                ),
+            )
+
+    def stage_timing_summary(
+        self,
+        since: datetime | None = None,
+    ) -> dict[str, dict[str, float]]:
+        """按阶段汇总耗时（count / p50 / p95 / max，毫秒）。"""
+        since_iso = since.isoformat() if since is not None else None
+        with self._session() as connection:
+            rows = connection.execute(
+                """
+                SELECT stage, duration_ms FROM stage_timings
+                WHERE (? IS NULL OR started_at >= ?)
+                """,
+                (since_iso, since_iso),
+            ).fetchall()
+        grouped: dict[str, list[float]] = {}
+        for row in rows:
+            grouped.setdefault(row["stage"], []).append(float(row["duration_ms"]))
+        return {stage: summarize(values) for stage, values in grouped.items()}
+
+    def model_latency_summary(
+        self,
+        since: datetime | None = None,
+    ) -> dict[str, dict[str, float]]:
+        """按阶段汇总模型调用耗时——与阶段耗时一起看，能分清"慢在模型"还是"慢在别处"。"""
+        since_iso = since.isoformat() if since is not None else None
+        with self._session() as connection:
+            rows = connection.execute(
+                """
+                SELECT COALESCE(stage, 'unknown') AS stage, latency_ms FROM model_usage
+                WHERE (? IS NULL OR created_at >= ?)
+                """,
+                (since_iso, since_iso),
+            ).fetchall()
+        grouped: dict[str, list[float]] = {}
+        for row in rows:
+            grouped.setdefault(row["stage"], []).append(float(row["latency_ms"]))
+        return {stage: summarize(values) for stage, values in grouped.items()}
+
     def model_usage_by_stage(self, run_id: str | None = None) -> dict[str, dict[str, Any]]:
         """按阶段拆解开销，用于定位成本大头。"""
         with self._session() as connection:
@@ -364,6 +428,8 @@ class RunRepository:
                 connection.execute("DELETE FROM stage_outputs WHERE run_id = ?", (run_id,))
                 connection.execute("DELETE FROM events WHERE run_id = ?", (run_id,))
                 connection.execute("DELETE FROM model_usage WHERE run_id = ?", (run_id,))
+                # 阶段耗时同样跟着运行走，否则它就是一个只涨不跌的表
+                connection.execute("DELETE FROM stage_timings WHERE run_id = ?", (run_id,))
                 connection.execute("DELETE FROM runs WHERE run_id = ?", (run_id,))
         return len(victims)
 

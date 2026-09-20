@@ -8,22 +8,59 @@ worker 是纯 Python 进程、没有 HTTP 入口：一个"活着但卡死"的 wo
 - `/healthz` 存活探针：进程还在就返回 200。**刻意不检查依赖**——否则依赖抖动
   会引发无意义的重启。
 - `/readyz` 就绪探针：调度器就绪才 200，否则 503。
-- `/metrics` Prometheus 文本格式的极简指标。
+- `/metrics` Prometheus 文本格式的指标（含阶段耗时与模型耗时的分位数）。
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+logger = logging.getLogger("ari-health")
+
+#: 暴露哪些分位数。0.5/0.95 足够回答"典型多慢"和"最慢的那批多慢"，
+#: 再加 P99 只会让样本量小的阶段给出更不稳的数。
+_QUANTILES = ((0.5, "0.5"), (0.95, "0.95"))
+
+
+def render_duration_family(
+    name: str,
+    help_text: str,
+    groups: dict[str, dict[str, float]],
+) -> list[str]:
+    """把一个"按阶段分组的耗时摘要"渲染成 Prometheus 文本。
+
+    用秒而不是毫秒：Prometheus 的惯例是基本单位（秒），面板上的换算交给展示层。
+    """
+    lines = [f"# HELP {name} {help_text}", f"# TYPE {name} gauge"]
+    for label, stats in sorted(groups.items()):
+        count = int(stats.get("count", 0) or 0)
+        if not count:
+            continue
+        for quantile, text in _QUANTILES:
+            key = f"p{int(quantile * 100)}"
+            value = float(stats.get(key, 0.0)) / 1000
+            lines.append(f'{name}{{stage="{label}",quantile="{text}"}} {value:.6f}')
+        lines.append(f'{name}_max{{stage="{label}"}} {float(stats.get("max", 0.0)) / 1000:.6f}')
+        lines.append(f'{name}_count{{stage="{label}"}} {count}')
+    return lines
+
 
 class HealthState:
-    """进程内共享的健康与指标状态（线程安全）。"""
+    """进程内共享的健康与指标状态（线程安全）。
 
-    def __init__(self) -> None:
+    `duration_stats` 是一个可选回调，返回 `{"stage": {...}, "model": {...}}` 形态的
+    耗时摘要（来自检查点库）。它**可以失败**——指标端点绝不能因为数据库忙就 500，
+    那会让"抓不到指标"变成"服务看起来挂了"。
+    """
+
+    def __init__(self, duration_stats: Callable[[], dict[str, Any]] | None = None) -> None:
+        self._duration_stats = duration_stats
         self._lock = threading.Lock()
         self._started_at = time.time()
         self._ready = False
@@ -57,6 +94,26 @@ class HealthState:
                 "last_job_timestamp_seconds": self._last_job_at or 0,
             }
 
+    def duration_families(self) -> list[str]:
+        """耗时指标段。取数失败时返回一句注释而不是抛异常——prometheus 抓到的短一段，
+        总好过整个端点 500（那会被读成"服务不健康"）。"""
+        if self._duration_stats is None:
+            return []
+        try:
+            stats = self._duration_stats()
+        except Exception:
+            logger.warning("耗时指标取数失败（端点仍可用）", exc_info=True)
+            return ["# 耗时指标暂不可用（取数失败，详见日志）"]
+        return render_duration_family(
+            "ari_stage_duration_seconds",
+            "各阶段耗时（秒）；样本少时 P95 接近最大值，属正常",
+            stats.get("stage") or {},
+        ) + render_duration_family(
+            "ari_model_latency_seconds",
+            "模型调用耗时（秒），按阶段分组；与阶段耗时对照可分清慢在模型还是别处",
+            stats.get("model") or {},
+        )
+
     def render_prometheus(self) -> str:
         snap = self.snapshot()
         lines = [
@@ -77,6 +134,7 @@ class HealthState:
             "# TYPE ari_worker_last_job_timestamp_seconds gauge",
             f"ari_worker_last_job_timestamp_seconds {snap['last_job_timestamp_seconds']:.3f}",
         ]
+        lines.extend(self.duration_families())
         return "\n".join(lines) + "\n"
 
 

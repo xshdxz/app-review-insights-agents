@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -27,6 +28,7 @@ from app_review_insights.models import (
     Stage,
     StageEvent,
 )
+from app_review_insights.monitor.health import HealthState, start_health_server
 from app_review_insights.pipeline.orchestrator import (
     AnalysisOrchestrator,
     PipelineServices,
@@ -39,6 +41,7 @@ from app_review_insights.storage.cache import (
     build_downloads,
     load_demo_run,
 )
+from app_review_insights.tracing import configure_tracing
 from app_review_insights.ui.components import (
     format_event_message,
     render_model_status,
@@ -154,6 +157,48 @@ def _persist_upload(upload) -> None:
     if not target.exists():
         target.write_bytes(upload.getvalue())
     st.session_state["restored-upload"] = str(target)
+
+
+#: 健康端点只启动一次。Streamlit 每次交互都会重跑脚本，不防就会起一堆服务器。
+_health_server_started = False
+
+
+def _ensure_health_server(settings: Settings, repository: RunRepository) -> None:
+    """web 进程的健康/指标端点（best-effort，**默认不作为 Prometheus 抓取目标**）。
+
+    生命周期是它的关键：Streamlit 的脚本**按会话执行**，没人打开页面时这段代码根本不会跑，
+    端点也就不存在。因此 ops/prometheus.yml 只抓常驻的 worker——阶段耗时写在共享 SQLite 里，
+    worker 读的是同一份数据，不抓 web 也不丢信息（见 D-14）。
+    留着它是为了在页面对着的时候排查 web 进程自身。
+    绑定失败只留痕：观测能力不能反过来拦住应用启动。
+    """
+    global _health_server_started
+    if _health_server_started:
+        return
+    _health_server_started = True
+    state = HealthState(
+        duration_stats=lambda: {
+            "stage": repository.stage_timing_summary(),
+            "model": repository.model_latency_summary(),
+        }
+    )
+    try:
+        start_health_server(state, host=settings.web_health_host, port=settings.web_health_port)
+    except Exception:
+        logging.getLogger("ari-web").warning("web 健康端点启动失败（不影响应用）", exc_info=True)
+
+
+#: 追踪同样只装配一次。
+_tracing_configured = False
+
+
+def _ensure_tracing() -> None:
+    """装配三层追踪（可选依赖；没装就是 no-op，不影响任何行为）。"""
+    global _tracing_configured
+    if _tracing_configured:
+        return
+    _tracing_configured = True
+    configure_tracing()
 
 
 def build_services(use_fake_provider: bool = False) -> PipelineServices:
@@ -604,6 +649,9 @@ def main() -> None:
     demo_replay = settings.demo_replay_active and settings.demo_replay_path.exists()
     model_ready = (settings.model_available or demo_replay) and wiring_error is None
     _initialize_session_state(services.repository)
+    _ensure_health_server(settings, services.repository)
+    # 追踪未启用（没装可选 extra）时这里什么都不做
+    _ensure_tracing()
     # 浏览器刷新会清空 session_state：从 URL 参数恢复输入，保持中断前的页面。
     _restore_inputs_from_query_params()
     model_state = _model_state(settings)

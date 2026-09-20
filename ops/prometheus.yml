@@ -1,0 +1,24 @@
+# Prometheus 抓取配置（用于 docker compose 的 observability profile）。
+#
+# 为什么只抓 worker（D-14）：metrics 端点要有人来提供，而 **Streamlit 的脚本是按会话执行的**——
+# 没人打开页面时 web 进程里压根没有那个端点。抓它只会得到一个永远 down 的目标，顺带让
+# AriProcessDown 常态误报（一条永远在响的告警等于没有告警）。
+# 流水线确实跑在 web 进程里，但阶段耗时是写进共享 SQLite 的，worker 读的是同一份数据——
+# 所以"web 里跑出来的耗时"照样能在 worker 的 /metrics 上看到，不抓 web 并不丢信息。
+# web 的存活由容器健康检查覆盖（Streamlit 自带的 /_stcore/health）。
+#
+# 需要临时观察 web 进程（例如正开着页面排查）时，自行加回：
+#   - job_name: ari-web
+#     static_configs:
+#       - targets: ["web:9101"]
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: ari-worker
+    static_configs:
+      - targets: ["worker:9100"]

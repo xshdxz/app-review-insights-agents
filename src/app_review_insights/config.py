@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     maintenance_interval_seconds: float = Field(default=86400, alias="MAINTENANCE_INTERVAL_SECONDS")
     worker_health_host: str = Field(default="0.0.0.0", alias="WORKER_HEALTH_HOST")
     worker_health_port: int = Field(default=9100, alias="WORKER_HEALTH_PORT")
+    # 流水线其实跑在 web 进程里，阶段耗时主要来自它——只让 worker 有指标端点是残缺的。
+    # 两个进程各绑各的端口，互不冲突（容器里各是一份）。
+    web_health_host: str = Field(default="0.0.0.0", alias="WEB_HEALTH_HOST")
+    web_health_port: int = Field(default=9101, alias="WEB_HEALTH_PORT")
     agent_max_review_rounds: int = Field(default=2, alias="AGENT_MAX_REVIEW_ROUNDS")
     approval_required: bool = Field(default=False, alias="APPROVAL_REQUIRED")
     embedding_enabled: bool = Field(default=False, alias="EMBEDDING_ENABLED")

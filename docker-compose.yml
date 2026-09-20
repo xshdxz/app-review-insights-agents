@@ -1,28 +1,64 @@
 services:
+  # ── observability profile（默认不启动）────────────────────────────────────
+  # 用法：docker compose --profile observability up -d
+  # Grafana 开了匿名只读访问，本机 http://localhost:3000 直接可看，无需登录。
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    profiles: ["observability"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
+  # web 与 worker 是同一份镜像、两条启动命令（同一 Dockerfile，无需各建一份）
   web:
+    image: ari-app
     build: .
     command: streamlit run app.py --server.address=0.0.0.0 --server.port=8501
     ports:
       - "8501:8501"
     env_file: .env
+    environment:
+      # 定时任务只能有一个调度者：web 永远不调度，由 worker 独占（此前只靠 .env，新克隆必得"web 也在调度"或"worker 起不来"）。
+      SCHEDULER_ENABLED: "false"
     volumes:
       - ./data:/app/data
     healthcheck:
-      test: >
-        python -c "
-        import urllib.request, sqlite3;
-        urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=3);
-        sqlite3.connect('/app/data/runs/runs.sqlite3').close()
-        "
+      # 必须是单行命令：此前用折叠标量（>）写多行 python -c，YAML 折叠后行首残留一个空格，
+      # python 抛 IndentationError，容器永远 unhealthy，worker 因 depends_on 永远起不来（D-12）。
+      test: ["CMD-SHELL", "python -c \"import urllib.request, sqlite3; urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=3); sqlite3.connect('/app/data/runs/runs.sqlite3').close()\""]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
 
   worker:
+    image: ari-app
     build: .
     command: python -m app_review_insights.monitor.worker
     env_file: .env
+    environment:
+      # 覆盖 .env：worker 的职责就是调度（.env 默认 false 是给本机跑 web 用的）。
+      SCHEDULER_ENABLED: "true"
     volumes:
       - ./data:/app/data
     ports:
@@ -30,9 +66,7 @@ services:
       - "127.0.0.1:9100:9100"
     healthcheck:
       # 就绪探针反映调度器状态：worker "活着但卡死" 时会被判定为 unhealthy
-      test: >
-        python -c "import urllib.request;
-        urllib.request.urlopen('http://localhost:${WORKER_HEALTH_PORT:-9100}/readyz', timeout=3)"
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:$${WORKER_HEALTH_PORT:-9100}/readyz', timeout=3)\""]
       interval: 30s
       timeout: 5s
       retries: 3

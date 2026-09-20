@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
+from app_review_insights import tracing
 from app_review_insights.errors import RecoverableModelError
 from app_review_insights.llm.usage import ModelUsage, build_usage
 
@@ -118,13 +119,21 @@ class DeepSeekProvider:
             content = "{}"
             try:
                 started_at = time.perf_counter()
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    response_format={"type": "json_object"},
-                    messages=messages,
-                )
+                with tracing.span(
+                    "model.generate",
+                    **{
+                        "model": self.model,
+                        "schema": schema.__name__,
+                        "attempt": attempt,
+                    },
+                ):
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens,
+                        response_format={"type": "json_object"},
+                        messages=messages,
+                    )
                 self._report_usage(response, started_at)
                 content = response.choices[0].message.content or "{}"
                 return schema.model_validate_json(content)

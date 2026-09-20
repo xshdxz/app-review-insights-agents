@@ -1,0 +1,59 @@
+# 告警规则即代码。
+#
+# 选规则的原则：只对**我们已经能观测到、且真的会出事**的信号报警。宁可少报，不要报噪声——
+# 一条永远在响的告警等于没有告警。
+#
+# 注意：这里引用的每个指标都必须真的存在于 /metrics 输出里，
+# tests/test_ops_assets.py 会拿真实的渲染结果逐条核对（引用不存在的指标 = 永不触发的假告警）。
+groups:
+  - name: ari-availability
+    rules:
+      - alert: AriProcessDown
+        expr: up{job=~"ari-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} 已经 2 分钟抓不到指标"
+          description: "进程可能已退出或健康端点无法响应。先看容器状态，再看应用日志的最后一条 Error。"
+
+      - alert: AriNotReady
+        expr: ari_worker_ready == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "worker 存活但未就绪超过 5 分钟"
+          description: "调度器没跑起来。检查 SCHEDULER_ENABLED，以及启动日志里是否有调度失败的 traceback。"
+
+  - name: ari-latency
+    rules:
+      # 用 P95 而不是平均值：平均值会把"少数特别慢的运行"抹平，而那恰恰是用户会投诉的部分。
+      - alert: AriStageSlow
+        expr: ari_stage_duration_seconds{quantile="0.95"} > 120
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "阶段 {{ $labels.stage }} 的 P95 耗时超过 120 秒"
+          description: "与 ari_model_latency_seconds 对照：若同时升高，瓶颈在模型；否则在本阶段的确定性处理里。"
+
+      - alert: AriModelSlow
+        expr: ari_model_latency_seconds{quantile="0.95"} > 60
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "阶段 {{ $labels.stage }} 的模型调用 P95 超过 60 秒"
+          description: "接近 MODEL_TIMEOUT_SECONDS 时，重试会开始频繁发生；先确认上游限流情况。"
+
+  - name: ari-jobs
+    rules:
+      - alert: AriJobFailures
+        expr: increase(ari_worker_jobs_total{result="failed"}[1h]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "最近一小时有监控任务失败"
+          description: "失败已按状态跃迁推送过群通知；这里做兜底，防止 Webhook 没配或没送达时无人知晓。"

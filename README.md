@@ -117,8 +117,20 @@ F-001 免费内容大幅减少，付费墙限制基本功能   ← 15 条支持�
 
 ### 部署
 
-- **Docker + docker-compose**：web（Streamlit + 健康检查含 SQLite 连通性）+ worker（常驻调度 + 自身 healthcheck）
+- **Docker + docker-compose**：web（Streamlit + 健康检查含 SQLite 连通性）+ worker（常驻调度 + 自身 healthcheck），两者**共用同一份镜像**（同一个 Dockerfile，两条启动命令）
 - **一键脚本**：`scripts/setup.ps1`（本机）、`scripts/deploy.ps1`（Docker）
+
+### 可观测性与运维
+
+`docker compose --profile observability up -d` 一条命令拉起 Prometheus + Grafana（默认不启动，不影响只想跑 web+worker 的人）。下图是**真实运行**出来的看板：
+
+![Grafana 概览看板](docs/images/06-grafana-overview.png)
+
+- **耗时可见**：`/metrics` 暴露各阶段与模型调用的 P50/P95（以秒为基本单位，`ari_stage_duration_seconds` / `ari_model_latency_seconds`）。耗时取自共享 SQLite，因此**web 进程里跑出来的流水线耗时，在 worker 的端点上同样看得到**——这也是为什么抓取目标只指向常驻的 worker：Streamlit 的脚本按会话执行，空闲时它连端点都不存在（D-14）。
+- **面板阈值与告警同源**：条形图变黄/红的那一刻，就是 `ops/alerts.yml` 要响的那一刻（阶段 30s/120s、模型 15s/60s）。
+- **告警即代码**：四条规则（进程存活 / 未就绪 / 阶段慢 / 模型慢 / 任务失败），引用的每个指标都由测试拿**真实渲染结果**逐条核对——引用不存在的指标等于一条永不触发的假告警，刻意**不留豁免名单**。
+- **出事了照着做**：`docs/slo.md`（6 条 SLI，每条写明用哪句 PromQL / SQL 算）+ `docs/runbook.md`（10 个场景：症状 → 先看什么 → 处置 → 怎么确认好了）。
+- **恢复能力是演练过的**：`scripts/backup_restore_drill.py` 用 SQLite 在线备份 API 备份、**从备份**恢复后逐表核对行数与内容摘要，真实记录见 `docs/backup-drill.md`。
 
 ---
 
@@ -203,6 +215,8 @@ Agent 层**包裹在确定性核心之外**：
 | `AGENT_DB_PATH` | `data/agent/agent.sqlite3` | Agent 运行 / 监控任务 / 报告 / 语料（FTS5）。 |
 | `WEBHOOK_TYPE` / `WEBHOOK_URLS` | *(空)* | `feishu` / `dingtalk` / `wecom` / `slack`；多个地址用英文逗号分隔。 |
 | `SCHEDULER_ENABLED` | `false` | 本进程是否启动定时调度（worker 容器设为 `true`）。 |
+| `WEB_HEALTH_HOST` / `WEB_HEALTH_PORT` | `0.0.0.0` / `9101` | web 进程的健康与指标端点（同上三个路径）。**默认不被 Prometheus 抓取**：Streamlit 的脚本按会话执行，没人打开页面时该端点并不存在；阶段耗时写在共享 SQLite 里，worker 的 `/metrics` 读的是同一份数据。 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | *(空)* | 三层追踪（run → stage → model call）的上报地址。**留空 = 不上报**；需要先装 `.[observability]` extra。|
 | `WORKER_HEALTH_HOST` / `WORKER_HEALTH_PORT` | `0.0.0.0` / `9100` | worker 的健康与指标端点：`/healthz` 存活、`/readyz` 就绪、`/metrics` Prometheus 文本。 |
 | `RUN_MAX_DURATION_SECONDS` | `0` | 整轮运行的墙钟上限（0 = 不限制）。超时停在检查点，状态为「超时停止」，可续跑。 |
 | `LOG_LEVEL` / `LOG_FORMAT` | `INFO` / `text` | `json` 时输出 JSON Lines，每条带 `run_id` / `stage` 关联 ID，便于采集器按运行检索。 |
@@ -226,10 +240,10 @@ Agent 层**包裹在确定性核心之外**：
 ## 测试与评测
 
 ```powershell
-# 全量测试（当前 514 项，覆盖率 94%）
-# 514 是 pytest 的收集数，不是 grep `def test_` 的行数（那是 499）。两者差 15：
-# 6 处 parametrize 把 6 个函数展开成 22 例（+16），另有一个嵌套在测试内部的局部
-# 辅助函数 test_case_builder 被 grep 计入而 pytest 不收集（-1）。
+# 全量测试（当前 620 项，覆盖率 92%）
+# 620 是本次实际执行的用例数；另有 22 项标了 reliability 的用例默认不跑（-m reliability）。
+# 数字一律取 pytest 的输出，不要用 grep `def test_` 去数：parametrize 会展开成多例，
+# 嵌套在测试内部的局部辅助函数又会被 grep 误计入。
 .\.venv\Scripts\python -m pytest
 
 # 覆盖率报告
@@ -321,6 +335,9 @@ evals/
 - `docs/data-format.md` — JSON/CSV 导入格式
 - `docs/model-and-prompts.md` — 模型/Prompt 设计与评测记录
 - `docs/reliability.md` — 崩溃一致性矩阵、实测结果、反向验收与**已知边界**
+- `docs/slo.md` — SLI/SLO 定义与错误预算（每条 SLI 都写清怎么算）
+- `docs/runbook.md` — 出问题照着做：症状 → 判断 → 处置 → 验证
+- `docs/backup-drill.md` — 备份恢复演练记录与人工恢复流程
 - `docs/defect-list.md` — 缺陷清单与修复记录
 - `docs/highlights.md` — 技术亮点
 - `docs/experiments/langgraph-vs-native.md` — LangGraph vs 原生编排对比实验

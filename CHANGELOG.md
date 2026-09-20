@@ -12,6 +12,20 @@
   全部走回放 ⇒ 零模型成本；`pytest -m reliability`，默认不随主套件运行
 - **运行租约**（`storage/lease.py`）：运行记录带持有者身份（`host:pid:token`）与心跳。
   同主机且持有者进程已不存在时**立即**可以接管；判不出来（跨主机、旧记录）才退回心跳窗口
+- **可观测性**：阶段耗时落盘（`stage_timings` 表，跟着运行一起被保留策略清理）并在
+  `/metrics` 暴露 P50/P95（以秒为基本单位）；web 进程也有健康/指标端点（`WEB_HEALTH_HOST` /
+  `WEB_HEALTH_PORT`，但 Streamlit 按会话执行脚本 ⇒ 不作为抓取目标，详见 `ops/prometheus.yml`）；
+  可选三层追踪（`[observability]` extra：run → stage → model call，**真嵌套**，
+  未装或未配 `OTEL_EXPORTER_OTLP_ENDPOINT` 时完全 no-op）
+- **运维资产即代码**：`ops/`（Prometheus 抓取配置、告警规则、Grafana 看板与 provisioning）+
+  `docker compose --profile observability`。告警规则引用的每个指标都由测试核对**真实存在**——
+  引用不存在的指标等于一条永不触发的假告警
+- **修掉三个不真跑就发现不了的部署缺陷**（D-12 / D-13 / D-14，全部有回归测试）：
+  容器健康检查的多行 `python -c` 被 YAML 折叠成行首带空格的单行 ⇒ `IndentationError`，web 恒 unhealthy、
+  worker 因 `depends_on` 永远起不来；worker 的调度开关只靠不入库的 `.env` ⇒ 新克隆必然得到无限重启的 worker；
+  web 的 `/metrics` 挂在按会话执行的 Streamlit 脚本里 ⇒ 抓取目标永远 down、`AriProcessDown` 常态误报
+- **备份恢复演练**（`scripts/backup_restore_drill.py`）：用 SQLite 在线备份 API（而非复制文件，
+  WAL 下复制可能拿到不一致快照），**从备份**恢复后逐表核对行数与内容摘要
 - **模型响应缓存**（`llm/cache.py`）：内容寻址，键含模型/温度/输出上限/Schema/请求文本——
   任何一项变了都不会命中。`MODEL_CACHE_ENABLED` 一键开关、`MODEL_CACHE_TTL_DAYS` 控制有效期，
   数据维护顺带清理过期条目

@@ -14,6 +14,10 @@
 
 | D-10 | 高 | fixed | **评测的头条指标结构性恒为 0**：`scripts/run_eval.py` 的打分取的是 `finding.topic_label`，而按 prompt 的约定它是**中文**、黄金集里是 `subscription_transparency` 这类 ascii 键；规范化把非 ascii 字符整体替换成下划线，中文标签于是变成空串并被丢弃，`predicted_topics` 恒为空集。文档与 AGENTS.md 都写着"评测只比对 `topic_key`"——那次修复只改了 Schema 与 Prompt，**没落到打分代码里**。 | 单测把"中文 label + ascii key"喂进 `evaluate_case`，实测 `topic_recall = 0.0`（应 1.0）。它长期存活还有第二个原因：`tests/test_analysis.py` 的夹具用**英文 label 且没有 key**，与真实模型输出形状不一致。 | 打分改用 `topic_key`；新增 `topic_key_coverage` 让"模型没给出可比键"这一缺口可见；`_normalize_topic` 改为复用 Schema 的规范化（原先两份实现有分叉风险）。修复后首次真实运行：`topic_key_coverage = 1.0`、`topic_recall = 0.033`——后者暴露出下一个问题（D-11）。 |
 
+| D-12 | 高 | fixed | **容器健康检查永远失败，整套 `docker compose up` 实际是坏的**：healthcheck 用 YAML 折叠标量（`>`）写多行 `python -c "..."`，折叠后会在引号内行首留下一个空格，python 抛 `IndentationError`，web 恒为 unhealthy；worker 因 `depends_on: web.service_healthy` 永远起不来。 | `docker inspect repo-web-1` 的 healthcheck 输出 `IndentationError: unexpected indent`，而同一容器的日志显示 Streamlit 早已在 8501 正常服务——**探针报的病不是应用真有的病**。 | 改成单行 `CMD-SHELL`；新增 `tests/test_ops_assets.py::test_container_healthchecks_embed_valid_python`，把健康检查里的 python 源码交给 `compile()`——旧写法会立刻 SyntaxError（已用真实 YAML 验证会红）。修复后 web 转为 healthy。 |
+
+| D-13 | 高 | fixed | **worker 永远不会调度**：compose 里 worker 只写 `env_file: .env`，而 `.env` 是不入库的本机配置（`SCHEDULER_ENABLED=false`）。"只有 worker 设 true"这个设计意图只写在 AGENTS.md 里，代码里从未落实——新克隆必然得到无限重启的 worker；反过来本机 `.env` 若为 true，web 与 worker 会**同时**调度，定时报告发两遍。 | `docker logs repo-worker-1`：每 2 秒一条「SCHEDULER_ENABLED=false，worker 退出」，`docker compose ps` 显示 `Restarting`。 | 在 compose 里显式声明角色（worker=`true` / web=`false`，`environment` 覆盖 `env_file`）；新增 `test_exactly_one_service_schedules` 把"调度者唯一"钉成不变量。修复后 worker 转为 healthy，调度器 0 jobs 常驻。 |
+
 ## 中
 
 | # | 严重程度 | 状态 | 问题 | 证据 | 修复 |
@@ -23,6 +27,8 @@
 
 | D-08 | 中 | fixed | **采集完成前中断的运行无法续跑**：界面调用 `resume()` 时从不传 `imported_reviews`，而该参数在"采集阶段尚未完成"时是必需的——即便放开了状态门，续跑也只会以 `CollectionError` 收场。 | `ui/main.py` 的 `_resume_analysis` 签名里没有这个参数；`orchestrator.resume()` 的 docstring 明确要求它。 | 新增 `_reviews_for_resume`：COLLECT 已有输出则直接用检查点里的评论；否则按来源重新导入（缺文件时给出中文提示而不是崩在采集阶段）。 |
 | D-09 | 中 | fixed | **同一 App 并发互斥存在 check-then-act 竞态**：`find_active_run()` 与 `save_run()` 分两步执行，中间的空档里另一个进程可以插进来，同一个 App 被分析两遍、模型额度烧两份。孤儿判定还依赖"60 分钟未更新"这一魔数，语义也不对——更新得早不等于没人拥有它。 | 两处调用在 `AnalysisOrchestrator.start()` 里相邻但不在同一事务内。 | 改为 `BEGIN IMMEDIATE` 事务内原子占用（`repository.acquire_run`）；互斥判定改为租约语义（`lease.blocks_new_run`），保留对无租约旧记录的"最近更新时间"回退。 |
+
+| D-14 | 中 | fixed | **抓取目标永远 down，告警常态误报**：web 的 `/metrics` 端点挂在 Streamlit 脚本里，而 Streamlit 的脚本**按会话执行**——没人打开页面时端点根本不存在。`AriProcessDown` 因此对 `ari-web` 一直为真，「一条永远在响的告警等于没有告警」。 | Prometheus targets API：`ari-web http://web:9101/metrics down`，同时 `ari-worker http://worker:9100/metrics up`。 | 抓取目标收敛到常驻的 worker——阶段耗时本就写在共享 SQLite 里，worker 读同一份数据，不抓 web 不丢信息；测试改为断言只抓常驻进程。web 的存活交给容器健康检查（Streamlit 自带 `/_stcore/health`）。 |
 
 | D-11 | 中 | open | **`topic_recall` 缺共享词表**：它按集合精确匹配 `topic_key`，而键是模型自由生成的。2026-09-20 首次真实运行显示，模型识别出的问题**语义正确但粒度更细**：gold `subscription_transparency` ↔ 模型 `pre_trial_price_visibility` / `subscription_terms_clarity` / `trial_renewal_disclosure`；25+ 个预测键每个只出现一次，而标注只有 22 个粗粒度类目。因此该指标实际测的是"与标注者选词的词面一致率"。 | 首次真实运行 `topic_recall = 0.033` 而 `topic_key_coverage = 1.0`——键本身是规范的，排除了规范化问题。 | **本次只修了一半**：新增不依赖词表的 `reference_recall`（标注认为相关的评论被覆盖了多少）。彻底修法有三条路且都未做：① 给模型一套受控词表（与"动态识别主题、不用预设分类表"的设计取舍直接冲突）；② 在黄金集里为每个主题标注同义键；③ 用语义相似度替代精确匹配。留待评估。 |
 

@@ -7,6 +7,7 @@ worker 是纯 Python 进程、没有 HTTP 入口，一个"活着但卡死"的 wo
 from __future__ import annotations
 
 import json
+import sqlite3
 import urllib.error
 import urllib.request
 
@@ -87,3 +88,77 @@ def test_unknown_path_returns_404(health_server):
     with pytest.raises(urllib.error.HTTPError) as excinfo:
         _get(f"{base}/nope")
     assert excinfo.value.code == 404
+
+
+# ── 阶段耗时与模型耗时的分位数 ───────────────────────────────────────────────
+
+
+def test_metrics_exposes_stage_and_model_duration_percentiles():
+    """以秒暴露分位数——毫秒是内部口径，Prometheus 的基本单位是秒。"""
+    state = HealthState(
+        duration_stats=lambda: {
+            "stage": {"clean": {"count": 4, "p50": 100.0, "p95": 400.0, "max": 500.0}},
+            "model": {"plan": {"count": 2, "p50": 2000.0, "p95": 3000.0, "max": 3000.0}},
+        }
+    )
+
+    text = state.render_prometheus()
+
+    assert 'ari_stage_duration_seconds{stage="clean",quantile="0.5"} 0.100000' in text
+    assert 'ari_stage_duration_seconds{stage="clean",quantile="0.95"} 0.400000' in text
+    assert 'ari_stage_duration_seconds_max{stage="clean"} 0.500000' in text
+    assert 'ari_stage_duration_seconds_count{stage="clean"} 4' in text
+    assert 'ari_model_latency_seconds{stage="plan",quantile="0.95"} 3.000000' in text
+
+
+def test_metrics_stay_available_when_duration_stats_fail():
+    """取数失败只让那一段缺失，端点仍然 200。
+
+    否则"数据库忙"会表现为"服务不健康"——一次正确的重启就会把好端端的进程杀掉。
+    """
+
+    def boom():
+        raise sqlite3.OperationalError("database is locked")
+
+    text = HealthState(duration_stats=boom).render_prometheus()
+
+    assert "ari_worker_up 1" in text
+    assert "耗时指标暂不可用" in text
+
+
+def test_metrics_without_duration_stats_are_unchanged():
+    text = HealthState().render_prometheus()
+
+    assert "ari_worker_up 1" in text
+    assert "ari_stage_duration_seconds" not in text
+
+
+def test_stages_with_no_samples_are_skipped():
+    state = HealthState(duration_stats=lambda: {"stage": {"clean": {"count": 0}}, "model": {}})
+
+    text = state.render_prometheus()
+
+    assert 'ari_stage_duration_seconds{stage="clean"' not in text
+
+
+def test_web_process_starts_the_health_endpoint_only_once(monkeypatch):
+    """Streamlit 每次交互都重跑脚本——不防就会起一堆服务器。"""
+    from unittest.mock import Mock
+
+    import app_review_insights.ui.main as ui_main
+    from app_review_insights.config import Settings
+
+    started: list[dict] = []
+    monkeypatch.setattr(
+        ui_main, "start_health_server", lambda state, **kwargs: started.append(kwargs)
+    )
+    monkeypatch.setattr(ui_main, "_health_server_started", False)
+
+    settings = Settings(WEB_HEALTH_HOST="127.0.0.1", WEB_HEALTH_PORT=0)
+    repository = Mock()
+
+    ui_main._ensure_health_server(settings, repository)
+    ui_main._ensure_health_server(settings, repository)
+
+    assert len(started) == 1
+    assert started[0] == {"host": "127.0.0.1", "port": 0}

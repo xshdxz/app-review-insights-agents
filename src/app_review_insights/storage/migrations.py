@@ -57,6 +57,21 @@ RUNS_MIGRATIONS: list[Migration] = [
         CREATE INDEX IF NOT EXISTS idx_model_usage_run ON model_usage(run_id);
         """,
     ),
+    (
+        2,
+        """
+        CREATE TABLE IF NOT EXISTS stage_timings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id TEXT NOT NULL,
+            stage TEXT NOT NULL,
+            duration_ms REAL NOT NULL,
+            started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_stage_timings_stage ON stage_timings(stage);
+        CREATE INDEX IF NOT EXISTS idx_stage_timings_run ON stage_timings(run_id);
+        """,
+    ),
 ]
 
 #: Agent / 监控 / 语料库（AGENT_DB_PATH）

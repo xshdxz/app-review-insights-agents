@@ -1,4 +1,5 @@
 import inspect
+import logging
 import re
 import time
 from collections.abc import Callable
@@ -7,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+from app_review_insights import tracing
 from app_review_insights.batching import make_review_batches
 from app_review_insights.cleaning import CleaningResult, clean_reviews
 from app_review_insights.errors import (
@@ -54,6 +56,8 @@ TraceabilityValidator = Callable[
 ]
 EventCallback = Callable[[StageEvent], None]
 
+logger = logging.getLogger("ari-pipeline")
+
 
 @dataclass
 class PipelineServices:
@@ -92,6 +96,10 @@ class AnalysisOrchestrator:
         #: 整轮运行的墙钟上限；None 表示不限制
         self.max_duration_seconds = max_duration_seconds
         self._deadline: float | None = None
+        #: 当前正在计时的阶段：(阶段, 开始时刻, 单调时钟读数)。换阶段或结束时结算并落盘。
+        self._stage_timing: tuple[Stage, datetime, float] | None = None
+        #: 当前阶段的追踪 span（未启用追踪时为 None）。与耗时同生共死。
+        self._stage_span: Any = None
 
     def start(
         self,
@@ -190,7 +198,11 @@ class AnalysisOrchestrator:
         run_token = current_run_id.set(run.run_id)
         stage_token = current_stage.set(None)
         try:
-            return self._execute(run, imported_reviews=imported_reviews)
+            with tracing.span(
+                "analysis.run",
+                **{"run.id": run.run_id, "run.mode": run.mode, "run.is_live": run.is_live},
+            ):
+                return self._execute(run, imported_reviews=imported_reviews)
         except RunDeadlineExceeded as exc:
             # 停在检查点上：已完成阶段全部保留，调高上限即可续跑
             return self._stop(
@@ -726,7 +738,38 @@ class AnalysisOrchestrator:
         self._add_event(run, f"Stage started: {stage.value}")
         # 成本按阶段归集，便于定位开销大头
         current_stage.set(stage.value)
+        self._start_stage_timing(run.run_id, stage)
         return run
+
+    def _start_stage_timing(self, run_id: str, stage: Stage) -> None:
+        """开启一个阶段的计时，先把上一个阶段结算掉。"""
+        self._finish_stage_timing(run_id)
+        self._stage_timing = (stage, datetime.now(UTC), time.monotonic())
+        # stage 的 span 挂在 run 的 span 下面；model 调用再挂在 stage 下面（三层嵌套）
+        self._stage_span = tracing.start_span("pipeline.stage", **{"stage": stage.value})
+
+    def _finish_stage_timing(self, run_id: str) -> None:
+        """结算当前阶段耗时并落盘；没有正在计时的阶段就什么都不做。
+
+        指标绝不能反过来搞挂主流程：写失败只留痕（与模型用量计量的处理方式一致）。
+        """
+        if self._stage_timing is None:
+            return
+        stage, started_at, started_monotonic = self._stage_timing
+        self._stage_timing = None
+        tracing.end_span(self._stage_span)
+        self._stage_span = None
+        ended_at = datetime.now(UTC)
+        try:
+            self.repository.record_stage_timing(
+                run_id,
+                stage,
+                (time.monotonic() - started_monotonic) * 1000,
+                started_at=started_at,
+                ended_at=ended_at,
+            )
+        except Exception:
+            logger.warning("阶段耗时记录失败（不影响主流程）stage=%s", stage.value, exc_info=True)
 
     def _wait(
         self,
@@ -761,6 +804,11 @@ class AnalysisOrchestrator:
         # 每写一次运行就顺带刷心跳：租约的"持有者还活着"判定依赖它，而运行记录
         # 本来每个阶段/批次都会写一次，等于零额外成本。
         updates.setdefault("heartbeat_at", updates["updated_at"])
+        # 状态一旦离开"运行中"，当前阶段就结束了——在**唯一的写入口**统一结算，
+        # 而不是在每条终止路径上各补一次调用：漏掉一条，那一段耗时永远不进指标
+        # （开发时就漏过 _analyze_batches 里直接写 WAITING 的那条）。
+        if updates.get("status") is not None and updates["status"] is not RunStatus.RUNNING:
+            self._finish_stage_timing(run.run_id)
         updated = run.model_copy(update=updates)
         self.repository.save_run(updated)
         return updated

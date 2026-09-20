@@ -21,6 +21,7 @@ from app_review_insights.monitor.report import build_report
 from app_review_insights.monitor.scheduler import MonitorScheduler
 from app_review_insights.monitor.webhook import WebhookSender
 from app_review_insights.storage.repository import RunRepository
+from app_review_insights.tracing import configure_tracing
 
 logger = logging.getLogger("agent-worker")
 
@@ -105,6 +106,8 @@ def main() -> None:
     settings = load_settings()
     configure_logging(level=settings.log_level, fmt=settings.log_format)
     logger.info("worker 启动 log_format=%s", settings.log_format)
+    if configure_tracing():
+        logger.info("三层追踪已启用（OTel）")
     if not settings.scheduler_enabled:
         logger.warning("SCHEDULER_ENABLED=false，worker 退出（请在 .env 开启）")
         return
@@ -116,7 +119,14 @@ def main() -> None:
         start_maintenance_loop(settings, stop_event)
         logger.info("数据维护已启用：每 %s 秒一次", settings.maintenance_interval_seconds)
 
-    state = HealthState()
+    # 指标端点读检查点库里的阶段耗时；取数失败只会让那一段缺失，不影响探针
+    run_repository = RunRepository(settings.database_path)
+    state = HealthState(
+        duration_stats=lambda: {
+            "stage": run_repository.stage_timing_summary(),
+            "model": run_repository.model_latency_summary(),
+        }
+    )
     server, _health_thread = start_health_server(
         state,
         host=settings.worker_health_host,

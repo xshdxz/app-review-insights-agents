@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+  # uid 必须显式写死：不写的话 Grafana 会随机生成一个（如 PBFA97CFB590B2093），
+  # 而看板 JSON 里引用的是 "prometheus"——结果每个面板都报"数据源找不到"（D-15）。
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
