@@ -17,6 +17,8 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+# 测试把 MagicMock 当路径用过 → 会在仓库根生成真实目录（D-21，误提交过一次），这里兜底
+MagicMock/
 .venv/
 venv/
 

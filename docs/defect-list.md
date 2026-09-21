@@ -46,6 +46,7 @@
 |---|---|---|---|---|---|
 | D-04 | 低 | fixed | SQLite 连接未显式关闭，全量测试产生 736 条 ResourceWarning。 | `python -m pytest` 输出 "138 passed, 736 warnings"（2026-08-16 基线）。 | 仓库改用 `_session` 上下文（成功提交 + 始终关闭），全量测试 140 passed 且 0 warnings。 |
 | D-05 | 低 | open | 需求数量可能少于 5（如本次 4 个），与计划"5–10 个 PRD 需求"存在偏差。 | 真实运行 `2391b909`：4 requirements。 | 行为符合设计：证据不足时如实披露（`quantity_notice`），不凑数。保留观察，不修复。 |
+| D-21 | 低 | fixed | **测试产物被误提交进仓库**：仓库根多出一个 `MagicMock/mock.database_path/1955152130272` —— 某处把 `MagicMock` 当数据库路径用，`Path(...).mkdir(parents=True)` 于是在仓库根建出真实目录，随后被 `git add -A` 一并提交（`f71633d`，worker 队列那次）。它不会让任何测试失败，只会一直躺在仓库里，属于"没人会注意到"的那类卫生问题。 | `git ls-files` 里出现 `MagicMock/mock.database_path/1955152130272`；`git log -1 -- MagicMock` 指向 `f71633d`；`src/` 里没有任何 `MagicMock` 引用 ⇒ 来自测试/脚本侧。 | 从索引与工作区删除，并在 `.gitignore` 加 `MagicMock/` 兜底。**根因未定位**：删除后重跑全量 695 项，该目录**未再生成** ⇒ 触发它的那条路径在当前代码状态下已不可复现（可能随早前的 `_session` 连接改造一并消失）。留下防复发规则；若再次出现，二分 `pytest -x` 即可钉出用例。 |
 | D-20 | 低 | fixed | **`--live-rewrite` 只活在文档里**：`scripts/run_retrieval_eval.py` 定义了这个开关却从未读过它，于是只要 `.env` 里有模型密钥，一次"离线"评测也会真实调用模型（21 次）——「默认离线、默认不花钱」这条不变量在代码里并不成立。 | 通读脚本时发现 `args.live_rewrite` 除 argparse 定义外**零引用**，而脚本头部 docstring 与 `docs/retrieval-eval.md` 都写着「仅 `--live-rewrite` 时跑」。 | 改为显式判定 `args.live_rewrite`，并把两个可选配置（查询改写 / 混合检索）拆成**互相独立**的开关；未启用时如实写进 `skipped`。 |
 
 ## 观察（非缺陷）
