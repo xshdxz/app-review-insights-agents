@@ -37,6 +37,11 @@ api = [
   "fastapi>=0.115,<1",
   "uvicorn>=0.34,<1",
 ]
+# 可选：本地向量模型（配合 EMBEDDING_LOCAL_MODEL_PATH）。不装就没有向量那一路，
+# 混合检索自动降级为纯 FTS；CI 刻意不装（与 observability 同理：让降级路径持续被验）。
+embeddings = [
+  "sentence-transformers>=3,<6",
+]
 # 可选：三层追踪（run → stage → model call）。没装就是 no-op，核心依赖不受影响。
 # CI 刻意不装这个 extra —— 正好让 CI 覆盖"降级路径仍然全绿"那一半。
 observability = [

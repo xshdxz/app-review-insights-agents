@@ -30,7 +30,7 @@
 | **运行不依赖浏览器标签页** | 提交即入队，worker 认领执行；关掉页面照跑完（`EXECUTION_MODE=queued` + `RUN_QUEUE_ENABLED`），队列没人消费时界面**如实报警**而不是让人干等 |
 | **有对外契约** | HTTP 接口 9 个端点 + OpenAPI（`/docs`）；写端点需令牌、积压超限 429、取消是协作式的（响应里写明在阶段边界生效） |
 | **能出事，也能查** | `/metrics` 暴露阶段与模型耗时 P50/P95、队列深度与最久等待；每条 SLI 都写明怎么算；Runbook 11 个场景；备份恢复**真演练过** —— 见 [看板截图](docs/images/06-grafana-overview.png) |
-| **质量基线** | 669 项测试 / 覆盖率 92% / ruff 双绿 / CI 六个 job（Linux 3.11–3.13，含独立契约 job） |
+| **质量基线** | 695 项测试 / 覆盖率 92% / ruff 双绿 / CI 六个 job（Linux 3.11–3.13，含独立契约 job） |
 
 ---
 
@@ -101,12 +101,18 @@ F-001 免费内容大幅减少，付费墙限制基本功能   ← 15 条支持�
 
 ### RAG 问答
 
-- **Query Rewriting Agent**：把自然语言问题扩展为 3-5 条等价短查询，多路检索合并去重。**注意：检索评测（见下）显示它在当前合并策略下是负收益**（recall@3 0.595 → 0.524），已作为 D-18 记录待改，不写成「提升召回率」
-- **混合检索**：FTS5 BM25（0.6）+ 本地向量（0.4）min-max 归一化融合，且是**两路召回**（向量那一路的候选也会并入，不只是重排 FTS 结果）。**向量那一路的质量尚未测**——本机没有 provider，见 `docs/retrieval-eval.md`
+- **Query Rewriting Agent**：把自然语言问题扩展为 3-5 条等价短查询，**只在原查询零结果时兜底触发**。
+  无条件多路合并曾被自己的检索评测证明是负收益（recall@3 0.595 → 0.524、MRR 0.873 → 0.746，D-18）：
+  根因是**跨查询比较归一化分数**（每条查询的 top1 都是 1.0）。现在「命中即止 + 回退路按名次轮转」写在
+  唯一入口 `rag/answer.gather_evidence` 里，负收益在**结构上**不可能再发生
+- **混合检索**：FTS5 BM25（0.6）+ 本地向量（0.4）min-max 归一化融合，且是**两路召回**（向量那一路的候选也会并入，不只是重排 FTS 结果）。
+  **质量已实测**（本地 `BAAI/bge-small-zh-v1.5`）：recall@5 0.595 → **0.714**、21 条查询里 4 条改善 0 条变差，
+  代价是 precision@5 0.319 → 0.286（召回换精度）。0.6/0.4 权重仍未调优，细节见 `docs/retrieval-eval.md`
 - **引用校验**：每条引用的 review_id 必须存在于检索结果，quote 必须是原文子串（NFKC 归一化）
 - **检索质量有可回归的评测**（`docs/retrieval-eval.md`）：21 条查询（中 9 / 英 12）、答案锚定既有黄金集；纯 FTS 基线 recall@3 = 0.595。
   **首跑就撞出并修掉一个中文检索缺陷**——没有空白或标点的中文长问句会被当成一条必须逐字出现的短语，换个说法就一条都命不中（D-17）；
-  修复后中文 recall@3 从 0.167 到 0.722，英文无回归。**向量/混合那一路本机没有 provider，标注为未测**，不假装比过。
+  修复后中文 recall@3 从 0.167 到 0.722，英文无回归。同一把尺子还把**查询改写的负收益**先证明、后关掉（D-18）。
+  **向量/混合那一路本机没有 provider，标注为未测**，不假装比过。
 - **跨 App 对比**：单 App 深聊 / 多 App 横向对比
 
 ### 语料库管理
@@ -273,7 +279,7 @@ Agent 层**包裹在确定性核心之外**：
 | `AGENT_MAX_REVIEW_ROUNDS` | `2` | Reviewer 复核不通过时的最大重做轮数。 |
 | `APPROVAL_REQUIRED` | `false` | 推送前是否需要人工审批。 |
 | `EMBEDDING_ENABLED` | `false` | 向量检索开关。 |
-| `EMBEDDING_LOCAL_MODEL_PATH` | *(空)* | 本地 sentence-transformers 模型路径（优先于 API）。 |
+| `EMBEDDING_LOCAL_MODEL_PATH` | *(空)* | 本地 sentence-transformers 模型路径（优先于 API）。需装可选 extra `[embeddings]`；检索评测实测用 `BAAI/bge-small-zh-v1.5`。 |
 | `EMBEDDING_MODEL` / `EMBEDDING_BASE_URL` / `EMBEDDING_API_KEY` | `text-embedding-3-small` / … | API 向量检索配置（本地路径为空时使用）。 |
 | `SOCIAL_X_ENDPOINT` | *(空)* | 可选的 X 舆情搜索端点（返回 JSON 数组）。 |
 | `DEFAULT_REVIEW_LIMIT` / `BATCH_REVIEW_LIMIT` / `BATCH_MAX_CHARACTERS` | `500` / `100` / `60000` | 数量与分批限制。 |
@@ -288,7 +294,7 @@ Agent 层**包裹在确定性核心之外**：
 ## 测试与评测
 
 ```powershell
-# 全量测试（当前 620 项，覆盖率 92%）
+# 全量测试（当前 695 项，覆盖率 92%）
 # 620 是本次实际执行的用例数；另有 22 项标了 reliability 的用例默认不跑（-m reliability）。
 # 数字一律取 pytest 的输出，不要用 grep `def test_` 去数：parametrize 会展开成多例，
 # 嵌套在测试内部的局部辅助函数又会被 grep 误计入。
@@ -396,7 +402,7 @@ evals/
 
 - **Python 3.11+** / **Streamlit** / **Pydantic v2** / **SQLite (FTS5 + WAL)** / **httpx** / **APScheduler 3.11**
 - **OpenAI 兼容 Provider**（DeepSeek 默认，可切换）
-- **sentence-transformers** + **bce-embedding-base_v1**（本地向量检索，768 维，无需 API Key）
+- **sentence-transformers**（可选 extra `[embeddings]`）：本地向量检索，无需 API Key；检索评测实测用 `BAAI/bge-small-zh-v1.5`（512 维）
 - **Docker + docker-compose** 部署；GitHub Actions CI（ubuntu × 3 个 Python 版本）
 
 ---
