@@ -42,7 +42,8 @@ uv.lock → Pipfile → environment.yml → requirements.txt → pyproject.toml 
 
 5. 点 **Deploy**，等构建（首次约 2–5 分钟）
 
-部署完成后会得到一个形如 `https://<app-name>.streamlit.app` 的公开链接。
+部署完成后会得到一个形如 `https://<app-name>.streamlit.app` 的链接——**它默认可能只有你自己能打开**。
+要让别人访问，去 app 的 **Settings → Sharing** 改成 Public（本项目当前的线上实例保持私有，README 里因此没有放公开链接）。
 
 ---
 
@@ -93,6 +94,9 @@ uv.lock → Pipfile → environment.yml → requirements.txt → pyproject.toml 
 
 「查看历史缓存演示」开关仍然保留，它打开的是另一份离线档案（`data/cache/demo-run.json`），
 与上面的回放互不影响。
+
+**先确认实例是公开的**：私有实例对访客只会弹登录页——实测返回 303 跳
+`share.streamlit.io/-/auth/app` → `/-/login`，看起来就像「部署坏了」。要在 **Settings → Sharing** 里改成 Public。
 
 **分享请使用不带查询参数的裸链接**：演示模式不写入任何 URL 查询参数，还会清掉链接里带进来
 的旧参数（`?goal=`、`?url=` …），所以直接复制地址栏得到的就是干净链接。普通模式同样只写

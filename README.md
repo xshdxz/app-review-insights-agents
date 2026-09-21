@@ -4,10 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-**在线演示（免安装、免密钥）：** <https://xsh-review-insights.streamlit.app/>
+**免密钥演示：** 不配置任何密钥启动即进入**演示模式**——在自带样例上回放一次真实运行的模型输出，
+「开始分析」可点、跑完整条流水线，全程不调用外部 API（两条命令见下面的「快速开始」）。
 
-打开上面的地址即可使用：不配置密钥时它回放一次真实运行的模型输出，「开始分析」可点，
-在自带样例上跑完整条流水线，全程不调用外部 API。
+> 曾托管在 Streamlit Community Cloud；该实例目前设为**私有**（仅所有者可见），因此这里不提供公开链接。
+> 需要自己部署一份可公开访问的 demo，步骤见 `docs/deploy-streamlit-cloud.md`。
 
 **把 App Store / Google Play / 社交评论，变成有证据支撑的产品发现、分版本 PRD 需求与可追溯测试用例。**
 
