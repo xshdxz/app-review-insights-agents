@@ -383,19 +383,15 @@ evals/
 
 ---
 
-## 架构文档
+## 文档
 
-- `docs/architecture.md` — 流水线阶段、Agent/RAG/Monitor 模块、持久化
-- `docs/agent-architecture.md` — Planner/Reviewer/工具注册表设计与降级矩阵
-- `docs/data-format.md` — JSON/CSV 导入格式
-- `docs/model-and-prompts.md` — 模型/Prompt 设计与评测记录
-- `docs/reliability.md` — 崩溃一致性矩阵、实测结果、反向验收与**已知边界**
-- `docs/slo.md` — SLI/SLO 定义与错误预算（每条 SLI 都写清怎么算）
-- `docs/runbook.md` — 出问题照着做：症状 → 判断 → 处置 → 验证
-- `docs/backup-drill.md` — 备份恢复演练记录与人工恢复流程
-- `docs/defect-list.md` — 缺陷清单与修复记录
-- `docs/highlights.md` — 技术亮点
-- `docs/experiments/langgraph-vs-native.md` — LangGraph vs 原生编排对比实验
+**完整文档导航见 [`docs/README.md`](docs/README.md)**（按「想跑起来 / 质量与评测 / 运维与可靠性 / 过程档案」分组）。最常被翻的几篇：
+
+- `docs/architecture.md` — 流水线阶段、模块职责、状态机、数据流
+- `docs/defect-list.md` — 19 条缺陷记录（根因、证据、修法）
+- `docs/retrieval-eval.md` — 检索质量评测：查询集、指标口径、修复前后对照
+- `docs/runbook.md` — 11 个故障场景的处置手册
+- `docs/slo.md` — 9 条 SLI 的算法与 SLO 目标
 
 ---
 
