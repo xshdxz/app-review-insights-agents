@@ -6,8 +6,9 @@
 三种配置：
 
 - fts           纯 FTS5（离线、确定性、进 CI）
-- fts+rewrite   查询改写后多路检索合并（需要密钥，不足 1 分钱/次；仅 --live-rewrite 时跑）
-- hybrid        需要 embedding provider；**本机没有**，脚本会如实标成「未测」而不是跳过不提
+- fts+rewrite   查询改写——**只在原查询零结果时触发**（D-18 之后的新策略；需要密钥，
+                不足 1 分钱/次，且只有显式加 --live-rewrite 才会真实调用模型）
+- hybrid        需要 embedding provider；没配就如实标成「未测」而不是跳过不提
 
 用法：
 
@@ -23,7 +24,7 @@ import argparse
 import json
 import sys
 import tempfile
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,7 @@ from typing import Any
 from app_review_insights.config import load_settings
 from app_review_insights.llm.provider import DeepSeekProvider
 from app_review_insights.models import Review
+from app_review_insights.rag.answer import gather_evidence
 from app_review_insights.rag.embeddings import EmbeddingStore, LocalEmbeddingStore
 from app_review_insights.rag.indexer import CorpusIndexer
 from app_review_insights.rag.metrics import precision_at_k, recall_at_k, reciprocal_rank
@@ -150,23 +152,16 @@ def retrieve(
     query: str,
     *,
     top_k: int,
-    variants: Callable[[str], list[str]] | None = None,
+    rewriter: Any | None = None,
 ) -> list[str]:
-    """按**应用里那条路径**取结果：改写出的多条查询各取一轮，去重后按分排序截断。
+    """按**应用里那条路径**取结果——直接调 `rag.answer.gather_evidence`。
 
-    与 RagAnswerer.answer 的顺序一致（先 search_many 再去重排序），否则量出来的就不是
-    上线时跑的那条路。
+    D-18 之后这里不再另抄一份合并逻辑：策略（含改写的触发条件）只有一处实现，
+    评测量到的就是上线跑的那条路。此前脚本里复刻了一遍「多路合并」，只要有一边改了而
+    另一边没跟上，数字就会说谎——而说谎的评测比没有评测更危险。
     """
-    queries = variants(query) if variants else [query]
-    merged: list[Any] = []
-    seen: set[str] = set()
-    for one in queries:
-        for chunk in retriever.search_many(one, [CORPUS_APP_ID], top_k=top_k):
-            if chunk.review_id not in seen:
-                seen.add(chunk.review_id)
-                merged.append(chunk)
-    merged.sort(key=lambda chunk: chunk.score, reverse=True)
-    return [chunk.review_id for chunk in merged[:top_k]]
+    chunks = gather_evidence(retriever, query, [CORPUS_APP_ID], top_k=top_k, rewriter=rewriter)
+    return [chunk.review_id for chunk in chunks]
 
 
 def score_query(query: dict[str, Any], retrieved: list[str]) -> dict[str, Any]:
@@ -220,13 +215,11 @@ def _render(rows: list[dict[str, Any]], summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _build_variants(settings: Any) -> Callable[[str], list[str]] | None:
+def _build_rewriter(settings: Any) -> QueryRewriter | None:
     """改写的 provider；没密钥就返回 None（调用方据此跳过该配置并**如实说明**）。"""
     if not settings.model_available:
         return None
-    provider = DeepSeekProvider.from_settings(settings)
-    rewriter = QueryRewriter(provider)
-    return lambda query: rewriter.rewrite(query)
+    return QueryRewriter(DeepSeekProvider.from_settings(settings))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -257,9 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         settings = load_settings()
         repository, fts_retriever = build_index(Path(tmp) / "agent.sqlite3")
         skipped: list[str] = []
-        runs: list[tuple[str, CorpusRetriever, Callable[[str], list[str]] | None]] = [
-            ("fts", fts_retriever, None)
-        ]
+        runs: list[tuple[str, CorpusRetriever, Any | None]] = [("fts", fts_retriever, None)]
         if args.hybrid:
             store, reason = _build_embedding_store(settings)
             if store is None:
@@ -278,11 +269,17 @@ def main(argv: list[str] | None = None) -> int:
                 "hybrid：本次未启用（加 --hybrid，并提供 EMBEDDING_API_KEY "
                 "或 EMBEDDING_LOCAL_MODEL_PATH）",
             )
-            variants = _build_variants(settings)
-            if variants is None:
+        # 改写配置**必须显式 --live-rewrite**：它要真实调用模型，而「默认离线、默认不花钱」
+        # 是这个脚本的不变量。此前这个开关只写在文档里、代码里从未读过，配了密钥就会
+        # 悄悄产生调用（D-20）。
+        if args.live_rewrite:
+            rewriter = _build_rewriter(settings)
+            if rewriter is None:
                 skipped.append("fts+rewrite：未配置可用的模型密钥")
             else:
-                runs.append(("fts+rewrite", fts_retriever, variants))
+                runs.append(("fts+rewrite", fts_retriever, rewriter))
+        else:
+            skipped.append("fts+rewrite：本次未启用（加 --live-rewrite，会真实调用模型）")
 
         report: dict[str, Any] = {
             "dataset": args.dataset,
@@ -291,14 +288,30 @@ def main(argv: list[str] | None = None) -> int:
             "configs": {},
             "skipped": skipped,
         }
-        for name, retriever, variants in runs:
+        for name, retriever, rewriter in runs:
             rows = [
                 score_query(
-                    query, retrieve(retriever, query["query"], top_k=args.top_k, variants=variants)
+                    query, retrieve(retriever, query["query"], top_k=args.top_k, rewriter=rewriter)
                 )
                 for query in dataset["queries"]
             ]
             report["configs"][name] = {"summary": summarize(rows), "cases": rows}
+
+        # 改写如今只在原查询零结果时触发（D-18）。把「触发了几条」如实记进报告——
+        # 否则「fts+rewrite 与 fts 数字完全相同」会被误读成「改写没用」，而真相是
+        # 「这批查询里没有一条需要它兜底」。
+        empty_in_baseline = {
+            row["query_id"]: not row["retrieved"] for row in report["configs"]["fts"]["cases"]
+        }
+        for name, _, rewriter in runs:
+            if rewriter is None:
+                continue
+            payload = report["configs"][name]
+            for row in payload["cases"]:
+                row["rewrite_triggered"] = empty_in_baseline[row["query_id"]]
+            payload["summary"]["rewrite_triggered"] = sum(
+                1 for row in payload["cases"] if row["rewrite_triggered"]
+            )
 
     rendered = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:

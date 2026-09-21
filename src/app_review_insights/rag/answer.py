@@ -43,6 +43,52 @@ def _render_chunks(chunks: list[RetrievedChunk]) -> str:
     return "\n".join(lines)
 
 
+def gather_evidence(
+    retriever: CorpusRetriever,
+    question: str,
+    app_ids: list[str],
+    *,
+    top_k: int = 10,
+    rewriter: QueryRewriter | None = None,
+) -> list[RetrievedChunk]:
+    """检索策略：**先原查询，命中即止；只有零结果时才启用改写**（D-18）。
+
+    这里是唯一的策略入口——`RagAnswerer` 与 `scripts/run_retrieval_eval.py` 共用它，
+    所以评测量到的就是上线跑的那条路，而不是另抄一份。
+
+    为什么要有这道闸：检索分是按**查询内** min-max 归一化的，每条查询的 top1 都是 1.0，
+    跨查询比较这个分并不成立。无条件多路合并会让改写出的短查询（更泛）把原查询的精确
+    结果挤下去——21 条查询实测 recall@3 0.595 → 0.524、MRR 0.873 → 0.746（D-18）。
+    命中即止让这个负收益在**结构上**不可能发生：改写只在原查询零结果时上场，此时它
+    只可能「从无到有」。
+
+    回退路的合并按**名次**轮转（rank round-robin），而不是把所有结果堆在一起比分——
+    分数跨查询不可比，那正是上面那个缺陷的根因。
+    """
+    hits = retriever.search_many(question, app_ids, top_k=top_k)
+    if hits or rewriter is None:
+        return sorted(hits, key=lambda chunk: chunk.score, reverse=True)[:top_k]
+    variants = [item.strip() for item in rewriter.rewrite(question) if item.strip()]
+    # 去重保序，并剔掉与原始问题重复的那条（它刚刚检索过且零结果）
+    rounds = [
+        retriever.search_many(variant, app_ids, top_k=top_k)
+        for variant in dict.fromkeys(variants)
+        if variant != question
+    ]
+    merged: list[RetrievedChunk] = []
+    seen: set[str] = set()
+    for rank in range(top_k):
+        for round_hits in rounds:
+            if rank >= len(round_hits):
+                continue
+            chunk = round_hits[rank]
+            if chunk.review_id in seen:
+                continue
+            seen.add(chunk.review_id)
+            merged.append(chunk)
+    return merged[:top_k]
+
+
 class RagAnswerer:
     def __init__(
         self,
@@ -57,16 +103,10 @@ class RagAnswerer:
         self.rewriter = rewriter or QueryRewriter()
 
     def answer(self, question: str, app_ids: list[str]) -> RagAnswer:
-        # 查询改写：把自然语言问题扩展为多条等价短查询，多路检索合并去重。
-        queries = self.rewriter.rewrite(question)
-        per_query_chunks: list[RetrievedChunk] = []
-        seen_ids: set[str] = set()
-        for q in queries:
-            for chunk in self.retriever.search_many(q, app_ids, top_k=self.top_k):
-                if chunk.review_id not in seen_ids:
-                    seen_ids.add(chunk.review_id)
-                    per_query_chunks.append(chunk)
-        chunks = sorted(per_query_chunks, key=lambda c: c.score, reverse=True)[: self.top_k]
+        # 检索策略（含改写的触发条件）在 gather_evidence 里，评测脚本共用同一入口。
+        chunks = gather_evidence(
+            self.retriever, question, app_ids, top_k=self.top_k, rewriter=self.rewriter
+        )
         if not chunks:
             return RagAnswer(
                 answer="当前语料中没有找到与该问题相关的评论。",
